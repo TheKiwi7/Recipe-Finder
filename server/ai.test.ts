@@ -1,6 +1,6 @@
 import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { abortAllAI, AIUnavailable, askAI, cooldownOf, providers, resetAIState, type Provider } from './ai.ts';
+import { abortAllAI, AIUnavailable, askAI, cooldownOf, forgetParentClaudeSession, providers, resetAIState, type Provider } from './ai.ts';
 
 // Bascule Claude ↔ modèle local : fournisseurs simulés (prêts ou non, réponses ou pannes à la demande).
 type Behaviour = 'ok' | 'fail' | 'limit' | 'empty' | 'not-json';
@@ -83,4 +83,19 @@ test('fermeture de l’app : aucun appel, et pas de bascule sur l’autre IA', a
   abortAllAI();
   await assert.rejects(ask('interactive'), AIUnavailable);
   assert.equal(state.claude.calls + state.local.calls, 0);
+});
+
+test('app lancée depuis une session Claude Code : ses variables sont oubliées, les réglages du CLI restent', () => {
+  const saved = { ...process.env };
+  Object.assign(process.env, { CLAUDECODE: '1', CLAUDE_CODE_ENTRYPOINT: 'sdk-ts', CLAUDE_CODE_SESSION_ID: 'x', CLAUDE_CODE_GIT_BASH_PATH: 'C:\Git\bin\bash.exe' });
+  try {
+    forgetParentClaudeSession();
+    assert.equal(process.env.CLAUDECODE, undefined); // sinon : « cannot be launched inside another Claude Code session »
+    assert.equal(process.env.CLAUDE_CODE_ENTRYPOINT, undefined);
+    assert.equal(process.env.CLAUDE_CODE_SESSION_ID, undefined);
+    assert.equal(process.env.CLAUDE_CODE_GIT_BASH_PATH, 'C:\Git\bin\bash.exe');
+  } finally {
+    for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
+    Object.assign(process.env, saved);
+  }
 });

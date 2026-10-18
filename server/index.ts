@@ -11,13 +11,14 @@ import { migrateCatalog, syncSeed } from './catalog/store.ts';
 import { ensureStaples } from './pantry.ts';
 import { ensureSelf } from './members.ts';
 import { maybeUpdateProfile } from './profile.ts';
-import { abortAllAI, ensureOllama, initAI, killOrphanRunners, ollamaExe, releaseOllama, removeOllamaAutostart } from './ai.ts';
+import { abortAllAI, ensureOllama, forgetParentClaudeSession, initAI, killOrphanRunners, ollamaExe, releaseOllama, removeOllamaAutostart } from './ai.ts';
 import { L, lang, loadLang, prefillTranslations } from './i18n.ts';
 import { isFromApp } from './guard.ts';
 import { applyUpdate, checkForUpdate, initUpdateState } from './update.ts';
 
 export const PORT = Number(process.env.PORT ?? 5317);
 const CLIENT_DIST = join(DATA_DIR, '..', 'client', 'dist');
+forgetParentClaudeSession(); // avant tout lancement de `claude`, d'Ollama ou d'un serveur de remplacement
 
 // Relancé après une mise à jour : on attend que l'ancien serveur ait libéré le port.
 if (process.env.RF_AFTER_UPDATE) {

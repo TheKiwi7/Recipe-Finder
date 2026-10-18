@@ -55,6 +55,19 @@ function findExe(name: string, candidates: string[]): string | null {
   }
   return candidates.find(c => existsSync(c)) ?? null;
 }
+/**
+ * App lancée depuis une session Claude Code (son terminal, dans VS Code par exemple) : elle hérite des variables de
+ * cette session, et le CLI `claude` qu'elle appelle refuse alors de démarrer (« cannot be launched inside another
+ * Claude Code session »). On oublie ces variables au démarrage du serveur. Les réglages du CLI choisis par la personne
+ * (CLAUDE_CODE_GIT_BASH_PATH, CLAUDE_CODE_USE_BEDROCK…) restent.
+ */
+export function forgetParentClaudeSession(): void {
+  for (const name of ['CLAUDECODE', 'CLAUDE_PID', 'CLAUDE_EFFORT', 'CLAUDE_AGENT_SDK_VERSION', 'AI_AGENT', 'MCP_CONNECTION_NONBLOCKING',
+    'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_CODE_CHILD_SESSION', 'CLAUDE_CODE_SESSION_ATTENDED', 'CLAUDE_CODE_MESSAGING_SOCKET',
+    'CLAUDE_CODE_MESSAGING_TOKEN', 'CLAUDE_CODE_EXECPATH', 'CLAUDE_CODE_SSE_PORT', 'CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING',
+    'CLAUDE_CODE_EMIT_STARTUP_TIMING', 'CLAUDE_CODE_QUESTION_PREVIEW_FORMAT', 'CLAUDE_CODE_ENABLE_TASKS']) delete process.env[name];
+}
+
 export const claudeExe = () => findExe('claude', [join(LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links', 'claude.exe'), join(process.env.USERPROFILE ?? '', '.local', 'bin', 'claude.exe')]);
 export const ollamaExe = () => findExe('ollama', [join(LOCALAPPDATA, 'Programs', 'Ollama', 'ollama.exe')]);
 
