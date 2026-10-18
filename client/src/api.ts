@@ -43,7 +43,8 @@ export type AIStatus = {
   task: { kind: AIProvider; status: 'running' | 'done' | 'error'; step: string; progress?: number } | null;
   localModels: Array<{ id: string; label: string; size: string; hint: string }>;
 };
-export type ImportStatus = { imported: number; target: number; rejected: number; pending: number; available: number; unresolvedRecipes: number; running: boolean; build: string; server: string };
+/** target : objectif affiché, plafonné à reachable (ce qui reste réellement importable). */
+export type ImportStatus = { imported: number; target: number; reachable: number; rejected: number; pending: number; available: number; unresolvedRecipes: number; running: boolean; build: string; server: string };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -52,7 +53,10 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const json = (res.headers.get('Content-Type') ?? '').includes('application/json');
-  const data = json ? await res.json().catch(() => ({})) : {};
+  // Réponse coupée en route (changement de page, serveur qui redémarre) : une erreur, jamais un objet vide
+  // que la page prendrait pour des données.
+  const data = json ? await res.json().catch(() => undefined) : {};
+  if (data === undefined) throw new TypeError(L('Réponse du serveur interrompue', 'Server response interrupted'));
   if (!res.ok) throw new Error(data.error ?? L(`Erreur ${res.status}`, `Error ${res.status}`));
   // Réponse non JSON sur une route d'API : serveur d'une version plus ancienne que l'interface.
   if (!json && res.status !== 204) throw new Error(L('Serveur pas à jour : ferme et relance l’app', 'Server out of date: close and relaunch the app'));

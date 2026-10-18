@@ -13,7 +13,7 @@ import { L, memberName, typeLabel } from '../i18n.ts';
 function EatersFilter({ mode }: { mode: Mode }) {
   const data = useMembers();
   useEffect(() => { if (!data) refreshMembers().catch(() => {}); }, [data]);
-  if (!data || data.members.length < 2) return null;
+  if (!data?.members || data.members.length < 2) return null;
   const toggle = async (id: number) => {
     try { await toggleEater(id); await setFilters(mode, listFilters(mode)); }
     catch (e) { toast((e as Error).message); }

@@ -134,6 +134,19 @@ export function priorityBaseline(db: Db): number {
   return hit / all;
 }
 
+/**
+ * Pour l'affichage : l'objectif ne dépasse jamais ce qui reste réellement importable (pages encore à lire × taux de
+ * recettes gardées jusqu'ici). Un objectif de 45 000 s'affiche donc « vers ~39 500 » si Marmiton n'en a pas plus.
+ * L'import lui-même ne s'arrête pas sur cette estimation : il continue tant qu'il reste des pages à lire.
+ */
+export function displayProgress(db: Db): ImportProgress & { reachable: number } {
+  const p = importProgress(db, getCatalogTarget(db));
+  const browsed = p.available - p.pending;
+  const acceptance = browsed > 0 ? p.imported / browsed : 0.9;
+  const reachable = p.imported + Math.round(p.pending * acceptance);
+  return { ...p, target: Math.min(p.target, reachable), reachable };
+}
+
 export function importProgress(db: Db, target: number): ImportProgress {
   const count = (sql: string) => (db.prepare(sql).get() as { n: number }).n;
   return {

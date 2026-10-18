@@ -12,6 +12,7 @@
     "start": "node --disable-warning=ExperimentalWarning server/index.ts",
     "import": "node --disable-warning=ExperimentalWarning server/scripts/import.ts",
     "audit": "node --disable-warning=ExperimentalWarning server/scripts/audit.ts",
+    "export-aliases": "node --disable-warning=ExperimentalWarning server/scripts/export-aliases.ts",
     "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1",
     "test": "node --disable-warning=ExperimentalWarning --test \"server/**/*.test.ts\" \"client/src/**/*.test.ts\"",
     "typecheck": "tsc && tsc -p client"

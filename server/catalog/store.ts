@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { getMeta, loadAliases, setMeta, type Db } from '../db.ts';
 import { seedAliases } from './seed-ingredients.ts';
 import { cleanName, realImage, recipeType } from './recipe.ts';
@@ -90,10 +91,23 @@ export function reresolveRecipes(db: Db, all = false): number {
   return fixed;
 }
 
-/** Si le dictionnaire de départ a changé depuis le dernier lancement, recalcule les bases de toutes les recettes. */
+/** Vocabulaire appris livré avec l'app (npm run export-aliases) : termes → ingrédient de base. */
+function learnedAliases(): Record<string, string | null> {
+  try { return JSON.parse(readFileSync(new URL('./learned-aliases.json', import.meta.url), 'utf8')); } catch { return {}; }
+}
+
+/**
+ * Si le dictionnaire de départ ou le vocabulaire livré ont changé depuis le dernier lancement : vocabulaire ajouté
+ * (sans écraser ce que cette installation a appris elle-même), puis bases de toutes les recettes recalculées.
+ */
 export function syncSeed(db: Db): void {
-  const hash = createHash('sha1').update(JSON.stringify(seedAliases())).digest('hex');
+  const learned = learnedAliases();
+  const hash = createHash('sha1').update(JSON.stringify([seedAliases(), learned])).digest('hex');
   if (getMeta(db, 'seed_hash') === hash) return;
+  const ins = db.prepare(`INSERT INTO ingredient_aliases (key, base, origin) VALUES (?, ?, 'learned') ON CONFLICT(key) DO NOTHING`);
+  db.exec('BEGIN');
+  for (const [key, base] of Object.entries(learned)) ins.run(key, base);
+  db.exec('COMMIT');
   canonicalizeClaudeBases(db);
   reresolveRecipes(db, true);
   setMeta(db, 'seed_hash', hash);
@@ -129,8 +143,8 @@ export function migrateCatalog(db: Db): void {
  */
 function canonicalizeClaudeBases(db: Db): void {
   const seed = new Map((db.prepare(`SELECT key, base FROM ingredient_aliases WHERE origin = 'seed'`).all() as Array<{ key: string; base: string | null }>).map(r => [r.key, r.base]));
-  const bases = (db.prepare(`SELECT DISTINCT base FROM ingredient_aliases WHERE origin = 'claude' AND base IS NOT NULL`).all() as Array<{ base: string }>).map(r => r.base);
-  const update = db.prepare(`UPDATE ingredient_aliases SET base = ? WHERE origin = 'claude' AND base = ?`);
+  const bases = (db.prepare(`SELECT DISTINCT base FROM ingredient_aliases WHERE origin IN ('claude', 'learned') AND base IS NOT NULL`).all() as Array<{ base: string }>).map(r => r.base);
+  const update = db.prepare(`UPDATE ingredient_aliases SET base = ? WHERE origin IN ('claude', 'learned') AND base = ?`);
   db.exec('BEGIN');
   for (const b of bases) {
     const target = seed.get(normalizeKey(b));

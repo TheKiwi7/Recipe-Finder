@@ -115,9 +115,9 @@ function ProfileDetails({ version }: { version: number }) {
 }
 
 const fr = num;
-/** ~3 s par recette acceptée (1 page toutes les 1,5 s + chargement, ~90 % acceptées). */
+/** ~2,2 s par recette gardée (mesuré : 1 page toutes les ~1,85 s, ~90 % gardées). */
 const duration = (recipes: number) => {
-  const min = Math.round((recipes * 3) / 60);
+  const min = Math.round((recipes * 2.2) / 60);
   return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`;
 };
 
@@ -155,9 +155,10 @@ function CatalogCard() {
       <div className="add-recipes">
         <span className="muted">{L('Ajouter des recettes :', 'Add recipes:')}</span>
         {[500, 1000, 2500].map(n => (
-          <button key={n} className="btn btn-ghost small-btn" disabled={busy || s.pending === 0} onClick={() => add(n)}><Plus size={14} />{fr(n)}</button>
+          <button key={n} className="btn btn-ghost small-btn" disabled={busy || s.pending === 0 || s.target >= s.reachable} onClick={() => add(n)}><Plus size={14} />{fr(n)}</button>
         ))}
       </div>
+      {s.pending > 0 && s.target >= s.reachable && <p className="muted small" style={{ marginTop: 12 }}>{L('Ton objectif couvre déjà toutes les recettes encore importables depuis Marmiton.', 'Your goal already covers every recipe still importable from Marmiton.')}</p>}
       {s.pending === 0 && <p className="muted small" style={{ marginTop: 12 }}>{L('Toutes les recettes disponibles sur Marmiton ont été parcourues.', 'Every recipe available on Marmiton has been browsed.')}</p>}
       <ImportPriority />
       <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>{L('Plus de recettes = plus de propositions faisables avec ton stock. L’import lit une page toutes les 1,5 s pour rester discret envers Marmiton, puis continue d’ajouter ~100 recettes par semaine.', 'More recipes = more suggestions doable with your pantry. The import reads one page every 1.5 s to stay gentle on Marmiton, then keeps adding ~100 recipes a week.')}</p>

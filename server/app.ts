@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { readFileSync } from 'node:fs';
 import type { Db } from './db.ts';
-import { getCatalogTarget, getImportPriority, importProgress, prioritizeQueue, priorityBaseline, priorityRemaining, setCatalogTarget, setImportPriority } from './catalog/importer.ts';
+import { displayProgress, getCatalogTarget, getImportPriority, importProgress, prioritizeQueue, priorityBaseline, priorityRemaining, setCatalogTarget, setImportPriority } from './catalog/importer.ts';
 import { addShoppingItem, buyAllShopping, buyShoppingItem, clearShopping, cookRecipe, CookError, listShopping, removeShoppingItem } from './shopping.ts';
 import {
   addPantryItem, confirmPantry, deletePantryItem, listPantry, listStaples, pantryState, setStaples, suggestIngredients, updatePantryItem,
@@ -131,7 +131,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     return c.body(readFileSync(p), 200, { 'Content-Type': MIME[file.split('.').pop()!.toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'max-age=31536000', 'X-Content-Type-Options': 'nosniff' });
   });
 
-  api.get('/import/status', c => c.json({ ...importProgress(db, getCatalogTarget(db)), running: status.importing(), build: status.build(), server: SERVER_STARTED }));
+  api.get('/import/status', c => c.json({ ...displayProgress(db), running: status.importing(), build: status.build(), server: SERVER_STARTED }));
   // Types de recettes à importer en priorité (Réglages) : la file d'import est réordonnée tout de suite.
   const priority = () => ({ types: getImportPriority(db), remaining: priorityRemaining(db), baseline: priorityBaseline(db) });
   api.get('/import/priority', c => c.json(priority()));
@@ -146,7 +146,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     const { imported } = importProgress(db, 0);
     setCatalogTarget(db, Math.max(getCatalogTarget(db), imported) + add);
     status.startImport();
-    return c.json({ ...importProgress(db, getCatalogTarget(db)), running: true });
+    return c.json({ ...displayProgress(db), running: true });
   });
 
   api.get('/questionnaire', c => c.json({ questionnaire: getQuestionnaire(db), defaults: DEFAULT_QUESTIONNAIRE, equipment: OPTIONAL_EQUIPMENT }));
