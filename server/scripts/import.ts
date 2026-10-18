@@ -2,12 +2,14 @@
 // Reprend là où il s'était arrêté. Ctrl+C pour arrêter proprement.
 import { parseArgs } from 'node:util';
 import { openDb } from '../db.ts';
+import { initAI } from '../ai.ts';
 import { acquireImportLock, getCatalogTarget, importProgress, runImport } from '../catalog/importer.ts';
 import { consolidateBases, requeueSuspiciousAliases, resolveUnknownTerms } from '../catalog/normalize-unknown.ts';
 import { migrateCatalog, reresolveRecipes, syncSeed } from '../catalog/store.ts';
 
 const { values } = parseArgs({ options: { target: { type: 'string' }, 'normalize-only': { type: 'boolean', default: false }, 'renormalize-ignored': { type: 'boolean', default: false }, consolidate: { type: 'boolean', default: false }, 'requeue-rated': { type: 'boolean', default: false } } });
 const db = openDb();
+initAI(db);
 syncSeed(db);
 migrateCatalog(db);
 let target = values.target ? Number(values.target) : getCatalogTarget(db);

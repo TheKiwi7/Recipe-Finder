@@ -26,6 +26,14 @@ export type Questionnaire = {
 };
 export type ProfileStatus = { updatedAt: string | null; pendingSignals: number; hasProfile: boolean; lastError: string | null; exclusions: string[] };
 export type ChatMessage = { id: number; role: 'user' | 'assistant'; text: string; at: string };
+export type AIProvider = 'claude' | 'local';
+export type AIStatus = {
+  claude: { state: 'ready' | 'no-subscription' | 'not-logged-in' | 'not-installed' | 'error'; plan?: string; detail?: string };
+  local: { state: 'ready' | 'no-model' | 'not-running' | 'not-installed'; model: string; models: string[] };
+  routing: { interactive: AIProvider | null; background: AIProvider | null };
+  task: { kind: AIProvider; status: 'running' | 'done' | 'error'; step: string; progress?: number } | null;
+  localModels: Array<{ id: string; label: string; size: string; hint: string }>;
+};
 export type ImportStatus = { imported: number; target: number; rejected: number; pending: number; available: number; unresolvedRecipes: number; running: boolean; build: string; server: string };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -49,6 +57,11 @@ export const api = {
   suggest: (q: string) => call<string[]>('GET', `/ingredients/suggest?q=${encodeURIComponent(q)}`),
   importStatus: () => call<ImportStatus>('GET', '/import/status'),
   importMore: (add: number) => call<ImportStatus>('POST', '/import/more', { add }),
+  aiStatus: () => call<AIStatus>('GET', '/ai/status'),
+  connectClaude: () => call('POST', '/ai/claude/connect'),
+  setupLocal: () => call('POST', '/ai/local/setup'),
+  setLocalModel: (model: string) => call('PUT', '/ai/local/model', { model }),
+  testAI: (provider: AIProvider) => call<{ ok: boolean; ms: number; reply?: string; error?: string }>('POST', '/ai/test', { provider }),
   recommend: (mode: Mode, filters: Filters, current: number[], want: number) =>
     call<Recommendations>('POST', '/recommendations', { mode, filters: { type: filters.type, maxTime: filters.maxTime ?? undefined }, current, want }),
   recipe: (id: number) => call<RecipeDetail>('GET', `/recipes/${id}`),

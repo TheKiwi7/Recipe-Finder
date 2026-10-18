@@ -2,7 +2,7 @@
 
 **Qu'est-ce qu'on mange ce soir, avec ce qu'il y a dans le frigo ?**
 
-Recipe Finder est une app perso, 100 % locale, qui propose de **vraies recettes** (issues de Marmiton, pas inventées par une IA) faisables avec les ingrédients que tu as chez toi, classées selon tes goûts. Claude sert d'assistant : il tient ton profil à jour et répond à tes questions sur une recette, sans être appelé à chaque clic.
+Recipe Finder est une app perso, 100 % locale, qui propose de **vraies recettes** (issues de Marmiton, pas inventées par une IA) faisables avec les ingrédients que tu as chez toi, classées selon tes goûts. Une IA sert d'assistant (ton abonnement Claude, ou un modèle gratuit qui tourne sur ton PC) : elle tient ton profil à jour et répond à tes questions sur une recette, sans être appelée à chaque clic.
 
 <p align="center">
   <img src="docs/screenshots/ingredients.png" alt="Onglet Ingrédients : stock, quantités, « à finir vite » et placard de base" width="49%">
@@ -23,23 +23,31 @@ Recipe Finder est une app perso, 100 % locale, qui propose de **vraies recettes*
 
 - **Catalogue local** : les recettes sont lues depuis les données structurées (schema.org/Recipe) des pages Marmiton, puis stockées dans une base SQLite locale. Chaque ligne d'ingrédient (« 2 gousses d'ail hachées ») est ramenée à un ingrédient de base (« ail ») par un analyseur local ; seuls les termes inconnus sont envoyés à Claude, par lots, et le résultat est mis en cache.
 - **Classement local, sans IA** : charger ou recalculer une liste ne coûte aucun appel. Le score combine ton stock, ce qui est « à finir vite », la note de la recette (pondérée par le nombre d'avis), la ressemblance avec ce que tu aimes ou rejettes, tes préférences, et ~30 % d'exploration pour ne pas tourner en rond.
-- **Claude, avec parcimonie** : uniquement pour le chat (Haiku), la mise à jour du profil (Sonnet, dès 10 nouveaux signaux, au plus une fois par heure, ou à la demande) et la normalisation des nouveaux ingrédients. Les appels passent par le CLI officiel `claude`, donc par ton abonnement Claude, et sont mis en file pour ne jamais partir en rafale.
+- **L'IA, avec parcimonie et sans clé API** : uniquement pour le chat, la mise à jour du profil (dès 10 nouveaux signaux, au plus une fois par heure, ou à la demande) et la reconnaissance des nouveaux ingrédients. Deux fournisseurs, utilisables ensemble :
+  - **ton abonnement Claude** (Pro, Max…), via Claude Code : meilleure qualité, utilisé en priorité pour le chat et le profil ;
+  - **un modèle local gratuit** (Gemma 3 via [Ollama](https://ollama.com)) : privé, hors ligne, utilisé en priorité pour les tâches de fond. Il demande une carte graphique correcte ; une version légère existe pour les PC plus modestes.
 
-## Démarrer
+  Si l'un manque ou échoue, l'autre prend le relais. Les appels sont mis en file pour ne jamais partir en rafale.
 
-**Prérequis** : Windows, [Node.js](https://nodejs.org) 24 ou plus, le navigateur [Brave](https://brave.com), et [Claude Code](https://claude.com/claude-code) connecté à ton compte (la commande `claude` doit fonctionner dans un terminal).
+## Installer
 
-```bash
-git clone https://github.com/TheKiwi7/Recipe-Finder.git
-cd Recipe-Finder
-npm install
-npm run build
-npm run shortcut   # crée le raccourci « Recipe Finder » sur le bureau
-```
+Sur Windows 10 ou 11, sans rien d'autre à installer au préalable :
 
-Double-clique ensuite sur le raccourci : il démarre le serveur en arrière-plan et ouvre l'app dans une fenêtre Brave dédiée. Au premier lancement, un court questionnaire s'affiche et l'import du catalogue démarre. Les premières recettes arrivent en quelques minutes ; l'app reste utilisable pendant l'import, qui reprend à chaque ouverture.
+1. Télécharge le projet (bouton vert **Code → Download ZIP**) et décompresse-le où tu veux.
+2. Double-clique sur **`install.cmd`**.
 
-Sans Claude, l'app reste utilisable : seuls le chat, la mise à jour du profil et la normalisation des nouveaux ingrédients sont en pause.
+Le script installe Node.js si besoin, prépare l'app, crée le raccourci **Recipe Finder** sur le bureau et ouvre l'app. Ensuite, le raccourci suffit : il démarre l'app en arrière-plan et l'ouvre dans ton navigateur par défaut (en fenêtre dédiée avec Chrome, Edge, Brave ou Vivaldi).
+
+Au premier lancement :
+
+1. un court questionnaire (personnes, temps, vaisselle, régime, allergies, appareils, goûts) ;
+2. **Connecter une IA**, facultatif, un clic par option :
+   - **« Connecter mon abonnement Claude »** : l'app installe Claude Code si besoin et ouvre la connexion à ton compte dans le navigateur (abonnement Pro, Max, Team ou Enterprise ; le plan gratuit ne donne pas accès à Claude Code) ;
+   - **« Installer le modèle local »** : l'app installe Ollama et télécharge le modèle (environ 8 Go), avec la progression affichée.
+
+L'import du catalogue démarre aussitôt ; les premières recettes arrivent en quelques minutes et l'app reste utilisable pendant l'import. Sans IA, l'app fonctionne aussi : seuls le chat, la mise à jour du profil et la reconnaissance des nouveaux ingrédients sont en pause.
+
+Pour développer : `npm install`, puis `npm run dev` (voir les commandes ci-dessous).
 
 ## Commandes
 
@@ -61,18 +69,19 @@ Sans Claude, l'app reste utilisable : seuls le chat, la mise à jour du profil e
 server/            Serveur Node (Hono + node:sqlite), TypeScript exécuté directement par Node 24
   catalog/         Import Marmiton, analyse des lignes d'ingrédients, ustensiles, normalisation
   reco/            Classement local (rank.ts, sans base ni Claude) et accès aux données
-  claude.ts        Seul point d'appel à Claude (CLI headless) : à remplacer pour passer à une clé API
+  ai.ts            Seul point d'appel à l'IA : abonnement Claude (CLI) ou modèle local (Ollama), routage et repli
+  setup.ts         Installation et connexion de l'IA en un clic (winget, Ollama)
   profile.ts       Profil et réglages structurés (Sonnet)
   chat.ts          Chat par recette (Haiku)
 client/            Interface React (Vite)
-scripts/           Lanceur Windows et création du raccourci
+scripts/           Installation, lanceur (navigateur par défaut) et création du raccourci
 docs/SPEC.md       Spécification détaillée et décisions de conception
 data/              Base SQLite, images des favoris, journaux (hors git)
 ```
 
 ## Données et vie privée
 
-Tout reste sur ta machine, dans `data/` (exclu de git). Réglages → « Exporter mes données » produit un fichier JSON avec ton stock, tes favoris, tes rejets, tes préférences, ton profil et tes conversations. Claude ne reçoit que ce qui est nécessaire à chaque appel (la recette, ton stock, ton profil), via ton propre compte.
+Tout reste sur ta machine, dans `data/` (exclu de git). Réglages → « Exporter mes données » produit un fichier JSON avec ton stock, tes favoris, tes rejets, tes préférences, ton profil et tes conversations. Avec le modèle local, rien ne sort de ton PC. Avec Claude, seul ce qui est nécessaire à chaque appel (la recette, ton stock, ton profil) est envoyé, via ton propre compte.
 
 ## Sources
 

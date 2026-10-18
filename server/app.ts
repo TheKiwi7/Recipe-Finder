@@ -11,6 +11,15 @@ import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, OPTIONAL_EQUIPMENT, questionna
 import { maybeUpdateProfile, profileStatus } from './profile.ts';
 import { askAboutRecipe, ChatError, chatHistory } from './chat.ts';
 import { exportData } from './export.ts';
+import { askProvider, claudeStatus, invalidateAIStatus, localStatus, route, type Provider } from './ai.ts';
+import { connectClaude, setupLocal, setupTask } from './setup.ts';
+import { setMeta } from './db.ts';
+
+/** Modèles locaux proposés (Ollama) : le 12B par défaut, le 4B pour les PC sans grosse carte graphique. */
+const LOCAL_MODELS = [
+  { id: 'gemma3:12b', label: 'Gemma 3 12B', size: '8 Go', hint: 'recommandé avec une carte graphique de 12 Go ou plus' },
+  { id: 'gemma3:4b', label: 'Gemma 3 4B', size: '3 Go', hint: 'plus léger, pour une petite carte graphique ou sans carte graphique' },
+];
 
 const MIME: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
 
@@ -89,6 +98,31 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     } catch (e) {
       if (e instanceof ChatError) return c.json({ error: e.message }, e.message.startsWith('Claude') ? 503 : 400);
       throw e;
+    }
+  });
+
+  // ---------- intelligence artificielle : état, installation, connexion, test ----------
+  api.get('/ai/status', async c => {
+    const [claude, local, interactive, background] = await Promise.all([claudeStatus(), localStatus(), route('interactive'), route('background')]);
+    return c.json({ claude, local, routing: { interactive: interactive[0] ?? null, background: background[0] ?? null }, task: setupTask(), localModels: LOCAL_MODELS });
+  });
+  api.post('/ai/claude/connect', c => { void connectClaude(); return c.json({ task: setupTask() }); });
+  api.post('/ai/local/setup', c => { void setupLocal(); return c.json({ task: setupTask() }); });
+  api.put('/ai/local/model', async c => {
+    const model = String((await c.req.json()).model ?? '');
+    if (!LOCAL_MODELS.some(m => m.id === model)) throw new Error('Modèle inconnu');
+    setMeta(db, 'local_model', model);
+    invalidateAIStatus();
+    return c.json({ local: await localStatus() });
+  });
+  api.post('/ai/test', async c => {
+    const provider = (await c.req.json()).provider as Provider;
+    const started = Date.now();
+    try {
+      const reply = await askProvider(provider, 'Réponds uniquement « OK ».', { tier: 'light', lane: 'interactive', timeoutMs: 120_000 });
+      return c.json({ ok: true, ms: Date.now() - started, reply: reply.trim().slice(0, 80) });
+    } catch (e) {
+      return c.json({ ok: false, ms: Date.now() - started, error: (e as Error).message.slice(0, 300) });
     }
   });
 

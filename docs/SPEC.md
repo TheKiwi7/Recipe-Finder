@@ -5,8 +5,8 @@ App perso, locale, qui recommande des recettes **réelles** (trouvées en ligne)
 ## Architecture
 
 - App web locale : **React (Vite)** + serveur **Node** + **SQLite**, tout en **TypeScript**.
-- Lancement : raccourci bureau qui démarre le serveur et ouvre **Brave en mode app** (`--app=http://localhost:…`).
-- Claude : appelé via le CLI officiel en headless (`claude -p --model …`) → consomme l'abonnement **Pro** de l'utilisateur. La couche d'appel est isolée (une interface) pour pouvoir passer à une clé API plus tard.
+- Installation : `install.cmd` (installe Node.js via winget si besoin, dépendances, build, raccourci). Lancement : raccourci bureau qui démarre le serveur et ouvre l'app dans le **navigateur par défaut** (fenêtre dédiée `--app` pour Chrome / Edge / Brave / Vivaldi, nouvelle fenêtre pour Firefox).
+- IA sans clé API, deux fournisseurs (`server/ai.ts`) : **abonnement Claude** via le CLI officiel (`claude -p`), prioritaire pour le chat et le profil ; **modèle local** via Ollama (Gemma 3 12B par défaut, 4B en option), prioritaire pour les tâches de fond. Repli automatique sur l'autre. Installation et connexion en un clic depuis l'app (winget, `claude auth login`, `ollama pull`).
 - Base SQLite hors git (`data/`). Bouton « Exporter mes données » (stock, favoris, rejets, profil → JSON).
 
 ## Catalogue de recettes

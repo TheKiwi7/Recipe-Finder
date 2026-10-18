@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, Download, Plus, RefreshCw, Undo2 } from 'lucide-react';
 import { api } from '../api.ts';
 import { QuestionnaireForm } from '../components/QuestionnaireForm.tsx';
+import { AiCard } from '../components/AiCard.tsx';
 import { invalidateLists } from '../recipes-store.ts';
 import { toast } from '../toast.tsx';
 import { LoadState, useLoad } from '../use-load.tsx';
@@ -147,6 +148,8 @@ export function SettingsPage() {
       <header className="page-head"><div><h1 className="h1">Réglages</h1></div></header>
       <h2 className="h2 settings-title">Mes préférences</h2>
       <div className="card settings-card"><QuestionnaireForm submitLabel="Enregistrer" onSaved={() => { invalidateLists(); setVersion(v => v + 1); toast('Préférences enregistrées'); }} /></div>
+      <h2 className="h2 settings-title">Intelligence artificielle</h2>
+      <div className="card settings-card"><AiCard /></div>
       <h2 className="h2 settings-title">Mes rejets</h2>
       <RejectionsCard />
       <h2 className="h2 settings-title">Profil</h2>

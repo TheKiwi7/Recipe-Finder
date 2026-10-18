@@ -1,6 +1,6 @@
 import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ClaudeUnavailable } from '../claude.ts';
+import { AIUnavailable } from '../ai.ts';
 import { DATA_DIR, getMeta, loadAliases, setMeta, type Db } from '../db.ts';
 import { consolidateBases, resolveUnknownTerms } from './normalize-unknown.ts';
 import { parseRecipePage, passesQuality } from './recipe.ts';
@@ -74,7 +74,7 @@ async function flushUnknown(db: Db, force: boolean, log: (m: string) => void): P
     log(`Claude a normalisé ${done} termes inconnus`);
   } catch (e) {
     // Claude indisponible : on réessaiera au prochain lot, l'import continue.
-    log(`Normalisation reportée (${e instanceof ClaudeUnavailable ? e.message : String(e)})`);
+    log(`Normalisation reportée (${e instanceof AIUnavailable ? e.message : String(e)})`);
   }
 }
 
@@ -133,7 +133,7 @@ export async function runImport(db: Db, opts: { target: number | (() => number);
     // Seulement si des recettes ont été ajoutées : la vérification horaire du serveur ne doit pas appeler Claude pour rien.
     if (addedThisRun > 0 && importProgress(db, 0).imported >= targetNow()) {
       try { log(`${(await consolidateBases(db)).length} ingrédients en double fusionnés`); }
-      catch (e) { log(`Consolidation reportée (${e instanceof ClaudeUnavailable ? e.message : String(e)})`); }
+      catch (e) { log(`Consolidation reportée (${e instanceof AIUnavailable ? e.message : String(e)})`); }
     }
   }
 }

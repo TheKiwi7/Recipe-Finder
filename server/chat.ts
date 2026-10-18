@@ -1,4 +1,4 @@
-import { askClaude, ClaudeUnavailable } from './claude.ts';
+import { AIUnavailable, askAI } from './ai.ts';
 import type { Db } from './db.ts';
 import { listPantry, listStaples } from './pantry.ts';
 import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, recordSignal } from './preferences.ts';
@@ -55,9 +55,9 @@ Réponds au dernier message.`;
   const insert = db.prepare('INSERT INTO chat_messages (recipe_id, role, text, at) VALUES (?, ?, ?, ?)');
   let answer: string;
   try {
-    answer = (await askClaude(prompt, { model: 'haiku', system: SYSTEM, timeoutMs: 120_000, lane: 'interactive' })).trim();
+    answer = (await askAI(prompt, { tier: 'light', system: SYSTEM, timeoutMs: 180_000, lane: 'interactive' })).trim();
   } catch (e) {
-    if (e instanceof ClaudeUnavailable) throw new ChatError(`Claude indisponible pour le moment (${e.message.slice(0, 160)})`);
+    if (e instanceof AIUnavailable) throw new ChatError(`IA indisponible pour le moment (${e.message.slice(0, 160)})`);
     throw e;
   }
   // On n'enregistre la question qu'une fois la réponse obtenue : en cas d'échec, rien à nettoyer.

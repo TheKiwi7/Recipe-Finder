@@ -9,11 +9,13 @@ import { acquireImportLock, currentTarget, getCatalogTarget, releaseImportLock, 
 import { migrateCatalog, syncSeed } from './catalog/store.ts';
 import { ensureStaples } from './pantry.ts';
 import { maybeUpdateProfile } from './profile.ts';
+import { initAI } from './ai.ts';
 
 export const PORT = Number(process.env.PORT ?? 5317);
 const CLIENT_DIST = join(DATA_DIR, '..', 'client', 'dist');
 
 const db = openDb();
+initAI(db);
 syncSeed(db);
 migrateCatalog(db);
 ensureStaples(db);

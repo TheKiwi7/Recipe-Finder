@@ -1,4 +1,4 @@
-import { askClaude, ClaudeUnavailable, parseJsonReply } from './claude.ts';
+import { AIUnavailable, askAI, parseJsonReply } from './ai.ts';
 import { getMeta, setMeta, type Db } from './db.ts';
 import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, getWeights, type ProfileWeights } from './preferences.ts';
 
@@ -86,7 +86,7 @@ ${(db.prepare('SELECT base FROM recipe_ingredients GROUP BY base ORDER BY COUNT(
 Nouveaux signaux (du plus ancien au plus récent) :
 ${signals.map(s => `- ${label[s.kind] ?? s.kind} : ${s.detail}`).join('\n') || '(aucun)'}`;
 
-    const reply = parseJsonReply<{ profile: string; weights: ProfileWeights }>(await askClaude(prompt, { model: 'sonnet', system: SYSTEM, timeoutMs: 300_000, lane: 'interactive' }));
+    const reply = parseJsonReply<{ profile: string; weights: ProfileWeights }>(await askAI(prompt, { tier: 'strong', system: SYSTEM, timeoutMs: 300_000, lane: 'interactive', json: true }));
     if (typeof reply.profile !== 'string' || !reply.weights) throw new Error('Réponse incomplète');
 
     setMeta(db, 'profile_text', reply.profile.trim());
@@ -98,7 +98,7 @@ ${signals.map(s => `- ${label[s.kind] ?? s.kind} : ${s.detail}`).join('\n') || '
     return 'updated';
   } catch (e) {
     // Claude indisponible ou réponse invalide : on réessaiera plus tard, rien n'est perdu (Q31).
-    setMeta(db, 'profile_last_error', `${new Date().toISOString()} ${e instanceof ClaudeUnavailable ? e.message : String(e)}`.slice(0, 300));
+    setMeta(db, 'profile_last_error', `${new Date().toISOString()} ${e instanceof AIUnavailable ? e.message : String(e)}`.slice(0, 300));
     return 'unavailable';
   } finally {
     running = false;
