@@ -1,18 +1,26 @@
-// Import du catalogue en ligne de commande : npm run import -- [--target 3000] [--normalize-only]
+// Import du catalogue en ligne de commande : npm run import -- [--target 3000] [--normalize-only] [--renormalize-ignored]
 // Reprend là où il s'était arrêté. Ctrl+C pour arrêter proprement.
 import { parseArgs } from 'node:util';
 import { openDb } from '../db.ts';
 import { acquireImportLock, importProgress, runImport } from '../catalog/importer.ts';
-import { resolveUnknownTerms } from '../catalog/normalize-unknown.ts';
-import { migrateCatalog, syncSeed } from '../catalog/store.ts';
+import { requeueSuspiciousAliases, resolveUnknownTerms } from '../catalog/normalize-unknown.ts';
+import { migrateCatalog, reresolveRecipes, syncSeed } from '../catalog/store.ts';
 
-const { values } = parseArgs({ options: { target: { type: 'string', default: '3000' }, 'normalize-only': { type: 'boolean', default: false } } });
+const { values } = parseArgs({ options: { target: { type: 'string', default: '3000' }, 'normalize-only': { type: 'boolean', default: false }, 'renormalize-ignored': { type: 'boolean', default: false } } });
 const db = openDb();
 syncSeed(db);
 migrateCatalog(db);
 const target = Number(values.target);
 
-if (values['normalize-only']) {
+if (values['renormalize-ignored']) {
+  // Refait examiner par Claude les termes classés « pas un ingrédient » et les alias « X de Y → X » douteux.
+  const n = db.prepare(`DELETE FROM ingredient_aliases WHERE origin = 'claude' AND base IS NULL`).run().changes;
+  const m = requeueSuspiciousAliases(db);
+  reresolveRecipes(db, true);
+  console.log(`${n} termes ignorés et ${m} alias « X de Y → X » remis en file pour Claude`);
+}
+
+if (values['normalize-only'] || values['renormalize-ignored']) {
   while ((await resolveUnknownTerms(db)) > 0) console.log('lot normalisé…');
   console.log(importProgress(db, target));
   process.exit(0);
