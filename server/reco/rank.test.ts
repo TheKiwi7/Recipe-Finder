@@ -136,6 +136,22 @@ test('lot : 10 recettes dont ~3 explorations, sans doublon', () => {
   assert.equal(new Set(batch.map(s => s.entry.id)).size, 10);
 });
 
+test('lot : les recettes presque pareilles ne se suivent pas', () => {
+  const caramels = ['Caramel beurre salé', 'Crème de caramel au beurre salé', 'Beurre salé au caramel', 'Caramel au beurre salé façon pâte à tartiner', 'Caramels beurre salé maison']
+    .map(name => entry(['sucre', 'beurre salé', 'crème liquide'], { name, rating: 5, reviews: 500 }));
+  const autres = Array.from({ length: 30 }, (_, i) => entry([`ingrédient ${i}`, `épice ${i}`], { name: `Recette ${i}` }));
+  const avail = new Set([...caramels, ...autres].flatMap(e => e.bases));
+  const ranked = rankCandidates([...caramels, ...autres], ctx({ available: avail }), 'ready', {});
+  assert.ok(caramels.every(c => ranked.slice(0, 5).some(s => s.entry.id === c.id))); // sans variété, les 5 caramels ouvriraient la liste
+  const isCaramel = (s: { entry: Entry }) => caramels.some(c => c.id === s.entry.id);
+  for (let run = 0; run < 20; run++) {
+    const batch = pickBatch(ranked, 20, Math.random);
+    assert.ok(batch.every((s, i) => i === 0 || !(isCaramel(s) && isCaramel(batch[i - 1]))), 'deux caramels à la suite');
+    // Les dernières recettes déjà affichées comptent aussi : pas de caramel juste après un caramel de la page précédente.
+    assert.ok(!isCaramel(pickBatch(ranked, 20, Math.random, { recent: [caramels[0]] })[0]));
+  }
+});
+
 test('onglet Découvrir : recettes à plus de 3 manquants, classées d’après les goûts', () => {
   const liked = entry(['saumon', 'aneth', 'citron', 'crème fraîche', 'pomme de terre']);
   const proche = entry(['saumon', 'aneth', 'citron', 'fenouil', 'pomme de terre']);

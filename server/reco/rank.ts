@@ -76,8 +76,8 @@ export function missingFor(e: Entry, available: Set<string>): string[] {
   return e.bases.filter(b => !available.has(b));
 }
 
-/** Similarité entre recettes : Jaccard pondéré par la rareté des ingrédients (sel et beurre comptent peu) + même type. */
-export function similarity(a: Entry, b: Entry, idf: Map<string, number>): number {
+/** Ingrédients en commun : Jaccard pondéré par la rareté des ingrédients (sel et beurre comptent peu). */
+function sharedBases(a: Entry, b: Entry, idf: Map<string, number>): number {
   const A = new Set(a.bases), B = new Set(b.bases);
   let inter = 0, union = 0;
   for (const x of new Set([...A, ...B])) {
@@ -85,7 +85,41 @@ export function similarity(a: Entry, b: Entry, idf: Map<string, number>): number
     union += w;
     if (A.has(x) && B.has(x)) inter += w;
   }
-  return 0.8 * (union ? inter / union : 0) + 0.2 * (a.type === b.type ? 1 : 0);
+  return union ? inter / union : 0;
+}
+
+/** Similarité entre recettes : ingrédients en commun + même type. */
+export function similarity(a: Entry, b: Entry, idf: Map<string, number>): number {
+  return 0.8 * sharedBases(a, b, idf) + 0.2 * (a.type === b.type ? 1 : 0);
+}
+
+// Mots d'un nom de recette qui n'en disent pas le contenu (« Caramel au beurre salé façon mamie »).
+const NAME_STOPWORDS = new Set(['aux', 'des', 'les', 'une', 'sur', 'pour', 'avec', 'sans', 'facon', 'maison', 'simple', 'rapide', 'facile', 'recette',
+  'mon', 'mes', 'mamie', 'vrai', 'vraie', 'tout', 'express', 'light', 'minute', 'super', 'ultra', 'classique', 'ancienne', 'traditionnel', 'traditionnelle']);
+const nameCache = new WeakMap<Entry, Set<string>>();
+/** « Crème de caramel au beurre salé » → creme, caramel, beurre, sale (pluriels ramenés au singulier). */
+function nameWords(e: Entry): Set<string> {
+  let words = nameCache.get(e);
+  if (!words) nameCache.set(e, words = new Set(normalizeKey(e.name).split(' ').filter(w => w.length > 2 && !NAME_STOPWORDS.has(w)).map(w => w.length > 4 ? w.replace(/[sx]$/, '') : w)));
+  return words;
+}
+
+/** Mots du nom en commun (Jaccard) : « Caramel beurre salé » / « Beurre salé au caramel » → 1. */
+function sameName(a: Entry, b: Entry): number {
+  const A = nameWords(a), B = nameWords(b);
+  let inter = 0;
+  for (const w of A) if (B.has(w)) inter++;
+  return A.size + B.size - inter ? inter / (A.size + B.size - inter) : 0;
+}
+
+/** Deux recettes qui se ressemblent : mêmes ingrédients, ou mêmes mots dans le nom. */
+export function closeness(a: Entry, b: Entry, idf: Map<string, number>): number {
+  return Math.max(sharedBases(a, b, idf), sameName(a, b));
+}
+
+/** Sosies : même nom, ou presque exactement les mêmes ingrédients (deux pâtisseries farine-sucre-beurre n'en sont pas). */
+export function twins(a: Entry, b: Entry, idf: Map<string, number>): boolean {
+  return sameName(a, b) > 0.5 || sharedBases(a, b, idf) > 0.85;
 }
 
 /** Vérifications rapides d'abord (elles écartent la plupart des recettes), recherches dans le texte en dernier. */
@@ -169,24 +203,66 @@ export function rankCandidates(entries: Entry[], ctx: Context, mode: Mode, filte
   return out.sort((a, b) => b.score - a.score);
 }
 
+// Variété : une recette presque pareille à celle qu'on vient de placer perd jusqu'à DIVERSITY points ; la pénalité
+// s'efface d'environ 15 % à chaque place, donc la recette revient une ou deux rangées plus loin.
+const DIVERSITY = 1.2;
+const DIVERSITY_DECAY = 0.85;
+
 /**
  * Choisit `count` recettes : ~70 % parmi les mieux classées (avec un peu de hasard pour varier d'un lancement à l'autre),
- * ~30 % d'exploration parmi des recettes éloignées des likes, intercalées dans la liste.
+ * ~30 % d'exploration parmi des recettes éloignées des likes, intercalées dans la liste (positions 3, 6, 9…).
+ * Les recettes proches (mêmes ingrédients, même nom) sont écartées les unes des autres, y compris des dernières déjà
+ * affichées (`recent`, dans l'ordre d'affichage).
  */
-export function pickBatch(ranked: Scored[], count: number, rand: () => number = Math.random): Scored[] {
-  if (ranked.length <= count) return ranked;
-  const jittered = ranked.map(s => ({ s, k: s.score + (rand() - 0.5) * 0.3 })).sort((a, b) => b.k - a.k).map(x => x.s);
-  const nExplore = Math.round(count * EXPLORATION);
-  const exploit = jittered.slice(0, count - nExplore);
-  const taken = new Set(exploit.map(s => s.entry.id));
-  const pool = jittered.filter(s => !taken.has(s.entry.id) && s.likeSim < 0.3 && s.dislikeSim < 0.4);
-  const explore: Scored[] = [];
-  while (explore.length < nExplore && pool.length) explore.push(pool.splice(Math.floor(rand() * pool.length), 1)[0]);
-  for (const s of jittered) { // pas assez de recettes « éloignées » : on complète avec les suivantes
-    if (exploit.length + explore.length >= count) break;
-    if (!taken.has(s.entry.id) && !explore.includes(s)) { exploit.push(s); taken.add(s.entry.id); }
+export function pickBatch(ranked: Scored[], count: number, rand: () => number = Math.random, opts: { idf?: Map<string, number>; recent?: Entry[] } = {}): Scored[] {
+  const idf = opts.idf ?? new Map<string, number>();
+  const jittered = ranked.map(s => ({ s, k: s.score + (rand() - 0.5) * 0.3 })).sort((a, b) => b.k - a.k);
+  const n = Math.min(count, ranked.length);
+  const nExplore = ranked.length <= count ? 0 : Math.round(count * EXPLORATION);
+  // Les mieux classées, en nombre suffisant pour pouvoir repousser les doublons, puis l'exploration.
+  const top = jittered.slice(0, (n - nExplore) * 3);
+  const taken = new Set(top.map(x => x.s.entry.id));
+  const far = jittered.filter(x => !taken.has(x.s.entry.id) && x.s.likeSim < 0.3 && x.s.dislikeSim < 0.4);
+  const explore: typeof jittered = [];
+  while (explore.length < nExplore && far.length) explore.push(far.splice(Math.floor(rand() * far.length), 1)[0]);
+
+  const cands = [...top.map(x => ({ ...x, pen: 0, explore: false })), ...explore.map(x => ({ ...x, pen: 0, explore: true }))];
+  const place = (e: Entry) => {
+    for (const c of cands) c.pen = Math.max(c.pen * DIVERSITY_DECAY, DIVERSITY * Math.max(0, closeness(c.s.entry, e, idf) - 0.3) / 0.7);
+  };
+  for (const e of opts.recent ?? []) place(e);
+  const out: Scored[] = [];
+  while (out.length < n && cands.length) {
+    // Une place sur trois pour l'exploration ; pas assez de recettes d'un côté : on complète avec l'autre.
+    const turn = cands.filter(c => c.explore === (out.length % 3 === 2));
+    const best = (turn.length ? turn : cands).reduce((a, b) => (b.k - b.pen > a.k - a.pen ? b : a));
+    cands.splice(cands.indexOf(best), 1);
+    out.push(best.s);
+    place(best.s.entry);
   }
-  const out = [...exploit];
-  explore.forEach((s, i) => out.splice(Math.min(out.length, 2 + i * 3), 0, s)); // positions 3, 6, 9…
+  spreadTwins(out, idf);
   return out;
+}
+
+/**
+ * Peu de choix et beaucoup de sosies (6 caramels sur 12 recettes) : ils finissent par se suivre en bas de la liste.
+ * Le second de chaque paire est alors échangé avec une autre recette de la liste, là où aucun des deux échangés ne
+ * se retrouve à côté d'un sosie.
+ */
+function spreadTwins(out: Scored[], idf: Map<string, number>): void {
+  const pair = (i: number, j: number) => i >= 0 && j < out.length && twins(out[i].entry, out[j].entry, idf);
+  const swap = (i: number, j: number) => { [out[i], out[j]] = [out[j], out[i]]; };
+  const clear = (i: number) => !pair(i - 1, i) && !pair(i, i + 1);
+  for (let pass = 0, moved = true; moved && pass < 4; pass++) {
+    moved = false;
+    for (let i = 1; i < out.length; i++) {
+      if (!pair(i - 1, i)) continue;
+      for (let j = 0; j < out.length; j++) {
+        if (j === i) continue;
+        swap(i, j);
+        if (clear(i) && clear(j)) { moved = true; break; }
+        swap(i, j);
+      }
+    }
+  }
 }
