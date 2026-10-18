@@ -7,7 +7,8 @@ import { parseRecipePage, passesQuality } from './recipe.ts';
 import { saveRecipe } from './store.ts';
 
 // Usage strictement personnel : une requête toutes les ~2,5 s, uniquement des pages autorisées par robots.txt.
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+// User-Agent honnête : l'app s'identifie (pas de déguisement en navigateur).
+const UA = 'RecipeFinder/1.0 (+https://github.com/TheKiwi7/Recipe-Finder; personal use)';
 const DELAY_MS = 2500;
 const SITEMAP_INDEX = 'https://www.marmiton.org/wsitemap_recipes_index.xml';
 // robots.txt de Marmiton autorise /recettes/recette_* (bloque impression, recherche et /recipe*).

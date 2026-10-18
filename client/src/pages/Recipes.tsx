@@ -9,7 +9,7 @@ import { refreshMembers, toggleEater, useMembers } from '../members-store.ts';
 import { toast } from '../toast.tsx';
 import { L, memberName, typeLabel } from '../i18n.ts';
 
-/** « Pour : Arthur · Julie · Léo » — qui mange ce repas (affiché dès qu'il y a plusieurs membres). */
+/** « Pour : Moi · Julie · Léo » — qui mange ce repas (affiché dès qu'il y a plusieurs membres). */
 function EatersFilter({ mode }: { mode: Mode }) {
   const data = useMembers();
   useEffect(() => { if (!data) void refreshMembers(); }, [data]);

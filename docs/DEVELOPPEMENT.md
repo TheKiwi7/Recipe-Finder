@@ -22,7 +22,9 @@ npm run dev     # serveur + interface avec rechargement : http://localhost:5318
 | `npm run import -- --consolidate` | Fusionne les ingrédients de base en double |
 | `npm run shortcut` | Recrée le raccourci du bureau |
 
-Variables d'environnement utiles : `PORT` (5317 par défaut), `RF_DB` (autre fichier de base, pour tester sur une copie), `RF_NO_IMPORT=1` (pas d'import en tâche de fond).
+Variables d'environnement utiles : `PORT` (5317 par défaut), `RF_DB` (autre fichier de base, pour tester sur une copie), `RF_NO_IMPORT=1` (pas d'import en tâche de fond), `RF_KEEP_ALIVE=1` (le serveur ne s'arrête pas quand aucune fenêtre n'est ouverte).
+
+Sécurité : le serveur n'écoute que sur 127.0.0.1 et l'API refuse les requêtes dont l'hôte ou l'origine n'est pas locale (protection contre les sites tiers et le DNS rebinding). Le CLI `claude` est lancé sans aucun outil (`--tools ''`).
 
 ## Organisation du code
 
@@ -34,7 +36,8 @@ server/            Serveur Node (Hono + node:sqlite), TypeScript exécuté direc
   setup.ts         Installation et connexion de l'IA en un clic (winget, Ollama)
   profile.ts       Profil et réglages structurés
   chat.ts          Chat par recette
-client/            Interface React (Vite)
+  i18n.ts          Langue de l'app, traductions par l'IA (termes, noms, recettes) gardées en base
+client/            Interface React (Vite) ; textes FR/EN dans le code via L('fr', 'en') (client/src/i18n.ts)
 scripts/           Installation, lanceur (navigateur par défaut) et création du raccourci
 docs/SPEC.md       Spécification détaillée et décisions de conception
 data/              Base SQLite, images des favoris, journaux (hors git)

@@ -12,6 +12,7 @@ import { ensureSelf } from './members.ts';
 import { maybeUpdateProfile } from './profile.ts';
 import { abortAllAI, ensureOllama, initAI, ollamaExe, releaseOllama } from './ai.ts';
 import { L, lang, loadLang, prefillTranslations } from './i18n.ts';
+import { isFromApp } from './guard.ts';
 
 export const PORT = Number(process.env.PORT ?? 5317);
 const CLIENT_DIST = join(DATA_DIR, '..', 'client', 'dist');
@@ -36,6 +37,13 @@ const IDLE_MS = 3 * 60_000;     // fenêtre fermée sans prévenir, ou navigateu
 const BYE_GRACE_MS = 20_000;    // un rechargement de page prévient aussi : on attend de voir si elle revient
 let lastSeen = Date.now();
 let byeAt = 0;
+
+// L'API ne répond qu'à l'app elle-même (ni aux sites tiers, ni via DNS rebinding) : voir guard.ts.
+app.use('/api/*', async (c, next) => {
+  if (!isFromApp(c.req.header('Host'), c.req.header('Origin'), c.req.header('Sec-Fetch-Site'))) return c.json({ error: 'Forbidden' }, 403);
+  await next();
+});
+
 app.use('/api/*', async (c, next) => { if (c.req.path !== '/api/bye') lastSeen = Date.now(); await next(); });
 app.post('/api/bye', c => { byeAt = Date.now(); return c.json({ ok: true }); });
 app.get('/api/ping', c => c.json({ ok: true }));

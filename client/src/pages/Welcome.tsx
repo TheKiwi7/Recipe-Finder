@@ -33,7 +33,7 @@ export function WelcomePage({ onDone }: { onDone: (q: Questionnaire) => void }) 
         <span className="brand-mark big"><Soup size={26} /></span>
         <h1 className="h1">{L('Bienvenue dans Recipe Finder', 'Welcome to Recipe Finder')}</h1>
         <p className="sub">{L('Une minute pour faire connaissance : on s’en sert pour te proposer des recettes qui te ressemblent dès le départ. Tout reste modifiable dans les Réglages.', 'A minute to get to know you, so the recipes suit you from the start. Everything can be changed later in Settings.')}</p>
-        <LangSwitch />
+        <div style={{ marginTop: 18 }}><LangSwitch /></div>
       </div>
       <div className="card settings-card"><QuestionnaireForm submitLabel={L('Continuer', 'Continue')} onSaved={setSaved} /></div>
     </div>
