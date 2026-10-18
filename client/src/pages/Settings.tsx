@@ -163,7 +163,7 @@ function CatalogCard() {
       {s.pending > 0 && s.target >= s.reachable && <p className="muted small" style={{ marginTop: 12 }}>{L('Ton objectif couvre déjà toutes les recettes encore importables depuis Marmiton.', 'Your goal already covers every recipe still importable from Marmiton.')}</p>}
       {s.pending === 0 && <p className="muted small" style={{ marginTop: 12 }}>{L('Toutes les recettes disponibles sur Marmiton ont été parcourues.', 'Every recipe available on Marmiton has been browsed.')}</p>}
       <ImportPriority />
-      <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>{L('Plus de recettes = plus de propositions faisables avec ton stock. L’import lit une page toutes les 1,5 s pour rester discret envers Marmiton, puis continue d’ajouter ~100 recettes par semaine.', 'More recipes = more suggestions doable with your pantry. The import reads one page every 1.5 s to stay gentle on Marmiton, then keeps adding ~100 recipes a week.')}</p>
+      <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>{L('Plus de recettes = plus de propositions faisables avec ton stock. L’import lit une page par seconde au plus pour rester discret envers Marmiton, puis continue d’ajouter ~100 recettes par semaine.', 'More recipes = more suggestions doable with your pantry. The import reads at most one page per second to stay gentle on Marmiton, then keeps adding ~100 recipes a week.')}</p>
     </div>
   );
 }
