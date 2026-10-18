@@ -48,6 +48,16 @@ async function detect(): Promise<string | null> {
   return null;
 }
 
+/** Au démarrage : version installée et possibilité de mettre à jour, sans réseau (la vérification vient après). */
+export async function initUpdateState(): Promise<void> {
+  const reason = await detect();
+  if (reason) { set({ supported: false, reason }); return; }
+  try {
+    const [sha, date] = (await git('log', '-1', '--format=%h|%cI')).split('|');
+    set({ supported: true, reason: undefined, current: { sha, date } });
+  } catch { /* dépôt illisible : la vérification le dira */ }
+}
+
 /** Interroge GitHub (git fetch) : y a-t-il des versions plus récentes ? */
 export async function checkForUpdate(): Promise<UpdateState> {
   if (state.status === 'updating' || state.status === 'restarting' || state.status === 'checking') return state;

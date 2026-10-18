@@ -14,7 +14,7 @@ import { maybeUpdateProfile } from './profile.ts';
 import { abortAllAI, ensureOllama, initAI, ollamaExe, releaseOllama, removeOllamaAutostart } from './ai.ts';
 import { L, lang, loadLang, prefillTranslations } from './i18n.ts';
 import { isFromApp } from './guard.ts';
-import { applyUpdate, checkForUpdate } from './update.ts';
+import { applyUpdate, checkForUpdate, initUpdateState } from './update.ts';
 
 export const PORT = Number(process.env.PORT ?? 5317);
 const CLIENT_DIST = join(DATA_DIR, '..', 'client', 'dist');
@@ -100,6 +100,7 @@ const httpServer = serve({ fetch: app.fetch, port: PORT, hostname: '127.0.0.1' }
 
 // ---------- mises à jour (git) ----------
 // Vérifiées peu après le démarrage puis toutes les 6 h ; installées à la demande depuis les Réglages.
+void initUpdateState();
 setTimeout(() => { void checkForUpdate(); }, 30_000);
 setInterval(() => { void checkForUpdate(); }, 6 * 3600 * 1000);
 
