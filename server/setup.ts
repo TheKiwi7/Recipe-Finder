@@ -17,9 +17,9 @@ export const setupTask = () => task;
 const set = (patch: Partial<SetupTask>) => { task = { ...(task as SetupTask), ...patch }; };
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-function wingetInstall(id: string): Promise<void> {
+function wingetInstall(id: string, verb: 'install' | 'upgrade' = 'install'): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn('winget', ['install', '--id', id, '-e', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity'], { windowsHide: true });
+    const child = spawn('winget', [verb, '--id', id, '-e', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity'], { windowsHide: true });
     let out = '';
     child.stdout.on('data', d => (out += d));
     child.stderr.on('data', d => (out += d));
@@ -38,7 +38,7 @@ export async function connectClaude(): Promise<void> {
   task = { kind: 'claude', status: 'running', step: 'Vérification…' };
   try {
     if (!claudeExe()) {
-      set({ step: 'Installation de Claude Code (1 à 2 min)…' });
+      set({ step: 'Installation de Claude Code (quelques minutes selon ta connexion)…' });
       await wingetInstall('Anthropic.ClaudeCode');
       if (!claudeExe()) throw new Error('Claude Code installé, mais introuvable : redémarre l’app puis réessaie');
     }
@@ -69,19 +69,25 @@ export async function setupLocal(): Promise<void> {
   try {
     let s = await fresh();
     if (s.state === 'not-installed') {
-      set({ step: 'Installation d’Ollama (2 à 3 min)…' });
+      set({ step: 'Installation d’Ollama (quelques minutes selon ta connexion)…' });
       await wingetInstall('Ollama.Ollama');
       s = await fresh();
     }
-    if (s.state === 'not-running' || s.state === 'not-installed') {
-      const exe = ollamaExe();
-      if (!exe) throw new Error('Ollama installé, mais introuvable : redémarre le PC puis réessaie');
-      set({ step: 'Démarrage d’Ollama…' });
-      spawn(exe, ['serve'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
-      for (let i = 0; i < 20 && (s = await fresh()).state === 'not-running'; i++) await sleep(1_500);
-      if (s.state === 'not-running') throw new Error('Ollama ne démarre pas : lance-le depuis le menu Démarrer puis réessaie');
+    if (s.state === 'not-running' || s.state === 'not-installed') s = await startOllama();
+    if (s.state !== 'ready') {
+      try {
+        await pullModel(localModel());
+      } catch (e) {
+        // Ollama trop ancien pour ce modèle (« requires a newer version of Ollama ») : mise à jour, puis nouvel essai.
+        if (!/newer version of Ollama/i.test((e as Error).message)) throw e;
+        set({ step: 'Mise à jour d’Ollama (quelques minutes selon ta connexion)…', progress: undefined });
+        stopOllama();
+        await sleep(2_000);
+        await wingetInstall('Ollama.Ollama', 'upgrade');
+        await startOllama();
+        await pullModel(localModel());
+      }
     }
-    if (s.state !== 'ready') await pullModel(localModel());
     invalidateAIStatus();
     set({ status: 'done', step: 'Prêt', progress: undefined });
   } catch (e) {
@@ -91,14 +97,68 @@ export async function setupLocal(): Promise<void> {
 
 async function fresh() { invalidateAIStatus(); return localStatus(); }
 
-/** Télécharge le modèle via l'API d'Ollama, en suivant la progression. */
+/** Démarre Ollama s'il ne tourne pas, et attend qu'il réponde. */
+async function startOllama() {
+  let s = await fresh();
+  if (s.state !== 'not-running' && s.state !== 'not-installed') return s;
+  const exe = ollamaExe();
+  if (!exe) throw new Error('Ollama installé, mais introuvable : redémarre le PC puis réessaie');
+  set({ step: 'Démarrage d’Ollama…' });
+  spawn(exe, ['serve'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  for (let i = 0; i < 30 && (s = await fresh()).state === 'not-running'; i++) await sleep(1_500);
+  if (s.state === 'not-running') throw new Error('Ollama ne démarre pas : lance-le depuis le menu Démarrer puis réessaie');
+  return s;
+}
+
+/** Arrête Ollama (nécessaire pour le mettre à jour : ses fichiers sont verrouillés tant qu'il tourne). */
+function stopOllama(): void {
+  for (const image of ['ollama app.exe', 'ollama.exe']) {
+    spawn('taskkill', ['/IM', image, '/F'], { windowsHide: true, stdio: 'ignore' });
+  }
+}
+
+// Erreurs définitives : inutile de réessayer (version d'Ollama, modèle inexistant).
+const FATAL = /newer version of Ollama|file does not exist|manifest unknown|model .* not found/i;
+const MAX_ATTEMPTS = 40;
+
+/**
+ * Télécharge le modèle via l'API d'Ollama, en suivant la progression. Pensé pour les connexions lentes :
+ * pas de limite de durée, et reprise automatique en cas de coupure (Ollama repart de ce qui est déjà téléchargé).
+ */
 async function pullModel(model: string): Promise<void> {
-  set({ step: `Téléchargement du modèle ${model}…`, progress: 0 });
-  const res = await fetch('http://127.0.0.1:11434/api/pull', { method: 'POST', body: JSON.stringify({ model, stream: true }) });
-  if (!res.ok || !res.body) throw new Error(`Téléchargement impossible (HTTP ${res.status})`);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await pullOnce(model);
+      return;
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (FATAL.test(msg) || attempt >= MAX_ATTEMPTS) throw e;
+      set({ step: `Connexion interrompue, reprise du téléchargement dans 15 s (tentative ${attempt + 1})…` });
+      await sleep(15_000);
+    }
+  }
+}
+
+const gb = (bytes: number) => (bytes / 1e9).toFixed(1).replace('.', ',');
+
+async function pullOnce(model: string): Promise<void> {
+  set({ step: `Téléchargement du modèle ${model}…` });
+  let res: Response;
+  try {
+    res = await fetch('http://127.0.0.1:11434/api/pull', { method: 'POST', body: JSON.stringify({ model, stream: true }) });
+  } catch (e) {
+    throw new Error(`Ollama injoignable : ${(e as Error).message}`);
+  }
+  if (!res.ok || !res.body) {
+    const detail = (await res.text().catch(() => '')).replace(/\s+/g, ' ').trim();
+    throw new Error(`Téléchargement impossible (HTTP ${res.status}) ${detail}`.trim());
+  }
+  // Le modèle est fait de plusieurs fichiers : progression globale = somme des octets reçus / somme des tailles.
+  const layers = new Map<string, { completed: number; total: number }>();
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = '';
+  let success = false;
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -108,9 +168,16 @@ async function pullModel(model: string): Promise<void> {
       const line = buf.slice(0, nl).trim();
       buf = buf.slice(nl + 1);
       if (!line) continue;
-      const ev = JSON.parse(line) as { status?: string; completed?: number; total?: number; error?: string };
-      if (ev.error) throw new Error(`Téléchargement : ${ev.error}`);
-      if (ev.total && ev.completed !== undefined) set({ progress: Math.round((100 * ev.completed) / ev.total) });
+      const ev = JSON.parse(line) as { status?: string; digest?: string; completed?: number; total?: number; error?: string };
+      if (ev.error) throw new Error(`Téléchargement : ${ev.error.replace(/\s+/g, ' ').trim()}`);
+      if (ev.status === 'success') success = true;
+      if (ev.digest && ev.total) {
+        layers.set(ev.digest, { completed: ev.completed ?? 0, total: ev.total });
+        let done = 0, total = 0;
+        for (const l of layers.values()) { done += l.completed; total += l.total; }
+        set({ step: `Téléchargement du modèle ${model} : ${gb(done)} / ${gb(total)} Go`, progress: Math.floor((100 * done) / total) });
+      }
     }
   }
+  if (!success) throw new Error('Téléchargement interrompu');
 }
