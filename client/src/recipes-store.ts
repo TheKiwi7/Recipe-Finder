@@ -15,7 +15,7 @@ export type ListState = {
 };
 
 const PAGE = 10;
-const initial = (): ListState => ({ filters: { type: 'Plat', maxTime: null }, items: [], exhausted: false, loading: false, loaded: false, stale: false, pantryVersion: -1, error: null });
+const initial = (): ListState => ({ filters: { type: 'Tous', maxTime: null }, items: [], exhausted: false, loading: false, loaded: false, stale: false, pantryVersion: -1, error: null });
 const lists: Record<Mode, ListState> = { ready: initial(), almost: initial() };
 const listeners = new Set<() => void>();
 

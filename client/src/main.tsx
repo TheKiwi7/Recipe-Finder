@@ -90,4 +90,19 @@ class Crash extends Component<{ children: ReactNode }, { error: Error | null }> 
   }
 }
 
+// Fenêtre d'app (Chrome, Edge, Brave… ouverts par le raccourci, sans barre d'adresse) : le navigateur la rouvre à
+// une taille par défaut, sans tenir compte de l'écran. À l'ouverture, elle prend toute la zone utile de l'écran ;
+// une fois par fenêtre seulement (un rechargement ne défait pas une taille choisie à la main).
+try {
+  const appWindow = !window.toolbar.visible;
+  if (appWindow && !sessionStorage.getItem('rf-sized')) {
+    sessionStorage.setItem('rf-sized', '1');
+    const s = screen as Screen & { availLeft?: number; availTop?: number };
+    if (window.outerWidth < s.availWidth * 0.9 || window.outerHeight < s.availHeight * 0.9) {
+      window.moveTo(s.availLeft ?? 0, s.availTop ?? 0);
+      window.resizeTo(s.availWidth, s.availHeight);
+    }
+  }
+} catch { /* navigateur qui refuse : la fenêtre garde sa taille */ }
+
 createRoot(document.getElementById('root')!).render(<StrictMode><Crash><App /></Crash></StrictMode>);

@@ -31,7 +31,7 @@ App perso, locale, qui recommande des recettes **réelles** (trouvées en ligne)
 
 - Uniquement des recettes **faisables** (0 ingrédient manquant hors placard).
 - **10** au départ, **+10** par « Charger plus », ajoutées sous les précédentes, sans limite.
-- Filtres stricts : type (Plat par défaut, Entrée, Dessert, Apéro, Petit-déj.) et temps (≤ 20 min, ≤ 45 min, tous).
+- Filtres stricts : type (Tous par défaut, Plat, Entrée, Accompagnement, Dessert, Apéro, Petit-déj., Boisson, Sauce) et temps (≤ 20 min, ≤ 45 min, tous).
 - Moins de 10 faisables → afficher ce qui existe + message renvoyant vers Presque.
 - **Changement du stock** → recalcul immédiat : les recettes devenues infaisables disparaissent, la liste est complétée au même nombre, les recettes encore faisables restent à leur place.
 - Une recette vue sans réaction ne réapparaît qu'après ~**2 semaines** (sauf dans la même session : vue il y a moins de 6 h, elle peut revenir, par ex. en revenant sur un filtre).
