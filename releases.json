@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.0.1",
+    "date": "2026-10-19",
+    "fr": [
+      "Photos des recettes entières et centrées : fini le zoom décentré hérité de Marmiton.",
+      "Plus de variété : les recettes presque identiques (cinq caramels au beurre salé…) ne s'affichent plus côte à côte.",
+      "Catalogue importé plus vite : une page par seconde au lieu d'une toutes les 1,5 s.",
+      "Nouvelles installations : raccourci aussi dans le menu Démarrer, avec le logo dans la recherche Windows."
+    ],
+    "en": [
+      "Full, centred recipe photos: no more off-centre zoom inherited from Marmiton.",
+      "More variety: near-identical recipes (five salted-butter caramels…) no longer show up side by side.",
+      "Faster catalogue import: one page per second instead of one every 1.5 s.",
+      "New installs: shortcut in the Start menu too, with the logo in Windows search."
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-10-18",
     "fr": [
