@@ -10,6 +10,8 @@ import { saveRecipe } from './store.ts';
 // User-Agent honnête : l'app s'identifie (pas de déguisement en navigateur).
 const UA = 'RecipeFinder/1.0 (+https://github.com/TheKiwi7/Recipe-Finder; personal use)';
 const DELAY_MS = 1000;
+/** Temps d'une page en plus du délai (téléchargement, analyse, enregistrement) : ~0,5 s mesuré (1,51 s par page avec 1 s de délai). */
+const PAGE_WORK_MS = 500;
 const SITEMAP_INDEX = 'https://www.marmiton.org/wsitemap_recipes_index.xml';
 // robots.txt de Marmiton autorise /recettes/recette_* ; il bloque l'impression (recette-impression_*), /recipe*, et la recherche au-delà de sa
 // première page. On parcourt donc le catalogue par le sitemap, sans passer par la recherche.
@@ -139,13 +141,15 @@ export function priorityBaseline(db: Db): number {
  * Pour l'affichage : l'objectif ne dépasse jamais ce qui reste réellement importable (pages encore à lire × taux de
  * recettes gardées jusqu'ici). Un objectif de 45 000 s'affiche donc « vers ~39 500 » si Marmiton n'en a pas plus.
  * L'import lui-même ne s'arrête pas sur cette estimation : il continue tant qu'il reste des pages à lire.
+ * secondsPerRecipe : durée d'une page divisée par la part de pages qui donnent une recette gardée, pour estimer le temps restant.
  */
-export function displayProgress(db: Db): ImportProgress & { reachable: number } {
+export function displayProgress(db: Db): ImportProgress & { reachable: number; secondsPerRecipe: number } {
   const p = importProgress(db, getCatalogTarget(db));
   const browsed = p.available - p.pending;
   const acceptance = browsed > 0 ? p.imported / browsed : 0.9;
   const reachable = p.imported + Math.round(p.pending * acceptance);
-  return { ...p, target: Math.min(p.target, reachable), reachable };
+  const secondsPerRecipe = (DELAY_MS + PAGE_WORK_MS) / 1000 / Math.max(0.1, acceptance);
+  return { ...p, target: Math.min(p.target, reachable), reachable, secondsPerRecipe };
 }
 
 export function importProgress(db: Db, target: number): ImportProgress {

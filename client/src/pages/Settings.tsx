@@ -115,9 +115,9 @@ function ProfileDetails({ version }: { version: number }) {
 }
 
 const fr = num;
-/** ~2,2 s par recette gardée (mesuré : 1 page toutes les ~1,85 s, ~90 % gardées). */
-const duration = (recipes: number) => {
-  const min = Math.round((recipes * 2.2) / 60);
+/** Temps d'import de `recipes` recettes, au rythme donné par le serveur (délai entre deux pages, part de recettes gardées). */
+const duration = (recipes: number, secondsPerRecipe: number) => {
+  const min = Math.round((recipes * secondsPerRecipe) / 60);
   return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`;
 };
 
@@ -137,7 +137,7 @@ function CatalogCard() {
     setBusy(true);
     try {
       setData(await api.importMore(n));
-      toast(L(`Import lancé : ${fr(n)} recettes de plus (≈ ${duration(n)}, l’app doit rester ouverte)`, `Import started: ${fr(n)} more recipes (≈ ${duration(n)}, keep the app open)`));
+      toast(L(`Import lancé : ${fr(n)} recettes de plus (≈ ${duration(n, s.secondsPerRecipe)}, l’app doit rester ouverte)`, `Import started: ${fr(n)} more recipes (≈ ${duration(n, s.secondsPerRecipe)}, keep the app open)`));
     } catch (e) { toast((e as Error).message); }
     finally { setBusy(false); }
   };
@@ -148,7 +148,7 @@ function CatalogCard() {
       )}
       <p className="small">
         <b>{fr(s.imported)}</b> {L('recettes dans ton catalogue', 'recipes in your catalogue')}
-        {remaining > 0 ? L(` · import en cours vers ${fr(s.target)}${capped ? ', le maximum possible' : ''} (encore ≈ ${duration(remaining)}, quand l’app est ouverte)`, ` · importing up to ${fr(s.target)}${capped ? ', the most possible' : ''} (≈ ${duration(remaining)} left, while the app is open)`) : null}.
+        {remaining > 0 ? L(` · import en cours vers ${fr(s.target)}${capped ? ', le maximum possible' : ''} (encore ≈ ${duration(remaining, s.secondsPerRecipe)}, quand l’app est ouverte)`, ` · importing up to ${fr(s.target)}${capped ? ', the most possible' : ''} (≈ ${duration(remaining, s.secondsPerRecipe)} left, while the app is open)`) : null}.
       </p>
       <p className="muted small">
         {L(`Marmiton publie ${fr(s.available)} recettes dans son plan du site (le site en annonce davantage, mais les autres n’y sont pas listées). L’app écarte celles qui sont trop mal notées, environ ${skippedPct} % : ton catalogue peut donc atteindre environ ${fr(s.reachable)} recettes. Déjà lues : ${fr(browsed)}, dont ${fr(s.rejected)} écartées ; encore à lire : ${fr(s.pending)}, soit environ ${fr(left)} recettes de plus. La liste est relue chaque semaine.`,
