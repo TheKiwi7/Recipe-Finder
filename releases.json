@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.6",
+    "date": "2026-10-19",
+    "fr": [
+      "Barre des tâches : le logo de l'app, net, au lieu d'une petite icône floue ; et plus de terminal affiché tant que l'app est ouverte. Les raccourcis se mettent à jour au lancement suivant.",
+      "Claude fonctionne aussi quand l'app est lancée depuis un terminal de Claude Code."
+    ],
+    "en": [
+      "Taskbar: the app's logo, sharp, instead of a small blurry icon; and no more terminal shown while the app is open. Shortcuts update at the next launch.",
+      "Claude also works when the app is started from a Claude Code terminal."
+    ]
+  },
+  {
     "version": "1.0.5",
     "date": "2026-10-19",
     "fr": [
