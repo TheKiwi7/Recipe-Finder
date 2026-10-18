@@ -64,7 +64,9 @@ Tout reste sur ton PC, dans le dossier de l'app. Réglages → « Exporter mes d
 
 ## Sources
 
-Les recettes, photos et textes appartiennent à [Marmiton](https://www.marmiton.org) et à leurs auteurs ; chaque fiche renvoie vers la page d'origine. Ce projet est un outil **personnel** : il ne lit que les pages autorisées par le `robots.txt` du site, à raison d'une page toutes les 1,5 seconde, s'identifie honnêtement, et ne redistribue aucun contenu (la base reste locale). Merci de respecter ces conditions si tu le réutilises.
+Les recettes, photos et textes appartiennent à [Marmiton](https://www.marmiton.org) et à leurs auteurs ; chaque fiche renvoie vers la page d'origine. Recipe Finder est un projet indépendant, sans lien avec Marmiton ni Reworld Media.
+
+Les [conditions d'utilisation de Marmiton](https://www.marmiton.org/sp/aide/conditions-generales-utilisation.html) permettent d'extraire des données de sa base **pour un usage privé** et interdisent tout usage commercial. Recipe Finder s'y tient : chacun importe les recettes pour lui seul, sur son PC, et rien n'est redistribué (ce dépôt ne contient aucune recette ni photo). L'app ne lit que les pages autorisées par le `robots.txt` du site, à raison d'une page toutes les 1,5 seconde, et s'identifie honnêtement. Si tu réutilises ce code, garde cet usage personnel et non commercial. Pour toute demande concernant ces contenus, ouvre une *issue* sur ce dépôt.
 
 ## Licence
 
@@ -144,7 +146,9 @@ Everything stays on your PC, in the app folder. Settings → “Export my data�
 
 ## Sources
 
-Recipes, photos and texts belong to [Marmiton](https://www.marmiton.org) and their authors; every recipe page links back to the original. This project is a **personal** tool: it only reads pages allowed by the site's `robots.txt`, one page every 1.5 seconds, identifies itself honestly, and redistributes no content (the database stays local). Please respect these conditions if you reuse it.
+Recipes, photos and texts belong to [Marmiton](https://www.marmiton.org) and their authors; every recipe page links back to the original. Recipe Finder is an independent project, not affiliated with Marmiton or Reworld Media.
+
+[Marmiton's terms of use](https://www.marmiton.org/sp/aide/conditions-generales-utilisation.html) allow extracting data from its database **for private use** and forbid any commercial use. Recipe Finder sticks to that: everyone imports recipes for themselves only, on their own PC, and nothing is redistributed (this repository contains no recipes or photos). The app only reads pages allowed by the site's `robots.txt`, one page every 1.5 seconds, and identifies itself honestly. If you reuse this code, keep this use personal and non-commercial. For any request about this content, open an *issue* on this repository.
 
 ## License
 
@@ -152,4 +156,4 @@ The code is released under the [MIT License](LICENSE): you may reuse, modify and
 
 ---
 
-To contribute or modify the app: [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md) (in French).
+To contribute or modify the app: [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md#development).
