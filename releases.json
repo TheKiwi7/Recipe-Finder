@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.7",
+    "date": "2026-10-19",
+    "fr": [
+      "Le compteur du catalogue en bas à gauche et celui des Réglages affichent toujours les mêmes chiffres pendant l'import."
+    ],
+    "en": [
+      "The catalogue counter at the bottom left and the one in Settings always show the same numbers during the import."
+    ]
+  },
+  {
     "version": "1.0.6",
     "date": "2026-10-19",
     "fr": [
