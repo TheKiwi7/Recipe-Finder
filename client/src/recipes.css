@@ -25,7 +25,9 @@
 
 .react { display: flex; gap: 6px; }
 .rcard .react { position: absolute; top: 10px; right: 10px; opacity: 0; transition: opacity 0.15s; }
-.rcard:hover .react, .rcard:focus-within .react, .rcard .react:has(.liked), .rcard .react:has(.disliked) { opacity: 1; }
+.rcard:hover .react, .rcard:focus-within .react { opacity: 1; }
+/* Règle à part : un navigateur sans :has() ignorerait aussi le survol s'ils étaient dans la même règle. */
+.rcard .react:has(.liked), .rcard .react:has(.disliked) { opacity: 1; }
 @media (hover: none) { .rcard .react { opacity: 1; } }
 .rbtn { width: 36px; height: 36px; border-radius: 99px; display: grid; place-items: center; background: var(--surface); color: var(--text); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15); transition: transform 0.12s, background 0.12s, color 0.12s; }
 .rbtn:hover { transform: scale(1.08); }

@@ -10,7 +10,7 @@ import { migrateCatalog, syncSeed } from './catalog/store.ts';
 import { ensureStaples } from './pantry.ts';
 import { ensureSelf } from './members.ts';
 import { maybeUpdateProfile } from './profile.ts';
-import { abortAllAI, ensureOllama, initAI, ollamaExe, releaseOllama } from './ai.ts';
+import { abortAllAI, ensureOllama, initAI, ollamaExe, releaseOllama, removeOllamaAutostart } from './ai.ts';
 import { L, lang, loadLang, prefillTranslations } from './i18n.ts';
 import { isFromApp } from './guard.ts';
 
@@ -30,13 +30,16 @@ let importing = false;
 const checkProfile = () => { void maybeUpdateProfile(db); };
 const app = new Hono();
 
-// ---------- l'app vit tant que sa fenêtre est ouverte ----------
-// L'interface donne signe de vie (elle interroge le serveur toutes les 15 s) et prévient à la fermeture.
-// Sans nouvelles, le serveur s'arrête et arrête tout ce qu'il a lancé (import, requêtes IA, Ollama).
-const IDLE_MS = 3 * 60_000;     // fenêtre fermée sans prévenir, ou navigateur qui ralentit les onglets cachés
-const BYE_GRACE_MS = 20_000;    // un rechargement de page prévient aussi : on attend de voir si elle revient
+// ---------- l'app vit tant qu'une de ses pages est ouverte ----------
+// Chaque page (onglet, fenêtre) a un identifiant : elle donne signe de vie (toutes les 20 s, au plus une fois
+// par minute quand le navigateur ralentit un onglet caché) et prévient en se fermant. Le serveur s'arrête, avec
+// tout ce qu'il a lancé (import, requêtes IA, Ollama), quand plus aucune page n'est ouverte.
+const IDLE_MS = 3 * 60_000;     // page disparue sans prévenir (plantage du navigateur, veille du PC…)
+const BYE_GRACE_MS = 20_000;    // un rechargement prévient aussi : on attend de voir si la page revient
 let lastSeen = Date.now();
 let byeAt = 0;
+const pages = new Map<string, number>();
+const pageId = (raw: string | undefined) => (raw ?? '').slice(0, 64) || 'anon'; // interface d'avant les identifiants
 
 // L'API ne répond qu'à l'app elle-même (ni aux sites tiers, ni via DNS rebinding) : voir guard.ts.
 app.use('/api/*', async (c, next) => {
@@ -45,8 +48,8 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.use('/api/*', async (c, next) => { if (c.req.path !== '/api/bye') lastSeen = Date.now(); await next(); });
-app.post('/api/bye', c => { byeAt = Date.now(); return c.json({ ok: true }); });
-app.get('/api/ping', c => c.json({ ok: true }));
+app.post('/api/bye', c => { pages.delete(pageId(c.req.query('page'))); byeAt = Date.now(); return c.json({ ok: true }); });
+app.get('/api/ping', c => { pages.set(pageId(c.req.query('page')), Date.now()); return c.json({ ok: true }); });
 const importCtrl = new AbortController();
 let stopping = false;
 async function shutdown(reason: string) {
@@ -60,11 +63,13 @@ async function shutdown(reason: string) {
 }
 setInterval(() => {
   const now = Date.now();
-  if (byeAt > lastSeen && now - byeAt > BYE_GRACE_MS) void shutdown('fenêtre fermée');
+  for (const [id, at] of pages) if (now - at > IDLE_MS) pages.delete(id);
+  if (pages.size > 0) return; // au moins une page encore ouverte (fermer un autre onglet ne coupe rien)
+  if (byeAt > 0 && now - Math.max(byeAt, lastSeen) > BYE_GRACE_MS) void shutdown('fenêtre fermée');
   else if (now - lastSeen > IDLE_MS) void shutdown('plus de fenêtre ouverte');
 }, 10_000);
 // Ollama installé : démarré en arrière-plan (sans fenêtre) pour que le modèle local soit disponible.
-if (ollamaExe()) void ensureOllama();
+if (ollamaExe()) { removeOllamaAutostart(); void ensureOllama(); }
 // Identifiant de la version de l'interface construite : l'app compare et propose de recharger quand il change.
 const clientBuild = () => { try { return String(statSync(join(CLIENT_DIST, 'index.html')).mtimeMs); } catch { return 'dev'; } };
 app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild, startImport: () => { void backgroundImport(); }, languageChanged: () => { void backgroundTranslate(); } }));

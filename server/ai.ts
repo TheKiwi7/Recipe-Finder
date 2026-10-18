@@ -1,6 +1,6 @@
 import { L } from './i18n.ts';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_DIR, getMeta, type Db } from './db.ts';
 
@@ -144,6 +144,23 @@ export async function releaseOllama(): Promise<void> {
   if (ollamaStartedByUs) killOllama();
 }
 
+/**
+ * Ollama s'ajoute au démarrage de Windows, et ses mises à jour remettent ce raccourci : l'app le retire à chaque
+ * lancement, pour qu'Ollama ne tourne qu'avec elle.
+ */
+export function removeOllamaAutostart(): void {
+  const lnk = join(process.env.APPDATA ?? '', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'Ollama.lnk');
+  try { if (existsSync(lnk)) unlinkSync(lnk); } catch { /* sans importance */ }
+}
+
+/** Ferme seulement l'icône d'Ollama (le serveur de modèles continue de tourner). */
+export function killOllamaTray(): void {
+  spawn('taskkill', ['/IM', 'ollama app.exe', '/F'], { windowsHide: true, stdio: 'ignore' });
+}
+
+/** Ollama installé ou mis à jour par l'app : il est à elle, elle l'arrête en se fermant. */
+export function adoptOllama(): void { ollamaStartedByUs = true; }
+
 /** Arrête Ollama, y compris son application de bureau (fenêtre et icône). */
 export function killOllama(): void {
   for (const image of ['ollama app.exe', 'ollama.exe']) {
@@ -163,7 +180,10 @@ const lanes: Record<Lane, Promise<unknown>> = { background: Promise.resolve(), i
 /** Requêtes en cours (programmes `claude` lancés, appels au modèle local) : arrêtées à la fermeture de l'app. */
 const running = new Set<ChildProcess>();
 const pending = new Set<AbortController>();
+/** L'app se ferme : plus aucun appel, et ceux qu'on interrompt ne doivent ni basculer sur l'autre IA ni la mettre en pause. */
+let closing = false;
 export function abortAllAI(): void {
+  closing = true;
   for (const child of running) child.kill();
   for (const ctrl of pending) ctrl.abort();
 }
@@ -177,6 +197,7 @@ export function askAI(prompt: string, opts: AskOptions): Promise<string> {
 }
 
 async function askRouted(prompt: string, opts: AskOptions): Promise<string> {
+  if (closing) throw new AIUnavailable(L('L’app se ferme', 'The app is closing'));
   const providers = await route(opts.lane);
   if (providers.length === 0) {
     const paused = (['claude', 'local'] as Provider[]).map(cooldownOf).find(Boolean);
@@ -187,6 +208,7 @@ async function askRouted(prompt: string, opts: AskOptions): Promise<string> {
     try {
       return p === 'claude' ? await callClaude(prompt, opts) : await callLocal(prompt, opts);
     } catch (e) {
+      if (closing) throw new AIUnavailable(L('L’app se ferme', 'The app is closing'));
       lastError = e;
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`[ia] ${new Date().toISOString()} ${p} ${opts.lane}/${opts.tier} : ${msg}`);
@@ -207,7 +229,10 @@ export async function askProvider(provider: Provider, prompt: string, opts: AskO
 function callClaude(prompt: string, opts: AskOptions): Promise<string> {
   const exe = claudeExe();
   if (!exe) return Promise.reject(new AIUnavailable('Claude Code n’est pas installé'));
-  const args = ['-p', '--model', opts.tier === 'strong' ? 'sonnet' : 'haiku', '--output-format', 'json', '--tools', '', '--no-session-persistence'];
+  // Appel nu : ni outils, ni connecteurs MCP du compte (≈ 2 400 tokens ajoutés à chaque appel sinon), ni skills,
+  // ni réglages / hooks de l'utilisateur. Mesuré : 2 500 → 136 tokens d'entrée hors invite, 5,5 → 3 s.
+  const args = ['-p', '--model', opts.tier === 'strong' ? 'sonnet' : 'haiku', '--output-format', 'json', '--tools', '', '--no-session-persistence',
+    '--strict-mcp-config', '--disable-slash-commands', '--setting-sources', ''];
   if (opts.system) args.push('--system-prompt', opts.system);
   return run(exe, args, opts.timeoutMs ?? 180_000, prompt).then(out => {
     let res: { is_error?: boolean; result?: unknown };

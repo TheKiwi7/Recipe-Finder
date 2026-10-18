@@ -50,15 +50,22 @@ const STEP_STOPWORDS = new Set(['lieu', 'sole', 'loup', 'bar', 'coque', 'raie', 
  * Marmiton oublie parfois un ingrédient dans la liste mais le cite dans les étapes (« 2 tranches de fromage de chèvre »).
  * On cherche donc aussi dans les étapes les ingrédients rejetés et les exclusions (allergies, régime, aversions).
  */
-function mentionsRejected(stepsKey: string, ctx: Context): boolean {
+function mentionsRejected(e: Entry & { stepsKey: string }, ctx: Context): boolean {
   let words = stepWordsCache.get(ctx);
   if (!words) {
-    words = [...[...ctx.banned].map(normalizeKey), ...ctx.exclusionWords].filter(w => w.length >= 4 && !STEP_STOPWORDS.has(w));
+    const all = [...[...ctx.banned].map(normalizeKey), ...ctx.exclusionWords].filter(w => w.length >= 4 && !STEP_STOPWORDS.has(w));
+    words = { single: all.filter(w => !w.includes(' ')), multi: all.filter(w => w.includes(' ')) };
     stepWordsCache.set(ctx, words);
   }
-  return words.some(w => stepsKey.includes(` ${w} `));
+  // Un mot seul : recherche dans l'index des mots de la recette (au lieu de parcourir tout le texte pour chaque mot).
+  const tokens = tokensOf(e);
+  return words.single.some(w => tokens.has(w)) || words.multi.some(w => e.stepsKey.includes(` ${w} `));
 }
-const stepWordsCache = new WeakMap<Context, string[]>();
+const stepWordsCache = new WeakMap<Context, { single: string[]; multi: string[] }>();
+const tokenCache = new WeakMap<Entry, Set<string>>();
+const tokensOf = (e: Entry & { stepsKey: string }) => tokenCache.get(e) ?? tokenCache.set(e, new Set(e.stepsKey.split(' '))).get(e)!;
+const ownedCache = new WeakMap<Context, Set<string>>();
+const ownedOf = (ctx: Context) => ownedCache.get(ctx) ?? ownedCache.set(ctx, new Set(ctx.questionnaire.equipment)).get(ctx)!;
 
 const keyCache = new WeakMap<Entry, string[]>();
 const keysOf = (e: Entry) => keyCache.get(e) ?? keyCache.set(e, e.bases.map(normalizeKey)).get(e)!;
@@ -80,19 +87,21 @@ export function similarity(a: Entry, b: Entry, idf: Map<string, number>): number
   return 0.8 * (union ? inter / union : 0) + 0.2 * (a.type === b.type ? 1 : 0);
 }
 
+/** Vérifications rapides d'abord (elles écartent la plupart des recettes), recherches dans le texte en dernier. */
 function isEligible(e: Entry, ctx: Context, mode: Mode, filters: Filters, missing: string[]): boolean {
   if (ctx.excluded.has(e.id)) return false;
   if (e.hasImage === false) return false; // les listes montrent des recettes avec photo
+  if (filters.type && filters.type !== 'Tous' && e.type !== filters.type) return false;
+  if (filters.maxTime && (e.totalMin === 0 || e.totalMin > filters.maxTime)) return false;
+  if (mode === 'ready' ? missing.length !== 0 : missing.length < 1 || missing.length > MAX_MISSING) return false;
   // Au moins un vrai ingrédient hors placard : sinon une recette dont rien n'est reconnu serait toujours « faisable ».
   if (!e.bases.some(b => !ctx.staples.has(b))) return false;
   if (e.bases.some(b => ctx.banned.has(b))) return false;
-  if (ctx.exclusionWords.length && keysOf(e).some(k => containsWord(k, ctx.exclusionWords))) return false;
-  if (e.stepsKey && mentionsRejected(e.stepsKey, ctx)) return false;
-  const owned = new Set(ctx.questionnaire.equipment);
+  const owned = ownedOf(ctx);
   if (e.utensils.some(u => OPTIONAL_EQUIPMENT.includes(u) && !owned.has(u))) return false;
-  if (filters.type && filters.type !== 'Tous' && e.type !== filters.type) return false;
-  if (filters.maxTime && (e.totalMin === 0 || e.totalMin > filters.maxTime)) return false;
-  return mode === 'ready' ? missing.length === 0 : missing.length >= 1 && missing.length <= MAX_MISSING;
+  if (ctx.exclusionWords.length && keysOf(e).some(k => containsWord(k, ctx.exclusionWords))) return false;
+  if (e.stepsKey && mentionsRejected(e as Entry & { stepsKey: string }, ctx)) return false;
+  return true;
 }
 
 const DISH_LIMIT = { low: 1, medium: 2, high: 4 } as const;

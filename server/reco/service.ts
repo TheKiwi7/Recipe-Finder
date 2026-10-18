@@ -25,13 +25,19 @@ export type RecipeDetail = RecipeCard & {
 
 // ---------- catalogue en mémoire ----------
 
-type Catalog = { key: string; entries: Entry[]; byId: Map<number, Entry & { image: string | null }>; idf: Map<string, number>; common: Set<string> };
+type Catalog = { key: string; at: number; entries: Entry[]; byId: Map<number, Entry & { image: string | null }>; idf: Map<string, number>; common: Set<string> };
 let cache: Catalog | null = null;
+/**
+ * Pendant un import, le catalogue change toutes les quelques secondes : on ne le relit (≈ 250 ms) qu'au plus
+ * toutes les 2 min. Les nouvelles recettes apparaissent donc avec un peu de retard, sans ralentir chaque liste.
+ */
+const CATALOG_REFRESH_MS = 2 * 60_000;
 
-export function loadCatalog(db: Db): Catalog {
+export function loadCatalog(db: Db, force = false): Catalog {
+  if (cache && !force && Date.now() - cache.at < CATALOG_REFRESH_MS) return cache;
   const k = db.prepare('SELECT COUNT(*) n, COALESCE(SUM(unresolved), 0) u, (SELECT COUNT(*) FROM recipe_ingredients) ri FROM recipes').get() as Record<string, number>;
   const key = `${k.n}:${k.u}:${k.ri}`;
-  if (cache?.key === key) return cache;
+  if (cache?.key === key) { cache.at = Date.now(); return cache; }
 
   const rows = db.prepare(`SELECT id, name, image, type, total_min, dishes, rating, reviews, keywords, utensils, steps, ingredients FROM recipes WHERE unresolved = 0`).all() as Array<Record<string, any>>;
   const bases = new Map<number, string[]>();
@@ -49,7 +55,7 @@ export function loadCatalog(db: Db): Catalog {
   const n = Math.max(1, entries.length);
   const idf = new Map([...df].map(([b, c]) => [b, Math.log(1 + n / c)]));
   const common = new Set([...df].filter(([, c]) => c / n >= 0.03 && c >= 3).map(([b]) => b));
-  cache = { key, entries, byId: new Map(entries.map(e => [e.id, e])), idf, common };
+  cache = { key, at: Date.now(), entries, byId: new Map(entries.map(e => [e.id, e])), idf, common };
   return cache;
 }
 

@@ -64,10 +64,15 @@ function App() {
   );
 }
 
-// Fermeture de la fenêtre : le serveur s'arrête (et arrête l'IA) s'il ne revoit pas la page dans les 20 s.
-window.addEventListener('pagehide', () => navigator.sendBeacon('/api/bye'));
-// Signe de vie, sur toutes les pages (y compris l'accueil, sans barre latérale).
-setInterval(() => { fetch('/api/ping').catch(() => {}); }, 30_000);
+// Signe de vie de cette page (onglet / fenêtre) : le serveur s'arrête, et arrête l'IA, quand plus aucune page de
+// l'app n'est ouverte. Fermer un onglet ne coupe pas l'app dans un autre.
+const PAGE_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+const ping = () => { fetch(`/api/ping?page=${PAGE_ID}`).catch(() => {}); };
+ping();
+setInterval(ping, 20_000);
+window.addEventListener('pagehide', () => navigator.sendBeacon(`/api/bye?page=${PAGE_ID}`));
+// Retour sur une page restée en mémoire (bouton Précédent du navigateur) : elle se signale de nouveau.
+window.addEventListener('pageshow', e => { if (e.persisted) ping(); });
 
 /** Erreur d'affichage : un message et un bouton plutôt qu'un écran vide. */
 class Crash extends Component<{ children: ReactNode }, { error: Error | null }> {

@@ -1,8 +1,6 @@
 import { spawn } from 'node:child_process';
-import { existsSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
 import { L } from './i18n.ts';
-import { claudeExe, claudeStatus, ensureOllama, invalidateClaudeStatus, invalidateLocalStatus, killOllama, localModel, localStatus } from './ai.ts';
+import { adoptOllama, claudeExe, claudeStatus, ensureOllama, invalidateClaudeStatus, invalidateLocalStatus, killOllama, killOllamaTray, localModel, localStatus, removeOllamaAutostart } from './ai.ts';
 
 // Installation et connexion de l'IA depuis l'app, en un clic, pour quelqu'un qui n'a rien d'installé.
 // Les logiciels s'installent via winget (gestionnaire intégré à Windows 10/11), sans droits administrateur.
@@ -115,8 +113,10 @@ async function startOllama() {
  */
 function hideOllamaAfterInstall(): void {
   killOllama();
-  const startup = join(process.env.APPDATA ?? '', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'Ollama.lnk');
-  try { if (existsSync(startup)) unlinkSync(startup); } catch { /* sans importance */ }
+  removeOllamaAutostart();
+  adoptOllama();
+  // L'installateur relance parfois l'icône et remet le raccourci de démarrage quelques secondes plus tard : on repasse.
+  for (const ms of [5_000, 15_000, 30_000]) setTimeout(() => { killOllamaTray(); removeOllamaAutostart(); }, ms);
 }
 
 // Erreurs définitives : inutile de réessayer (version d'Ollama, modèle inexistant).
