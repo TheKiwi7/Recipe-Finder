@@ -70,7 +70,7 @@ Les [conditions d'utilisation de Marmiton](https://www.marmiton.org/sp/aide/cond
 
 ## Licence
 
-Le code est sous licence [MIT](LICENSE) : tu peux le réutiliser, le modifier et le redistribuer librement, en gardant la mention de copyright. Cette licence couvre uniquement le code de l'app, pas les recettes ni les photos, qui restent la propriété de Marmiton et de leurs auteurs.
+Le code est sous licence [MIT](LICENSE) : tu peux le réutiliser, le modifier et le redistribuer librement, en gardant la mention de copyright. Le logo reprend l'icône « Soup » de [Lucide](https://lucide.dev) (licence ISC). Cette licence couvre uniquement le code de l'app, pas les recettes ni les photos, qui restent la propriété de Marmiton et de leurs auteurs.
 
 ---
 
@@ -152,7 +152,7 @@ Recipes, photos and texts belong to [Marmiton](https://www.marmiton.org) and the
 
 ## License
 
-The code is released under the [MIT License](LICENSE): you may reuse, modify and redistribute it freely, keeping the copyright notice. This license covers the app's code only, not the recipes or photos, which remain the property of Marmiton and their authors.
+The code is released under the [MIT License](LICENSE): you may reuse, modify and redistribute it freely, keeping the copyright notice. The logo uses Lucide's “Soup” icon ([Lucide](https://lucide.dev), ISC license). This license covers the app's code only, not the recipes or photos, which remain the property of Marmiton and their authors.
 
 ---
 
