@@ -6,6 +6,7 @@ import { AiCard } from '../components/AiCard.tsx';
 import { Autocomplete } from '../components/Autocomplete.tsx';
 import { MembersCard } from '../components/MembersCard.tsx';
 import { invalidateLists } from '../recipes-store.ts';
+import { refreshImportStatus, setImportStatus, useImportStatus } from '../import-store.ts';
 import { toast } from '../toast.tsx';
 import { LoadState, useLoad } from '../use-load.tsx';
 import { LangSwitch } from '../components/LangSwitch.tsx';
@@ -133,7 +134,11 @@ const duration = (recipes: number, secondsPerRecipe: number) => {
 };
 
 function CatalogCard() {
-  const { data: s, failed, reload, setData } = useLoad(() => api.importStatus());
+  // Même état que le compteur de la barre latérale (relu toutes les 15 s) : les deux restent d'accord.
+  const s = useImportStatus();
+  const [failed, setFailed] = useState(false);
+  const reload = () => { setFailed(false); refreshImportStatus().catch(() => setFailed(true)); };
+  useEffect(reload, []);
   const [busy, setBusy] = useState(false);
   if (!s) return <div className="card settings-card"><LoadState failed={failed} onRetry={reload} /></div>;
   const remaining = Math.max(0, s.target - s.imported);
@@ -147,7 +152,7 @@ function CatalogCard() {
   const add = async (n: number) => {
     setBusy(true);
     try {
-      setData(await api.importMore(n));
+      setImportStatus(await api.importMore(n));
       toast(L(`Import lancé : ${fr(n)} recettes de plus (≈ ${duration(n, s.secondsPerRecipe)}, l’app doit rester ouverte)`, `Import started: ${fr(n)} more recipes (≈ ${duration(n, s.secondsPerRecipe)}, keep the app open)`));
     } catch (e) { toast((e as Error).message); }
     finally { setBusy(false); }

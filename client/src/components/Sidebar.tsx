@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, CircleDashed, Compass, Heart, Lock, Moon, RefreshCw, Settings, ShoppingBasket, ShoppingCart, Soup, Sun } from 'lucide-react';
-import { api, type ImportStatus, type UpdateState } from '../api.ts';
+import { api, type UpdateState } from '../api.ts';
+import { refreshImportStatus, useImportStatus } from '../import-store.ts';
 import { navigate, type Route } from '../router.ts';
 import { usePantry } from '../pantry-store.ts';
 import { invalidateLists } from '../recipes-store.ts';
@@ -24,17 +25,17 @@ const LOADED_BUILD: { value: string | null } = { value: null };
 // Démarrage du serveur vu en dernier : s'il change, les règles ont pu changer → listes recalculées sans bruit.
 const SEEN_SERVER: { value: string | null } = { value: null };
 
-function useImportStatus() {
-  const [status, setStatus] = useState<ImportStatus | null>(null);
+/** Relit l'état de l'import toutes les 15 s (partagé avec la carte Catalogue des Réglages) et l'état des mises à jour. */
+function useServerPolling() {
+  const status = useImportStatus();
   const [update, setUpdate] = useState<UpdateState | null>(null);
   useEffect(() => {
     let alive = true;
-    const tick = () => api.importStatus().then(s => {
+    const tick = () => refreshImportStatus().then(s => {
       api.update().then(u => { if (alive) setUpdate(u); }).catch(() => {});
       LOADED_BUILD.value ??= s.build;
       if (SEEN_SERVER.value && SEEN_SERVER.value !== s.server) invalidateLists();
       SEEN_SERVER.value = s.server;
-      if (alive) setStatus(s);
     }).catch(() => {});
     tick();
     const t = setInterval(tick, 15_000);
@@ -46,7 +47,7 @@ function useImportStatus() {
 export function Sidebar({ route }: { route: Route }) {
   const pantry = usePantry();
   const { theme, toggle } = useTheme();
-  const { status, update } = useImportStatus();
+  const { status, update } = useServerPolling();
   const locked = !pantry?.gateOpen;
   const shopping = useShopping();
   useEffect(() => { refreshShopping().catch(() => {}); }, []);
