@@ -7,11 +7,11 @@ import {
 } from './pantry.ts';
 import { banIngredient, favorites, imagePath, recipeDetail, recommend, rejections, setReaction } from './reco/service.ts';
 import type { Mode } from './reco/rank.ts';
-import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, OPTIONAL_EQUIPMENT, questionnaireDiff, recordSignal, setQuestionnaire, type Questionnaire } from './preferences.ts';
-import { maybeUpdateProfile, profileStatus } from './profile.ts';
+import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, getWeights, OPTIONAL_EQUIPMENT, questionnaireDiff, recordSignal, setQuestionnaire, type Questionnaire } from './preferences.ts';
+import { maybeUpdateProfile, profileStatus, profileText } from './profile.ts';
 import { askAboutRecipe, ChatError, chatHistory } from './chat.ts';
 import { exportData } from './export.ts';
-import { askProvider, claudeStatus, invalidateAIStatus, localStatus, route, type Provider } from './ai.ts';
+import { askProvider, claudeStatus, cooldownOf, invalidateLocalStatus, localStatus, route, type Provider } from './ai.ts';
 import { connectClaude, setupLocal, setupTask } from './setup.ts';
 import { setMeta } from './db.ts';
 
@@ -89,6 +89,8 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
   });
 
   api.get('/profile', c => c.json(profileStatus(db)));
+  // Le profil rédigé par l'IA et les réglages qu'elle en a tirés (bouton « Voir mon profil »).
+  api.get('/profile/details', c => c.json({ text: profileText(db), weights: getWeights(db) }));
   api.post('/profile/update', async c => c.json({ result: await maybeUpdateProfile(db, true), ...profileStatus(db) }));
 
   api.get('/recipes/:id/chat', c => c.json(chatHistory(db, Number(c.req.param('id')))));
@@ -104,7 +106,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
   // ---------- intelligence artificielle : état, installation, connexion, test ----------
   api.get('/ai/status', async c => {
     const [claude, local, interactive, background] = await Promise.all([claudeStatus(), localStatus(), route('interactive'), route('background')]);
-    return c.json({ claude, local, routing: { interactive: interactive[0] ?? null, background: background[0] ?? null }, task: setupTask(), localModels: LOCAL_MODELS });
+    return c.json({ claude, local, routing: { interactive: interactive[0] ?? null, background: background[0] ?? null }, task: setupTask(), localModels: LOCAL_MODELS, paused: { claude: cooldownOf('claude'), local: cooldownOf('local') } });
   });
   api.post('/ai/claude/connect', c => { void connectClaude(); return c.json({ task: setupTask() }); });
   api.post('/ai/local/setup', c => { void setupLocal(); return c.json({ task: setupTask() }); });
@@ -112,7 +114,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     const model = String((await c.req.json()).model ?? '');
     if (!LOCAL_MODELS.some(m => m.id === model)) throw new Error('Modèle inconnu');
     setMeta(db, 'local_model', model);
-    invalidateAIStatus();
+    invalidateLocalStatus();
     return c.json({ local: await localStatus() });
   });
   api.post('/ai/test', async c => {

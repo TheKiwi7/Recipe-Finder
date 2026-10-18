@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
-import { claudeExe, claudeStatus, invalidateAIStatus, localModel, localStatus, ollamaExe } from './ai.ts';
+import { existsSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
+import { claudeExe, claudeStatus, ensureOllama, invalidateClaudeStatus, invalidateLocalStatus, killOllama, localModel, localStatus } from './ai.ts';
 
 // Installation et connexion de l'IA depuis l'app, en un clic, pour quelqu'un qui n'a rien d'installé.
 // Les logiciels s'installent via winget (gestionnaire intégré à Windows 10/11), sans droits administrateur.
@@ -42,7 +44,7 @@ export async function connectClaude(): Promise<void> {
       await wingetInstall('Anthropic.ClaudeCode');
       if (!claudeExe()) throw new Error('Claude Code installé, mais introuvable : redémarre l’app puis réessaie');
     }
-    invalidateAIStatus();
+    invalidateClaudeStatus();
     if ((await claudeStatus()).state === 'ready') { set({ status: 'done', step: 'Connecté' }); return; }
 
     // La connexion ouvre la page Anthropic dans le navigateur. Une petite fenêtre l'accompagne au cas où
@@ -51,9 +53,9 @@ export async function connectClaude(): Promise<void> {
     spawn('cmd', ['/c', 'start', 'Connexion à Claude', 'cmd', '/c', claudeExe()!, 'auth', 'login'], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
 
     // Attend la connexion (jusqu'à 10 min) en interrogeant l'état.
-    for (let i = 0; i < 200; i++) {
-      await sleep(3_000);
-      invalidateAIStatus();
+    for (let i = 0; i < 120; i++) {
+      await sleep(5_000);
+      invalidateClaudeStatus();
       if ((await claudeStatus()).state === 'ready') { set({ status: 'done', step: 'Connecté' }); return; }
     }
     throw new Error('Connexion non terminée : réessaie quand tu veux');
@@ -62,7 +64,7 @@ export async function connectClaude(): Promise<void> {
   }
 }
 
-/** Un seul bouton : installe Ollama si besoin, le démarre, puis télécharge le modèle local. */
+/** Un seul bouton : installe Ollama si besoin, le démarre (caché), puis télécharge le modèle local. */
 export async function setupLocal(): Promise<void> {
   if (task?.status === 'running') return;
   task = { kind: 'local', status: 'running', step: 'Vérification…' };
@@ -71,6 +73,7 @@ export async function setupLocal(): Promise<void> {
     if (s.state === 'not-installed') {
       set({ step: 'Installation d’Ollama (quelques minutes selon ta connexion)…' });
       await wingetInstall('Ollama.Ollama');
+      hideOllamaAfterInstall();
       s = await fresh();
     }
     if (s.state === 'not-running' || s.state === 'not-installed') s = await startOllama();
@@ -81,40 +84,38 @@ export async function setupLocal(): Promise<void> {
         // Ollama trop ancien pour ce modèle (« requires a newer version of Ollama ») : mise à jour, puis nouvel essai.
         if (!/newer version of Ollama/i.test((e as Error).message)) throw e;
         set({ step: 'Mise à jour d’Ollama (quelques minutes selon ta connexion)…', progress: undefined });
-        stopOllama();
+        killOllama();
         await sleep(2_000);
         await wingetInstall('Ollama.Ollama', 'upgrade');
+        hideOllamaAfterInstall();
         await startOllama();
         await pullModel(localModel());
       }
     }
-    invalidateAIStatus();
+    invalidateLocalStatus();
     set({ status: 'done', step: 'Prêt', progress: undefined });
   } catch (e) {
     set({ status: 'error', step: (e as Error).message, progress: undefined });
   }
 }
 
-async function fresh() { invalidateAIStatus(); return localStatus(); }
+async function fresh() { invalidateLocalStatus(); return localStatus(); }
 
-/** Démarre Ollama s'il ne tourne pas, et attend qu'il réponde. */
+/** Démarre Ollama en arrière-plan, sans fenêtre, et attend qu'il réponde. */
 async function startOllama() {
-  let s = await fresh();
-  if (s.state !== 'not-running' && s.state !== 'not-installed') return s;
-  const exe = ollamaExe();
-  if (!exe) throw new Error('Ollama installé, mais introuvable : redémarre le PC puis réessaie');
   set({ step: 'Démarrage d’Ollama…' });
-  spawn(exe, ['serve'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
-  for (let i = 0; i < 30 && (s = await fresh()).state === 'not-running'; i++) await sleep(1_500);
-  if (s.state === 'not-running') throw new Error('Ollama ne démarre pas : lance-le depuis le menu Démarrer puis réessaie');
-  return s;
+  if (!(await ensureOllama())) throw new Error('Ollama ne démarre pas : redémarre le PC puis réessaie');
+  return fresh();
 }
 
-/** Arrête Ollama (nécessaire pour le mettre à jour : ses fichiers sont verrouillés tant qu'il tourne). */
-function stopOllama(): void {
-  for (const image of ['ollama app.exe', 'ollama.exe']) {
-    spawn('taskkill', ['/IM', image, '/F'], { windowsHide: true, stdio: 'ignore' });
-  }
+/**
+ * L'installateur d'Ollama ouvre sa fenêtre et l'inscrit au démarrage de Windows. L'app le pilote elle-même
+ * (démarré caché avec l'app, arrêté avec elle) : on ferme cette fenêtre et on retire le lancement automatique.
+ */
+function hideOllamaAfterInstall(): void {
+  killOllama();
+  const startup = join(process.env.APPDATA ?? '', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'Ollama.lnk');
+  try { if (existsSync(startup)) unlinkSync(startup); } catch { /* sans importance */ }
 }
 
 // Erreurs définitives : inutile de réessayer (version d'Ollama, modèle inexistant).

@@ -98,7 +98,7 @@ export function QuestionnaireForm({ submitLabel, onSaved }: { submitLabel: strin
       </section>
 
       <section className="qrow">
-        <div className="qlabel"><b>Autre chose à savoir ?</b><span>Tes goûts, ce que tu adores ou détestes, ton niveau… Claude s'en servira.</span></div>
+        <div className="qlabel"><b>Autre chose à savoir ?</b><span>Tes goûts, ce que tu adores ou détestes, ton niveau… L'IA s'en servira.</span></div>
         <textarea className="field area" rows={6} value={q.notes} onChange={e => up({ notes: e.target.value })} placeholder="Ex. : j'adore la cuisine asiatique et les plats mijotés, pas fan des desserts trop sucrés…" />
       </section>
 

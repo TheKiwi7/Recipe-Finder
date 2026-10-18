@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, SendHorizontal, Sparkles, X } from 'lucide-react';
 import { api, type ChatMessage, type RecipeDetail } from '../api.ts';
 
-/** Rendu minimal du Markdown de Claude : **gras** et puces « - ». */
+/** Rendu minimal du Markdown des réponses : **gras** et puces « - ». */
 function Rich({ text }: { text: string }) {
   return (
     <>
@@ -15,7 +15,7 @@ function Rich({ text }: { text: string }) {
 
 const SUGGESTIONS = ['Par quoi remplacer un ingrédient qui me manque ?', 'Je peux la préparer à l’avance ?', 'Quel accompagnement avec ?'];
 
-/** Panneau latéral repliable « Demander à Claude » (Q16, Q39), replié par défaut. */
+/** Panneau latéral repliable « Demander à l'IA » (Q16, Q39), replié par défaut. */
 export function ChatPanel({ recipe }: { recipe: RecipeDetail }) {
   // ?chat=open ouvre le panneau d'emblée (captures d'écran de contrôle).
   const [open, setOpen] = useState(() => new URLSearchParams(location.search).get('chat') === 'open');
@@ -44,21 +44,21 @@ export function ChatPanel({ recipe }: { recipe: RecipeDetail }) {
   if (!open) {
     return (
       <button className="fab" onClick={() => setOpen(true)}>
-        <MessageCircle size={18} />Demander à Claude{messages.length > 0 && <span className="fab-count">{messages.length / 2}</span>}
+        <MessageCircle size={18} />Demander à l'IA{messages.length > 0 && <span className="fab-count">{messages.length / 2}</span>}
       </button>
     );
   }
 
   return (
-    <aside className="chat" aria-label="Discussion avec Claude">
+    <aside className="chat" aria-label="Discussion avec l'IA">
       <header className="chat-h">
-        <Sparkles size={17} /><b>Demander à Claude</b>
+        <Sparkles size={17} /><b>Demander à l'IA</b>
         <button className="icon-btn" onClick={() => setOpen(false)} aria-label="Fermer"><X size={18} /></button>
       </header>
       <div className="chat-b" ref={body}>
         {messages.length === 0 && !pending && (
           <>
-            <p className="chat-hint">Claude connaît déjà cette recette, ton stock et tes goûts.</p>
+            <p className="chat-hint">L'IA connaît déjà cette recette, ton stock et tes goûts.</p>
             <div className="sugg">{SUGGESTIONS.map(s => <button key={s} onClick={() => send(s)}>{s}</button>)}</div>
           </>
         )}
@@ -66,7 +66,7 @@ export function ChatPanel({ recipe }: { recipe: RecipeDetail }) {
         {pending && (
           <>
             <div className="msg me">{pending}</div>
-            <div className="msg ai typing" aria-label="Claude réfléchit"><i /><i /><i /></div>
+            <div className="msg ai typing" aria-label="L'IA réfléchit"><i /><i /><i /></div>
           </>
         )}
         {error && <div className="chat-error">{error}</div>}

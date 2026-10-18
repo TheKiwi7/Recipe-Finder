@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cleanName, isoMinutes, parseRecipePage, passesQuality, recipeType } from './recipe.ts';
-import { canonicalUtensils, countDishes, deduceUtensils, withNameDevices } from './utensils.ts';
+import { canonicalUtensils, countDishes, deduceUtensils, utensilsFor, withNameDevices } from './utensils.ts';
 
 const page = (ld: object, extra = '') =>
   `<html><head><script type="application/ld+json">${JSON.stringify(ld)}</script></head><body>${extra}</body></html>`;
@@ -30,7 +30,8 @@ test('page Marmiton → recette', () => {
   assert.deepEqual([r.totalMin, r.prepMin, r.cookMin, r.servings], [80, 20, 60, 4]);
   assert.deepEqual([r.rating, r.reviews], [4.6, 120]);
   assert.equal(r.ingredients[0].name, 'pommes de terre');
-  assert.deepEqual(r.utensils, ['Four', 'Plaque de cuisson', 'Plat à gratin', 'Couteau', 'Papier cuisson']);
+  // La pub (« Table induction… ») et ce que les étapes n'utilisent pas sont écartés ; « éplucher et couper » ajoute planche et économe.
+  assert.deepEqual(r.utensils, ['Four', 'Plat à gratin', 'Couteau', 'Planche à découper', 'Économe']);
   assert.equal(r.utensilsFromSite, true);
   assert.equal(r.dishes, 1);
   const thermo = parseRecipePage(page({ ...LD, name: 'saumon au Thermomix' }), 'u', 'marmiton')!;
@@ -59,6 +60,9 @@ test('durées, types, vaisselle, qualité', () => {
   assert.deepEqual(withNameDevices([], 'Pain aux olives en MAP'), ['Machine à pain']);
   assert.deepEqual(deduceUtensils(['Prendre une fourchette.']), []);
   assert.deepEqual(canonicalUtensils(['1 Moule à cake', '1 Fouet cuisine', '1 saladier']), ['Moule', 'Saladier', 'Fouet']);
+  // Liste du site filtrée par les étapes : pas de mixeur ni de louche pour une sauce à la crème.
+  const sauce = ['Faire chauffer la crème fraiche dans une casserole à feu doux.', 'Couper le cube de bouillon en deux.', 'Remuer jusqu’à ce que le cube soit dissout.'];
+  assert.deepEqual(utensilsFor(['Robot / mixeur', 'Casserole', 'Couteau', 'Cuillère en bois', 'Louche'], sauce), ['Casserole', 'Couteau', 'Planche à découper', 'Cuillère en bois']);
   assert.equal(countDishes(['Four', 'Casserole', 'Saladier', 'Couteau']), 2);
   const base = parseRecipePage(page(LD), 'u', 'marmiton')!;
   assert.equal(passesQuality({ ...base, rating: 3.9, reviews: 50 }), false);

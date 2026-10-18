@@ -1,5 +1,5 @@
 import { parseIngredientLine, type IngredientLine } from './ingredients.ts';
-import { canonicalUtensils, countDishes, deduceUtensils, withNameDevices } from './utensils.ts';
+import { canonicalUtensils, countDishes, deduceUtensils, utensilsFor, withNameDevices } from './utensils.ts';
 
 export const RECIPE_TYPES = ['Plat', 'Entrée', 'Dessert', 'Apéro', 'Petit-déj.', 'Autre'] as const;
 export type RecipeType = (typeof RECIPE_TYPES)[number];
@@ -120,7 +120,7 @@ export function parseRecipePage(html: string, url: string, source: string): Pars
   const steps = flattenSteps(ld.recipeInstructions).map(clean).filter(Boolean);
   const siteUtensils = source === 'marmiton' ? marmitonUtensils(html) : [];
   const name = cleanName(clean(String(ld.name)));
-  const utensils = withNameDevices(siteUtensils.length ? siteUtensils : deduceUtensils(steps), name);
+  const utensils = withNameDevices(siteUtensils.length ? utensilsFor(siteUtensils, steps) : deduceUtensils(steps), name);
   const rating = ld.aggregateRating ? parseFloat(ld.aggregateRating.ratingValue) : NaN;
   const categoryRaw = Array.isArray(ld.recipeCategory) ? ld.recipeCategory[0] : ld.recipeCategory ?? null;
   const keywords = typeof ld.keywords === 'string' ? ld.keywords.split(',').map((k: string) => k.trim()).filter(Boolean)

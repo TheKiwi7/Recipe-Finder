@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_DIR, getMeta, type Db } from './db.ts';
@@ -8,7 +8,7 @@ import { DATA_DIR, getMeta, type Db } from './db.ts';
 //  - « local »  : un modèle qui tourne sur le PC via Ollama (gratuit, privé, hors ligne).
 // Routage hybride : le chat et le profil préfèrent Claude (meilleure qualité) ; les tâches de fond
 // (normalisation, doublons) préfèrent le modèle local (volume élevé, ménage l'abonnement).
-// Si le fournisseur préféré manque ou échoue, l'autre prend le relais.
+// Si le fournisseur préféré manque, échoue ou a atteint sa limite, l'autre prend le relais.
 
 export type Provider = 'claude' | 'local';
 /** light = tâche simple (Haiku) ; strong = tâche de jugement (Sonnet). Le modèle local sert les deux. */
@@ -39,6 +39,22 @@ function findExe(name: string, candidates: string[]): string | null {
 export const claudeExe = () => findExe('claude', [join(LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links', 'claude.exe'), join(process.env.USERPROFILE ?? '', '.local', 'bin', 'claude.exe')]);
 export const ollamaExe = () => findExe('ollama', [join(LOCALAPPDATA, 'Programs', 'Ollama', 'ollama.exe')]);
 
+// ---------- pause après une erreur (limite d'usage, panne) ----------
+
+/** Un fournisseur en échec est laissé tranquille un moment : pas d'essais en rafale, l'autre prend le relais. */
+const cooldowns = new Map<Provider, { until: number; reason: string }>();
+const LIMIT = /hit your limit|usage limit|rate limit|limit reached|quota/i;
+
+function coolDown(p: Provider, error: string): void {
+  const ms = LIMIT.test(error) ? 30 * 60_000 : 2 * 60_000;
+  cooldowns.set(p, { until: Date.now() + ms, reason: error.slice(0, 200) });
+}
+export function cooldownOf(p: Provider): { until: string; reason: string } | null {
+  const c = cooldowns.get(p);
+  if (!c || c.until < Date.now()) return null;
+  return { until: new Date(c.until).toISOString(), reason: c.reason };
+}
+
 // ---------- état des fournisseurs (mis en cache, l'interface le consulte souvent) ----------
 
 export type ClaudeStatus = { state: 'ready' | 'no-subscription' | 'not-logged-in' | 'not-installed' | 'error'; plan?: string; detail?: string };
@@ -46,10 +62,12 @@ export type LocalStatus = { state: 'ready' | 'no-model' | 'not-running' | 'not-i
 
 let claudeCache: { at: number; value: ClaudeStatus } | null = null;
 let localCache: { at: number; value: LocalStatus } | null = null;
-export function invalidateAIStatus(): void { claudeCache = null; localCache = null; }
+// Deux invalidations séparées : vérifier Claude lance le programme `claude`, on évite de le faire pour rien.
+export function invalidateClaudeStatus(): void { claudeCache = null; }
+export function invalidateLocalStatus(): void { localCache = null; }
 
 export async function claudeStatus(): Promise<ClaudeStatus> {
-  if (claudeCache && Date.now() - claudeCache.at < 60_000) return claudeCache.value;
+  if (claudeCache && Date.now() - claudeCache.at < 5 * 60_000) return claudeCache.value;
   const exe = claudeExe();
   let value: ClaudeStatus;
   if (!exe) value = { state: 'not-installed' };
@@ -85,11 +103,52 @@ export async function localStatus(): Promise<LocalStatus> {
   return value;
 }
 
-/** Ordre de préférence selon la tâche, restreint aux fournisseurs prêts. */
+/** Ordre de préférence selon la tâche, restreint aux fournisseurs prêts et pas en pause. */
 export async function route(lane: Lane): Promise<Provider[]> {
   const [c, l] = await Promise.all([claudeStatus(), localStatus()]);
   const order: Provider[] = lane === 'interactive' ? ['claude', 'local'] : ['local', 'claude'];
-  return order.filter(p => (p === 'claude' ? c.state === 'ready' : l.state === 'ready'));
+  return order.filter(p => (p === 'claude' ? c.state === 'ready' : l.state === 'ready') && !cooldownOf(p));
+}
+
+// ---------- Ollama : démarré caché avec l'app, arrêté avec elle ----------
+
+let ollamaStartedByUs = false;
+
+/** Démarre Ollama en arrière-plan (sans fenêtre) s'il est installé et arrêté. Renvoie true s'il répond. */
+export async function ensureOllama(): Promise<boolean> {
+  invalidateLocalStatus();
+  let s = await localStatus();
+  if (s.state !== 'not-running') return s.state !== 'not-installed';
+  const exe = ollamaExe();
+  if (!exe) return false;
+  spawn(exe, ['serve'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  ollamaStartedByUs = true;
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 1_000));
+    invalidateLocalStatus();
+    s = await localStatus();
+    if (s.state !== 'not-running') return true;
+  }
+  return false;
+}
+
+/**
+ * À la fermeture de l'app : libère la mémoire du modèle, et arrête Ollama si c'est l'app qui l'a démarré
+ * (s'il tournait déjà avant, on le laisse : il sert peut-être à autre chose).
+ */
+export async function releaseOllama(): Promise<void> {
+  try {
+    await fetch(`${OLLAMA}/api/generate`, { method: 'POST', body: JSON.stringify({ model: localModel(), keep_alive: 0 }), signal: AbortSignal.timeout(3_000) });
+  } catch { /* déjà arrêté */ }
+  if (ollamaStartedByUs) killOllama();
+}
+
+/** Arrête Ollama, y compris son application de bureau (fenêtre et icône). */
+export function killOllama(): void {
+  for (const image of ['ollama app.exe', 'ollama.exe']) {
+    spawn('taskkill', ['/IM', image, '/F'], { windowsHide: true, stdio: 'ignore' });
+  }
+  ollamaStartedByUs = false;
 }
 
 // ---------- appel ----------
@@ -99,6 +158,14 @@ export async function route(lane: Lane): Promise<Provider[]> {
  * et le chat n'attend jamais derrière un lot de normalisation.
  */
 const lanes: Record<Lane, Promise<unknown>> = { background: Promise.resolve(), interactive: Promise.resolve() };
+
+/** Requêtes en cours (programmes `claude` lancés, appels au modèle local) : arrêtées à la fermeture de l'app. */
+const running = new Set<ChildProcess>();
+const pending = new Set<AbortController>();
+export function abortAllAI(): void {
+  for (const child of running) child.kill();
+  for (const ctrl of pending) ctrl.abort();
+}
 
 export type AskOptions = { tier: Tier; lane: Lane; system?: string; timeoutMs?: number; json?: boolean };
 
@@ -110,23 +177,30 @@ export function askAI(prompt: string, opts: AskOptions): Promise<string> {
 
 async function askRouted(prompt: string, opts: AskOptions): Promise<string> {
   const providers = await route(opts.lane);
-  if (providers.length === 0) throw new AIUnavailable("Aucune IA n'est configurée (Réglages → Intelligence artificielle)");
+  if (providers.length === 0) {
+    const paused = (['claude', 'local'] as Provider[]).map(cooldownOf).find(Boolean);
+    throw new AIUnavailable(paused ? `IA en pause (${paused.reason})` : "Aucune IA n'est configurée (Réglages → Intelligence artificielle)");
+  }
   let lastError: unknown;
   for (const p of providers) {
     try {
       return p === 'claude' ? await callClaude(prompt, opts) : await callLocal(prompt, opts);
     } catch (e) {
       lastError = e;
-      console.error(`[ia] ${new Date().toISOString()} ${p} ${opts.lane}/${opts.tier} : ${e instanceof Error ? e.message : String(e)}`);
-      invalidateAIStatus(); // l'état a peut-être changé (déconnexion, Ollama arrêté)
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`[ia] ${new Date().toISOString()} ${p} ${opts.lane}/${opts.tier} : ${msg}`);
+      coolDown(p, msg);
+      if (p === 'local') invalidateLocalStatus();
     }
   }
   throw lastError instanceof AIUnavailable ? lastError : new AIUnavailable(String((lastError as Error)?.message ?? lastError));
 }
 
-/** Appelle un fournisseur précis (bouton « Tester » des Réglages). */
-export function askProvider(provider: Provider, prompt: string, opts: AskOptions): Promise<string> {
-  return provider === 'claude' ? callClaude(prompt, opts) : callLocal(prompt, opts);
+/** Appelle un fournisseur précis (bouton « Tester » des Réglages) ; un succès lève la pause éventuelle. */
+export async function askProvider(provider: Provider, prompt: string, opts: AskOptions): Promise<string> {
+  const reply = provider === 'claude' ? await callClaude(prompt, opts) : await callLocal(prompt, opts);
+  cooldowns.delete(provider);
+  return reply;
 }
 
 function callClaude(prompt: string, opts: AskOptions): Promise<string> {
@@ -143,41 +217,51 @@ function callClaude(prompt: string, opts: AskOptions): Promise<string> {
 }
 
 async function callLocal(prompt: string, opts: AskOptions): Promise<string> {
-  let res: Response;
+  const ctrl = new AbortController();
+  pending.add(ctrl);
+  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 180_000);
   try {
-    res = await fetch(`${OLLAMA}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: localModel(),
-        stream: false,
-        format: opts.json ? 'json' : undefined, // JSON garanti par Ollama
-        keep_alive: '10m',
-        options: { temperature: 0.2, num_ctx: 16_384 },
-        messages: [...(opts.system ? [{ role: 'system', content: opts.system }] : []), { role: 'user', content: prompt }],
-      }),
-      signal: AbortSignal.timeout(opts.timeoutMs ?? 180_000),
-    });
-  } catch (e) {
-    throw new AIUnavailable(`Modèle local injoignable : ${(e as Error).message}`);
+    let res: Response;
+    try {
+      res = await fetch(`${OLLAMA}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: localModel(),
+          stream: false,
+          format: opts.json ? 'json' : undefined, // JSON garanti par Ollama
+          keep_alive: '10m',
+          options: { temperature: 0.2, num_ctx: 16_384 },
+          messages: [...(opts.system ? [{ role: 'system', content: opts.system }] : []), { role: 'user', content: prompt }],
+        }),
+        signal: ctrl.signal,
+      });
+    } catch (e) {
+      throw new AIUnavailable(`Modèle local injoignable : ${(e as Error).message}`);
+    }
+    const data = (await res.json().catch(() => ({}))) as { message?: { content?: string }; error?: string };
+    if (!res.ok || data.error) throw new AIUnavailable(`Modèle local : ${data.error ?? `HTTP ${res.status}`}`);
+    return data.message?.content ?? '';
+  } finally {
+    clearTimeout(timer);
+    pending.delete(ctrl);
   }
-  const data = (await res.json().catch(() => ({}))) as { message?: { content?: string }; error?: string };
-  if (!res.ok || data.error) throw new AIUnavailable(`Modèle local : ${data.error ?? `HTTP ${res.status}`}`);
-  return data.message?.content ?? '';
 }
 
-/** Lance un exécutable, envoie `stdin`, renvoie la sortie standard. */
+/** Lance un exécutable sans fenêtre, envoie `stdin`, renvoie la sortie standard. */
 function run(exe: string, args: string[], timeoutMs: number, stdin?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     // cwd = data/ : le CLI claude ne charge pas le CLAUDE.md du projet.
     const child = spawn(exe, args, { cwd: DATA_DIR, windowsHide: true });
+    running.add(child);
     let out = '', err = '';
     const timer = setTimeout(() => { child.kill(); reject(new AIUnavailable('Délai dépassé')); }, timeoutMs);
     child.stdout.on('data', d => (out += d));
     child.stderr.on('data', d => (err += d));
-    child.on('error', e => { clearTimeout(timer); reject(new AIUnavailable(`${exe} : ${e.message}`)); });
+    child.on('error', e => { clearTimeout(timer); running.delete(child); reject(new AIUnavailable(`${exe} : ${e.message}`)); });
     child.on('close', code => {
       clearTimeout(timer);
+      running.delete(child);
       if (out.trim()) resolve(out);
       else reject(new AIUnavailable(`Code ${code} : ${err.slice(0, 300)}`));
     });

@@ -60,4 +60,9 @@ function App() {
   );
 }
 
+// Fermeture de la fenêtre : le serveur s'arrête (et arrête l'IA) s'il ne revoit pas la page dans les 20 s.
+window.addEventListener('pagehide', () => navigator.sendBeacon('/api/bye'));
+// Signe de vie, sur toutes les pages (y compris l'accueil, sans barre latérale).
+setInterval(() => { fetch('/api/ping').catch(() => {}); }, 30_000);
+
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);

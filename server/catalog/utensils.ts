@@ -7,7 +7,7 @@ type Kind = 'big' | 'small' | 'device' | 'consumable';
 // « Table induction SaphirMatt Electrolux ») et à déduire les ustensiles depuis les étapes.
 // Les mots-clés sont comparés mot à mot après normalisation (« four » ne matche pas « fourchette »).
 const CANON: Array<[name: string, kind: Kind, keywords: string[]]> = [
-  ['Four', 'device', ['four', 'enfourner']],
+  ['Four', 'device', ['four', 'enfourner', 'prechauffer', 'thermostat']],
   ['Robot cuiseur', 'device', ['thermomix', 'cookeo', 'companion', 'monsieur cuisine', 'robot cuiseur', 'multicuiseur', 'magimix cook']],
   ['Airfryer', 'device', ['airfryer', 'air fryer', 'actifry', 'friteuse sans huile']],
   ['Machine à pain', 'device', ['machine a pain', 'map']],
@@ -71,6 +71,40 @@ export function canonicalUtensils(titles: string[]): string[] {
     if (first) names.add(first.name);
   }
   return order([...names]);
+}
+
+// La liste de Marmiton est saisie par l'auteur et contient souvent des ustensiles inutiles (un mixeur pour une
+// sauce à la crème). Un ustensile de cette liste n'est gardé que si les étapes en ont besoin : son nom, ou un
+// geste qui l'implique (« remuer » → cuillère en bois). Sans geste connu, seul son nom dans les étapes compte.
+const CONFIRM: Record<string, string[]> = {
+  'Casserole': ['bouillir', 'ebullition', 'chauffer', 'fondre', 'cuire', 'blanchir', 'reduire'],
+  'Poêle': ['faire revenir', 'revenir', 'dorer', 'saisir', 'rissoler', 'sauter', 'griller'],
+  'Cocotte': ['mijoter', 'braiser', 'cuire a feu doux'],
+  'Plat à gratin': ['plat', 'gratiner'],
+  'Moule': ['moule', 'demouler'],
+  'Saladier': ['recipient', 'melanger', 'bol'],
+  'Bol': ['recipient', 'melanger'],
+  'Robot / mixeur': ['mixer', 'mixez', 'broyer', 'moudre', 'reduire en puree', 'hacher finement'],
+  'Fouet': ['battre', 'fouetter', 'emulsionner', 'monter en neige', 'blanchir'],
+  'Batteur électrique': ['battre', 'fouetter', 'monter en neige'],
+  'Couteau': ['couper', 'emincer', 'trancher', 'hacher', 'ciseler', 'decouper', 'peler', 'eplucher', 'tailler'],
+  'Planche à découper': ['couper', 'emincer', 'trancher', 'hacher', 'ciseler', 'decouper', 'tailler'],
+  'Spatule': ['melanger', 'remuer', 'racler', 'incorporer'],
+  'Cuillère en bois': ['melanger', 'remuer', 'tourner'],
+  'Balance': ['peser'],
+  'Réfrigérateur': ['au frais', 'refroidir', 'laisser prendre', 'reserver au frais'],
+  'Grille': ['demouler', 'refroidir'],
+  'Passoire': ['egoutter', 'rincer'],
+  'Plaque du four': ['plaque'],
+  'Papier cuisson': ['papier'],
+};
+
+/** Ustensiles de la recette : ceux de la liste du site que les étapes justifient, plus ceux que les étapes citent. */
+export function utensilsFor(site: string[], steps: string[]): string[] {
+  const text = ` ${normalizeKey(steps.join(' '))} `;
+  const deduced = deduceUtensils(steps);
+  const confirmed = site.filter(u => deduced.includes(u) || (CONFIRM[u] ?? []).some(w => text.includes(` ${normalizeKey(w)} `)));
+  return order([...new Set([...confirmed, ...deduced])]);
 }
 
 /** Déduction par mots-clés dans les étapes, quand le site ne liste pas ses ustensiles. */

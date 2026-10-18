@@ -73,6 +73,7 @@ export const api = {
   questionnaire: () => call<{ questionnaire: Questionnaire | null; defaults: Questionnaire; equipment: string[] }>('GET', '/questionnaire'),
   saveQuestionnaire: (q: Questionnaire) => call<{ questionnaire: Questionnaire }>('PUT', '/questionnaire', q),
   profile: () => call<ProfileStatus>('GET', '/profile'),
+  profileDetails: () => call<{ text: string; weights: { ingredients?: Record<string, number>; keywords?: Record<string, number>; types?: Record<string, number>; maxTotalMin?: number; exclude?: string[] } }>('GET', '/profile/details'),
   updateProfile: () => call<ProfileStatus & { result: 'updated' | 'nothing-new' | 'busy' | 'not-yet' | 'unavailable' }>('POST', '/profile/update'),
   chat: (id: number) => call<ChatMessage[]>('GET', `/recipes/${id}/chat`),
   ask: (id: number, message: string) => call<ChatMessage[]>('POST', `/recipes/${id}/chat`, { message }),

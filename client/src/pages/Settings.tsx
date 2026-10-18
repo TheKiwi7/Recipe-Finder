@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Download, Plus, RefreshCw, Undo2 } from 'lucide-react';
+import { Check, Download, Eye, Plus, RefreshCw, Undo2 } from 'lucide-react';
 import { api } from '../api.ts';
 import { QuestionnaireForm } from '../components/QuestionnaireForm.tsx';
 import { AiCard } from '../components/AiCard.tsx';
@@ -48,6 +48,7 @@ function RejectionsCard() {
 function ProfileCard({ version }: { version: number }) {
   const { data: p, failed, reload, setData: setP } = useLoad(() => api.profile(), [version]);
   const [busy, setBusy] = useState(false);
+  const [show, setShow] = useState(false);
   if (!p) return <div className="card settings-card"><LoadState failed={failed} onRetry={reload} /></div>;
   const update = async () => {
     setBusy(true);
@@ -59,14 +60,14 @@ function ProfileCard({ version }: { version: number }) {
         'nothing-new': 'Rien de nouveau depuis la dernière mise à jour : le profil est déjà à jour',
         busy: 'Une mise à jour est déjà en cours',
         'not-yet': 'Pas encore assez de nouveaux signaux',
-        unavailable: `Claude n'a pas pu mettre à jour le profil : ${(r.lastError ?? '').replace(/^\S+\s/, '').slice(0, 160) || 'raison inconnue'}. Réessaie plus tard.`,
+        unavailable: `L'IA n'a pas pu mettre à jour le profil : ${(r.lastError ?? '').replace(/^\S+\s/, '').slice(0, 160) || 'raison inconnue'}. Réessaie plus tard.`,
       }[r.result]);
     } catch (e) { toast((e as Error).message); }
     finally { setBusy(false); }
   };
   return (
     <div className="card settings-card">
-      <p className="small">Claude tient à jour un profil détaillé de tes goûts à partir de tes likes, rejets et questions. Il ne s'affiche pas, mais il oriente les recommandations.</p>
+      <p className="small">L'IA tient à jour un profil détaillé de tes goûts à partir de tes likes, rejets, questions et de tes notes. Il oriente les recommandations.</p>
       <dl className="kv">
         <dt>Dernière mise à jour</dt><dd>{ago(p.updatedAt)}</dd>
         <dt>Nouveaux signaux en attente</dt><dd>{p.pendingSignals} <span className="muted">(mise à jour automatique dès 10, au plus une fois par heure)</span></dd>
@@ -76,7 +77,32 @@ function ProfileCard({ version }: { version: number }) {
       </dl>
       <button className="btn btn-ghost" onClick={update} disabled={busy || p.pendingSignals === 0} title={p.pendingSignals === 0 ? 'Rien de nouveau depuis la dernière mise à jour' : undefined}>{p.pendingSignals === 0 && !busy
         ? <><Check size={16} />Profil à jour</>
-        : <><RefreshCw size={16} className={busy ? 'spin' : ''} />{busy ? 'Claude réfléchit… (1 à 2 min)' : `Mettre à jour maintenant (${p.pendingSignals} nouveau${p.pendingSignals > 1 ? 'x' : ''})`}</>}</button>
+        : <><RefreshCw size={16} className={busy ? 'spin' : ''} />{busy ? 'L’IA réfléchit… (jusqu’à 2 min)' : `Mettre à jour maintenant (${p.pendingSignals} nouveau${p.pendingSignals > 1 ? 'x' : ''})`}</>}</button>
+      {p.hasProfile && <button className="btn btn-ghost" style={{ marginLeft: 10 }} onClick={() => setShow(v => !v)}><Eye size={16} />{show ? 'Masquer mon profil' : 'Voir mon profil'}</button>}
+      {show && <ProfileDetails version={version + (p.updatedAt ? Date.parse(p.updatedAt) : 0)} />}
+    </div>
+  );
+}
+
+const fmtW = (w: Record<string, number> | undefined, sign: 1 | -1) =>
+  Object.entries(w ?? {}).filter(([, v]) => v * sign > 0).sort((a, b) => b[1] * sign - a[1] * sign).map(([k]) => k);
+
+/** Le profil tel que l'IA l'a rédigé, et ce qu'elle en retient pour le classement. */
+function ProfileDetails({ version }: { version: number }) {
+  const { data: d, failed, reload } = useLoad(() => api.profileDetails(), [version]);
+  if (!d) return <LoadState failed={failed} onRetry={reload} />;
+  const likes = [...fmtW(d.weights.ingredients, 1), ...fmtW(d.weights.keywords, 1)];
+  const dislikes = [...fmtW(d.weights.ingredients, -1), ...fmtW(d.weights.keywords, -1)];
+  return (
+    <div className="profile-details">
+      <h3 className="h3">Ce que l'IA a écrit sur toi</h3>
+      <p className="profile-text">{d.text || 'Pas encore de profil.'}</p>
+      <dl className="kv">
+        {likes.length > 0 && <><dt>Mis en avant</dt><dd>{likes.join(', ')}</dd></>}
+        {dislikes.length > 0 && <><dt>Évité</dt><dd>{dislikes.join(', ')}</dd></>}
+        {d.weights.exclude?.length ? <><dt>Exclu</dt><dd>{d.weights.exclude.join(', ')}</dd></> : null}
+        {d.weights.maxTotalMin ? <><dt>Temps visé</dt><dd>{d.weights.maxTotalMin} min</dd></> : null}
+      </dl>
     </div>
   );
 }

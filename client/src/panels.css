@@ -115,3 +115,5 @@ body.chat-open .content { padding-right: 424px; }
 .ai-routing { margin: 4px 0 0; padding-top: 14px; border-top: 1px solid var(--line); }
 .welcome-next { display: flex; align-items: center; gap: 16px; justify-content: flex-end; margin-top: 18px; }
 .welcome-next .small { margin: 0; }
+.profile-details { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.profile-text { white-space: pre-wrap; line-height: 1.6; font-size: 14.5px; margin: 0 0 16px; }
