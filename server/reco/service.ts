@@ -5,6 +5,7 @@ import type { IngredientLine } from '../catalog/ingredients.ts';
 import { containsWord, DEFAULT_QUESTIONNAIRE, getQuestionnaire, getWeights, recordSignal } from '../preferences.ts';
 import { mealContext } from '../members.ts';
 import { normalizeKey } from '../catalog/text.ts';
+import { realImage } from '../catalog/recipe.ts';
 import { withGenerics } from './generic.ts';
 import { pickBatch, rankCandidates, type Context, type Entry, type Filters, type Mode } from './rank.ts';
 
@@ -154,7 +155,7 @@ export function recipeDetail(db: Db, id: number): RecipeDetail | null {
     if (!fav) return null;
     const snap = JSON.parse(fav.snapshot) as RecipeDetail; // la page a disparu : on sert la copie locale
     const banned = bannedIn(snap.ingredients, userBanned, words);
-    return { ...snap, image: localImage ?? snap.image, reaction: 'like', persons, banned, available: [...available], archived: true,
+    return { ...snap, image: localImage ?? realImage(snap.image), reaction: 'like', persons, banned, available: [...available], archived: true,
       missing: snap.ingredients.map(l => l.base).filter((b): b is string => !!b && !available.has(b)) };
   }
   const ingredients = JSON.parse(row.ingredients) as IngredientLine[];
@@ -223,7 +224,7 @@ export function favorites(db: Db): RecipeCard[] {
     const s = JSON.parse(r.snapshot) as RecipeDetail;
     const bases = [...new Set(s.ingredients.map(l => l.base).filter((b): b is string => !!b))];
     return {
-      id: s.id, name: s.name, image: r.image_file ? `/api/images/${r.image_file}` : s.image, type: s.type, totalMin: s.totalMin, dishes: s.dishes,
+      id: s.id, name: s.name, image: r.image_file ? `/api/images/${r.image_file}` : realImage(s.image), type: s.type, totalMin: s.totalMin, dishes: s.dishes,
       rating: s.rating, reviews: s.reviews, missing: bases.filter(b => !available.has(b)), usesUrgent: bases.some(b => urgent.has(b)), reaction: 'like',
     };
   });

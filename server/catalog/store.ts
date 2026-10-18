@@ -113,9 +113,9 @@ export function syncSeed(db: Db): void {
   setMeta(db, 'seed_hash', hash);
 }
 
-const CATALOG_MIGRATION = '8';
+const CATALOG_MIGRATION = '9';
 
-/** Applique aux recettes déjà importées les corrections faites depuis (titres, types, appareils cités dans le titre, images génériques). */
+/** Applique aux recettes déjà importées les corrections faites depuis (titres, types, appareils cités dans le titre, images génériques ou recadrées). */
 export function migrateCatalog(db: Db): void {
   if (getMeta(db, 'catalog_migration') === CATALOG_MIGRATION) return;
   const rows = db.prepare('SELECT id, name, category_raw, utensils, utensils_from_site, steps, image, ingredients FROM recipes').all() as Array<{ id: number; name: string; category_raw: string | null; utensils: string; utensils_from_site: number; steps: string; image: string | null; ingredients: string }>;

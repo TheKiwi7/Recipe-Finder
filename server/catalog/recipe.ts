@@ -97,9 +97,14 @@ export function recipeType(categoryRaw: string | null, name: string): RecipeType
   return 'Autre';
 }
 
-/** Marmiton met une image générique (« default-recipe-picture ») aux recettes sans photo : ce n'est pas une image. */
+/**
+ * Marmiton met une image générique (« default-recipe-picture ») aux recettes sans photo : ce n'est pas une image.
+ * Ses photos sont recadrées en 16:9 autour d'un point choisi (…_w1024h576c1cx256cy192.webp), souvent loin du centre
+ * et en coupant les photos en hauteur : on demande la photo entière, tenue dans 1024 × 1024 (…_w1024h1024.webp).
+ */
 export function realImage(url: string | null): string | null {
-  return url && !/default-recipe-picture/i.test(url) ? url : null;
+  if (!url || /default-recipe-picture/i.test(url)) return null;
+  return url.replace(/^(https:\/\/assets\.afcdn\.com\/.+_)w\d+h\d+c1[^./]*(\.\w+)$/, '$1w1024h1024$2');
 }
 
 /** « rouelle de porc : la meilleure recette » → « Rouelle de porc ». */

@@ -26,6 +26,9 @@ test('page Marmiton → recette', () => {
   assert.equal(parseRecipePage(page({ ...LD, name: 'Ganache au chocolat : recette facile' }), 'u', 'marmiton')!.name, 'Ganache au chocolat');
   assert.equal(r.image, 'https://img/big.jpg');
   assert.equal(parseRecipePage(page({ ...LD, image: 'https://www.marmiton.org/assets/images/default-recipe-picture_80x80-6PRRwF3.jpg' }), 'u', 'marmiton')!.image, null);
+  // Photo Marmiton recadrée en 16:9 autour d'un point décentré : on prend la photo entière.
+  for (const crop of ['w1024h576c1cx1768cy2826cxt0cyt0cxb18973cyb28947', 'w1024h576c1cx256cy192', 'w1024h576c1'])
+    assert.equal(parseRecipePage(page({ ...LD, image: `https://assets.afcdn.com/recipe/20190411/90708_${crop}.webp` }), 'u', 'marmiton')!.image, 'https://assets.afcdn.com/recipe/20190411/90708_w1024h1024.webp');
   assert.equal(r.type, 'Plat');
   assert.deepEqual([r.totalMin, r.prepMin, r.cookMin, r.servings], [80, 20, 60, 4]);
   assert.deepEqual([r.rating, r.reviews], [4.6, 120]);
