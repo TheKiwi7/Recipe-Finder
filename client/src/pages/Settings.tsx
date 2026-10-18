@@ -233,15 +233,15 @@ function UpdatesCard() {
       {!u.supported ? <p className="muted small" style={{ margin: 0 }}>{u.reason ?? L('Vérification en cours…', 'Checking…')}</p> : (
         <>
           <p className="small">
-            {u.current && <>{L('Version installée : ', 'Installed version: ')}<b>{u.current.version}</b>{u.current.date ? L(` du ${date(u.current.date)}`, ` from ${date(u.current.date)}`) : ''}. </>}
+            {u.current && <>{L('Version installée : ', 'Installed version: ')}<b>{u.current.version ?? '—'}</b>{u.current.date ? L(` du ${date(u.current.date)}`, ` from ${date(u.current.date)}`) : ''}. </>}
             {u.behind > 0
               ? <b>{L(`Nouvelle version disponible : ${u.latest}.`, `New version available: ${u.latest}.`)}</b>
               : u.checkedAt ? L('À jour.', 'Up to date.') : null}
           </p>
-          {u.releases.map(r => (
+          {(u.releases ?? []).map(r => (
             <div key={r.version} className="release-notes">
               <b>{L(`Nouveautés de la version ${r.version}`, `What’s new in ${r.version}`)}</b>{r.date && <span className="muted"> · {date(r.date)}</span>}
-              <ul className="update-changes">{L('fr', 'en') === 'fr' ? r.fr.map((c, i) => <li key={i}>{c}</li>) : r.en.map((c, i) => <li key={i}>{c}</li>)}</ul>
+              <ul className="update-changes">{((L('fr', 'en') === 'fr' ? r.fr : r.en) ?? []).map((c, i) => <li key={i}>{c}</li>)}</ul>
             </div>
           ))}
           {working
