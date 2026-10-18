@@ -39,6 +39,7 @@ server/            Serveur Node (Hono + node:sqlite), TypeScript exécuté direc
   chat.ts          Chat par recette
   shopping.ts      « Je la fais » : ce qui manque (unités converties) → liste de courses → stock
   guard.ts         L'API ne répond qu'à l'app (sites tiers, DNS rebinding)
+  update.ts        Mises à jour par git (fetch, pull --ff-only, npm ci si besoin, build, redémarrage)
   i18n.ts          Langue de l'app, traductions par l'IA (termes, noms, recettes) gardées en base
 client/            Interface React (Vite) ; textes FR/EN dans le code via L('fr', 'en') (client/src/i18n.ts)
 scripts/           Installation, lanceur (navigateur par défaut, taille de la fenêtre retenue) et création du raccourci

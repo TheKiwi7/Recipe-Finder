@@ -4,6 +4,8 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
+# Depot d'origine : les mises a jour de l'app viennent de la (Reglages > Mises a jour).
+$repoUrl = 'https://github.com/TheKiwi7/Recipe-Finder.git'
 
 function Step($text) { Write-Host ""; Write-Host "==> $text" -ForegroundColor Green }
 function Fail($text) { Write-Host ""; Write-Host "ERREUR : $text" -ForegroundColor Red; exit 1 }
@@ -27,6 +29,33 @@ if ((Node-Major) -lt 24) {
   if ((Node-Major) -lt 24) { Fail "Node.js 24 n'a pas pu etre installe. Installe-le depuis https://nodejs.org puis relance install.cmd." }
 }
 Write-Host "Node.js $(& node --version) OK"
+
+Step "Mises a jour automatiques (Git)"
+if (-not (Get-Command git -ErrorAction SilentlyContinue) -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+  Write-Host "Installation de Git (1 a 2 minutes)..."
+  winget install --id Git.Git -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+  Refresh-Path
+}
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+  Write-Host "Git indisponible : l'app fonctionnera, mais sans mises a jour automatiques." -ForegroundColor Yellow
+} elseif (Test-Path "$root\.git") {
+  Write-Host "Mises a jour automatiques actives."
+} else {
+  # Telechargee en ZIP : le dossier devient une copie suivie du depot, a la derniere version.
+  # Les donnees (dossier data) ne sont pas suivies par git : elles ne sont jamais touchees.
+  & git init -q
+  & git remote add origin $repoUrl
+  & git fetch -q origin main
+  if ($LASTEXITCODE -eq 0) {
+    & git reset -q --hard origin/main
+    & git branch -q -M main
+    & git branch -q -u origin/main
+    Write-Host "Mises a jour automatiques activees."
+  } else {
+    Remove-Item -Recurse -Force "$root\.git"
+    Write-Host "GitHub injoignable : mises a jour automatiques non activees (relance install.cmd plus tard)." -ForegroundColor Yellow
+  }
+}
 
 Step "Installation des dependances (1 a 3 minutes)"
 # npm ci : exactement les versions verifiees de package-lock.json (installation identique chez tout le monde).
