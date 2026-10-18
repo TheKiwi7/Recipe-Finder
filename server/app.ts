@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { readFileSync } from 'node:fs';
 import type { Db } from './db.ts';
 import { displayProgress, getCatalogTarget, getImportPriority, importProgress, prioritizeQueue, priorityBaseline, priorityRemaining, setCatalogTarget, setImportPriority } from './catalog/importer.ts';
-import { checkForUpdate, updateState } from './update.ts';
+import { checkForUpdate, initUpdateState, updateState } from './update.ts';
 import { addShoppingItem, buyAllShopping, buyShoppingItem, clearShopping, cookRecipe, CookError, listShopping, removeShoppingItem } from './shopping.ts';
 import {
   addPantryItem, confirmPantry, deletePantryItem, listPantry, listStaples, pantryState, setStaples, suggestIngredients, updatePantryItem,
@@ -63,7 +63,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
 
   // ---------- langue ----------
   // Mises à jour (git) : état, vérification à la demande, installation (l'app redémarre ensuite).
-  api.get('/update', c => c.json(updateState()));
+  api.get('/update', async c => { await initUpdateState(); return c.json(updateState()); });
   api.post('/update/check', async c => c.json(await checkForUpdate()));
   api.post('/update', c => { status.update(); return c.json(updateState()); });
   api.get('/settings', c => c.json({ lang: lang() }));

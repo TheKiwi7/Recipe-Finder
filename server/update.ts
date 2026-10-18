@@ -48,8 +48,14 @@ async function detect(): Promise<string | null> {
   return null;
 }
 
+let init: Promise<void> | null = null;
 /** Au démarrage : version installée et possibilité de mettre à jour, sans réseau (la vérification vient après). */
-export async function initUpdateState(): Promise<void> {
+export function initUpdateState(): Promise<void> {
+  init ??= readLocalVersion();
+  return init;
+}
+
+async function readLocalVersion(): Promise<void> {
   const reason = await detect();
   if (reason) { set({ supported: false, reason }); return; }
   try {
