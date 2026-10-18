@@ -32,7 +32,7 @@ export function loadCatalog(db: Db): Catalog {
   const key = `${k.n}:${k.u}:${k.ri}`;
   if (cache?.key === key) return cache;
 
-  const rows = db.prepare(`SELECT id, name, image, type, total_min, dishes, rating, reviews, keywords, utensils FROM recipes WHERE unresolved = 0`).all() as Array<Record<string, any>>;
+  const rows = db.prepare(`SELECT id, name, image, type, total_min, dishes, rating, reviews, keywords, utensils, steps FROM recipes WHERE unresolved = 0`).all() as Array<Record<string, any>>;
   const bases = new Map<number, string[]>();
   for (const r of db.prepare('SELECT recipe_id, base FROM recipe_ingredients').all() as Array<{ recipe_id: number; base: string }>) {
     (bases.get(r.recipe_id) ?? bases.set(r.recipe_id, []).get(r.recipe_id)!).push(r.base);
@@ -40,6 +40,7 @@ export function loadCatalog(db: Db): Catalog {
   const entries = rows.map(r => ({
     id: r.id, name: r.name, image: r.image, type: r.type, totalMin: r.total_min, dishes: r.dishes, rating: r.rating, reviews: r.reviews,
     bases: bases.get(r.id) ?? [], keywords: JSON.parse(r.keywords), utensils: JSON.parse(r.utensils), hasImage: !!r.image,
+    stepsKey: ` ${normalizeKey((JSON.parse(r.steps) as string[]).join(' '))} `,
   }));
   const df = new Map<string, number>();
   for (const e of entries) for (const b of e.bases) df.set(b, (df.get(b) ?? 0) + 1);

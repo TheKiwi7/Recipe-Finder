@@ -15,6 +15,8 @@ export type Entry = {
   keywords: string[];
   utensils: string[];
   hasImage?: boolean;
+  /** Texte des étapes, normalisé : sert à repérer un ingrédient rejeté que la liste d'ingrédients oublie. */
+  stepsKey?: string;
 };
 
 export type Mode = 'ready' | 'almost';
@@ -38,6 +40,25 @@ export type Context = {
 export type Scored = { entry: Entry; missing: string[]; score: number; likeSim: number; dislikeSim: number };
 
 export const MAX_MISSING = 3;
+
+// Mots trop courts ou ambigus dans une phrase de préparation (« au lieu de », « œuf à la coque », « beurrer le moule »,
+// « à l'aide d'un couteau ») :
+// on ne les cherche pas dans les étapes, seulement dans la liste d'ingrédients.
+const STEP_STOPWORDS = new Set(['lieu', 'sole', 'loup', 'bar', 'coque', 'raie', 'bleu', 'mulet', 'perche', 'pied', 'chou', 'lard', 'vin', 'lait', 'moule', 'couteau', 'couteaux', 'plat', 'four', 'grille']);
+
+/**
+ * Marmiton oublie parfois un ingrédient dans la liste mais le cite dans les étapes (« 2 tranches de fromage de chèvre »).
+ * On cherche donc aussi dans les étapes les ingrédients rejetés et les exclusions (allergies, régime, aversions).
+ */
+function mentionsRejected(stepsKey: string, ctx: Context): boolean {
+  let words = stepWordsCache.get(ctx);
+  if (!words) {
+    words = [...[...ctx.banned].map(normalizeKey), ...ctx.exclusionWords].filter(w => w.length >= 4 && !STEP_STOPWORDS.has(w));
+    stepWordsCache.set(ctx, words);
+  }
+  return words.some(w => stepsKey.includes(` ${w} `));
+}
+const stepWordsCache = new WeakMap<Context, string[]>();
 
 const keyCache = new WeakMap<Entry, string[]>();
 const keysOf = (e: Entry) => keyCache.get(e) ?? keyCache.set(e, e.bases.map(normalizeKey)).get(e)!;
@@ -66,6 +87,7 @@ function isEligible(e: Entry, ctx: Context, mode: Mode, filters: Filters, missin
   if (!e.bases.some(b => !ctx.staples.has(b))) return false;
   if (e.bases.some(b => ctx.banned.has(b))) return false;
   if (ctx.exclusionWords.length && keysOf(e).some(k => containsWord(k, ctx.exclusionWords))) return false;
+  if (e.stepsKey && mentionsRejected(e.stepsKey, ctx)) return false;
   const owned = new Set(ctx.questionnaire.equipment);
   if (e.utensils.some(u => OPTIONAL_EQUIPMENT.includes(u) && !owned.has(u))) return false;
   if (filters.type && filters.type !== 'Tous' && e.type !== filters.type) return false;

@@ -24,6 +24,14 @@ test('une recette sans ingrédient reconnu hors placard n’est jamais proposée
   assert.deepEqual(rankCandidates([entry([]), entry(['sel', 'poivre'])], ctx(), 'ready', {}), []);
 });
 
+test('ingrédient rejeté cité seulement dans les étapes : recette exclue', () => {
+  const croque = entry(['pain de mie', 'oeuf'], { stepsKey: ' mettre une tranche de jambon et 2 tranche de fromage de chevre ' });
+  const omelette = entry(['oeuf'], { stepsKey: ' battre les oeuf au lieu de les brouiller puis beurrer le moule et couper au couteau ' });
+  const avail = new Set(['pain de mie', 'oeuf']);
+  const r = rankCandidates([croque, omelette], ctx({ available: avail, banned: new Set(['chèvre', 'moule', 'couteaux']), exclusionWords: ['lieu'] }), 'ready', {});
+  assert.deepEqual(r.map(s => s.entry.id), [omelette.id]);
+});
+
 test('une recette sans photo n’est pas proposée', () => {
   assert.deepEqual(rankCandidates([entry(['oeuf'], { hasImage: false })], ctx(), 'ready', {}), []);
 });
