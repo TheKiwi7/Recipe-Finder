@@ -149,8 +149,8 @@ function CatalogCard() {
         {remaining > 0 ? L(` · import en cours vers ${fr(s.target)} (encore ≈ ${duration(remaining)}, quand l’app est ouverte)`, ` · importing up to ${fr(s.target)} (≈ ${duration(remaining)} left, while the app is open)`) : null}.
       </p>
       <p className="muted small">
-        {L(`Marmiton liste ${fr(s.available)} recettes : ${fr(browsed)} déjà parcourues (${fr(s.rejected)} écartées pour note insuffisante), environ ${fr(left)} encore importables.`,
-          `Marmiton lists ${fr(s.available)} recipes: ${fr(browsed)} already browsed (${fr(s.rejected)} skipped for a low rating), about ${fr(left)} still importable.`)}
+        {L(`Marmiton publie ${fr(s.available)} recettes dans son plan du site (le site en annonce davantage, mais les autres n’y sont pas listées) : ${fr(browsed)} déjà parcourues (${fr(s.rejected)} écartées pour note insuffisante), environ ${fr(left)} encore importables. La liste est relue chaque semaine.`,
+          `Marmiton publishes ${fr(s.available)} recipes in its sitemap (the site announces more, but the others aren’t listed there): ${fr(browsed)} already browsed (${fr(s.rejected)} skipped for a low rating), about ${fr(left)} still importable. The list is re-read every week.`)}
       </p>
       <div className="add-recipes">
         <span className="muted">{L('Ajouter des recettes :', 'Add recipes:')}</span>

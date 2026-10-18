@@ -37,22 +37,32 @@ async function fetchText(url: string): Promise<{ status: number; body: string }>
   return { status: res.status, body: res.status === 200 ? await res.text() : '' };
 }
 
-/** Remplit la file avec toutes les URLs de recettes du sitemap, dans un ordre aléatoire. Une seule fois. */
+const RESEED_MS = 7 * 24 * 3600 * 1000;
+
+/**
+ * Remplit la file avec les URLs de recettes du sitemap (le plan du site public de Marmiton), dans un ordre aléatoire.
+ * Relu chaque semaine pour découvrir les nouvelles recettes ; les URLs déjà connues gardent leur état.
+ * Si un fichier du sitemap ne se charge pas, la lecture sera refaite au prochain import (rien n'est sauté).
+ */
 async function seedQueue(db: Db, signal?: AbortSignal): Promise<void> {
-  if (getMeta(db, 'marmiton_queue_seeded')) return;
+  const last = getMeta(db, 'marmiton_queue_seeded');
+  if (last && Date.now() - Date.parse(last) < RESEED_MS) return;
   const index = await fetchText(SITEMAP_INDEX);
   const sitemaps = [...index.body.matchAll(/<loc>\s*(.*?)\s*<\/loc>/g)].map(m => m[1]);
+  if (!sitemaps.length) return;
   const insert = db.prepare(`INSERT OR IGNORE INTO crawl_queue (url, source, position) VALUES (?, 'marmiton', ?)`);
+  let complete = true;
   for (const sm of sitemaps) {
     if (signal?.aborted) return;
     await sleep(DELAY_MS, signal);
-    const { body } = await fetchText(sm);
+    const { status, body } = await fetchText(sm);
+    if (status !== 200) { complete = false; continue; }
     const urls = [...body.matchAll(/<loc>\s*(.*?)\s*<\/loc>/g)].map(m => m[1]).filter(u => RECIPE_URL.test(u));
     db.exec('BEGIN');
     for (const u of urls) insert.run(u, Math.floor(Math.random() * 1e9));
     db.exec('COMMIT');
   }
-  setMeta(db, 'marmiton_queue_seeded', new Date().toISOString());
+  if (complete) setMeta(db, 'marmiton_queue_seeded', new Date().toISOString());
 }
 
 export function importProgress(db: Db, target: number): ImportProgress {
