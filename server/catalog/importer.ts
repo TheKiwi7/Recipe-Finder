@@ -2,7 +2,7 @@ import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ClaudeUnavailable } from '../claude.ts';
 import { DATA_DIR, getMeta, loadAliases, setMeta, type Db } from '../db.ts';
-import { resolveUnknownTerms } from './normalize-unknown.ts';
+import { consolidateBases, resolveUnknownTerms } from './normalize-unknown.ts';
 import { parseRecipePage, passesQuality } from './recipe.ts';
 import { saveRecipe } from './store.ts';
 
@@ -121,7 +121,14 @@ export async function runImport(db: Db, opts: { target: number; signal?: AbortSi
     if (before >= UNKNOWN_BATCH) { await flushUnknown(db, false, log); aliases = loadAliases(db); }
     opts.onProgress?.({ ...importProgress(db, opts.target), last });
   }
-  if (!opts.signal?.aborted) { await flushUnknown(db, true, log); }
+  if (!opts.signal?.aborted) {
+    await flushUnknown(db, true, log);
+    // Objectif atteint : on fusionne les ingrédients de base en double apparus pendant l'import.
+    if (importProgress(db, opts.target).imported >= opts.target) {
+      try { log(`${(await consolidateBases(db)).length} ingrédients en double fusionnés`); }
+      catch (e) { log(`Consolidation reportée (${e instanceof ClaudeUnavailable ? e.message : String(e)})`); }
+    }
+  }
 }
 
 const LOCK_FILE = join(DATA_DIR, 'import.lock');

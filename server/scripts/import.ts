@@ -1,16 +1,25 @@
-// Import du catalogue en ligne de commande : npm run import -- [--target 3000] [--normalize-only] [--renormalize-ignored]
+// Import du catalogue en ligne de commande : npm run import -- [--target 3000] [--normalize-only] [--renormalize-ignored] [--consolidate]
 // Reprend là où il s'était arrêté. Ctrl+C pour arrêter proprement.
 import { parseArgs } from 'node:util';
 import { openDb } from '../db.ts';
 import { acquireImportLock, importProgress, runImport } from '../catalog/importer.ts';
-import { requeueSuspiciousAliases, resolveUnknownTerms } from '../catalog/normalize-unknown.ts';
+import { consolidateBases, requeueSuspiciousAliases, resolveUnknownTerms } from '../catalog/normalize-unknown.ts';
 import { migrateCatalog, reresolveRecipes, syncSeed } from '../catalog/store.ts';
 
-const { values } = parseArgs({ options: { target: { type: 'string', default: '3000' }, 'normalize-only': { type: 'boolean', default: false }, 'renormalize-ignored': { type: 'boolean', default: false } } });
+const { values } = parseArgs({ options: { target: { type: 'string', default: '3000' }, 'normalize-only': { type: 'boolean', default: false }, 'renormalize-ignored': { type: 'boolean', default: false }, consolidate: { type: 'boolean', default: false } } });
 const db = openDb();
 syncSeed(db);
 migrateCatalog(db);
 const target = Number(values.target);
+
+if (values.consolidate) {
+  // Fusionne les ingrédients de base en double (« blanc de poulet » / « poulet »).
+  const merged = await consolidateBases(db);
+  for (const [dup, canon] of merged) console.log(`  ${dup} → ${canon}`);
+  console.log(`${merged.length} ingrédients fusionnés`);
+  console.log(importProgress(db, target));
+  process.exit(0);
+}
 
 if (values['renormalize-ignored']) {
   // Refait examiner par Claude les termes classés « pas un ingrédient » et les alias « X de Y → X » douteux.

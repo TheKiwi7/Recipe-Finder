@@ -16,6 +16,34 @@ Pour chaque terme, donne l'ingrédient de base tel qu'on l'achète et le range d
 - null UNIQUEMENT pour ce qui ne s'achète pas ou ne se mange pas : glaçons, eau de cuisson, jus de cuisson, restes, décoration non comestible.
 Réponds uniquement par un objet JSON {"terme": "base" | null}, avec exactement les termes reçus comme clés.`;
 
+const CONSOLIDATE_SYSTEM = `Tu nettoies la liste des ingrédients de base d'une app de recettes françaises. Une recette est « faisable » si la personne a chacun de ses ingrédients de base : deux noms pour un même produit font croire qu'il manque quelque chose.
+Repère les doublons : des noms différents pour un produit qu'on achète et range de la même façon (« blanc de poulet » et « poulet », « boisson aux amandes » et « lait végétal », « beurre de cacahuète » et « purée de cacahuète », « thon à l'huile » et « thon »).
+Ne fusionne PAS des produits distincts (« huile d'olive » ≠ « huile », « sucre glace » ≠ « sucre », « pâte brisée » ≠ « pâte feuilletée », « crème de coco » ≠ « crème fraîche »).
+Réponds uniquement par un objet JSON {"doublon": "nom canonique"}, où chaque nom canonique est un nom de la liste reçue. N'inclus que les doublons à fusionner.`;
+
+/** Fusionne les ingrédients de base qui désignent le même produit (un appel Claude Sonnet). Renvoie les fusions faites. */
+export async function consolidateBases(db: Db): Promise<Array<[dup: string, canon: string]>> {
+  const rows = db.prepare('SELECT base, COUNT(*) n FROM recipe_ingredients GROUP BY base ORDER BY n DESC').all() as Array<{ base: string; n: number }>;
+  const seedBases = new Set((db.prepare(`SELECT DISTINCT base FROM ingredient_aliases WHERE origin = 'seed' AND base IS NOT NULL`).all() as Array<{ base: string }>).map(r => r.base));
+  const all = new Set(rows.map(r => r.base));
+  const prompt = `Ingrédients de base (nombre de recettes) :\n${rows.map(r => `${r.base} (${r.n})`).join('\n')}`;
+  const reply = parseJsonReply<Record<string, string>>(await askClaude(prompt, { model: 'sonnet', system: CONSOLIDATE_SYSTEM, timeoutMs: 300_000 }));
+
+  const merged: Array<[string, string]> = [];
+  db.exec('BEGIN');
+  for (const [dup, canon] of Object.entries(reply)) {
+    // Le dictionnaire de départ fait foi : on ne renomme jamais une de ses bases.
+    if (dup === canon || !all.has(dup) || !all.has(canon) || seedBases.has(dup)) continue;
+    db.prepare('UPDATE ingredient_aliases SET base = ? WHERE base = ?').run(canon, dup);
+    db.prepare(`INSERT INTO ingredient_aliases (key, base, origin) VALUES (?, ?, 'claude') ON CONFLICT(key) DO UPDATE SET base = excluded.base WHERE origin = 'claude'`).run(normalizeKey(dup), canon);
+    for (const table of ['pantry', 'staples', 'banned_ingredients']) db.prepare(`UPDATE OR IGNORE ${table} SET base = ? WHERE base = ?`).run(canon, dup);
+    merged.push([dup, canon]);
+  }
+  db.exec('COMMIT');
+  if (merged.length) reresolveRecipes(db, true);
+  return merged;
+}
+
 /**
  * Remet en file les alias créés par Claude qui ramènent « X de Y » à X (« oeuf de saumon » → oeuf),
  * pour qu'ils soient réexaminés avec la consigne actuelle. Renvoie le nombre d'alias remis en file.
