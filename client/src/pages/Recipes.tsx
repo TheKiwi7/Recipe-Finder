@@ -12,7 +12,7 @@ import { L, memberName, typeLabel } from '../i18n.ts';
 /** « Pour : Moi · Julie · Léo » — qui mange ce repas (affiché dès qu'il y a plusieurs membres). */
 function EatersFilter({ mode }: { mode: Mode }) {
   const data = useMembers();
-  useEffect(() => { if (!data) void refreshMembers(); }, [data]);
+  useEffect(() => { if (!data) refreshMembers().catch(() => {}); }, [data]);
   if (!data || data.members.length < 2) return null;
   const toggle = async (id: number) => {
     try { await toggleEater(id); await setFilters(mode, listFilters(mode)); }

@@ -59,9 +59,11 @@ function Row({ item }: { item: PantryItem }) {
     if (v !== item.qty) save({ qty: v, unit: v === null ? null : item.unit ?? UNITS[0] });
   };
   const remove = async () => {
-    await api.deleteItem(item.id);
-    await refreshPantry();
-    toast(L(`« ${item.label} » retiré`, `“${item.label}” removed`));
+    try {
+      await api.deleteItem(item.id);
+      await refreshPantry();
+      toast(L(`« ${item.label} » retiré`, `“${item.label}” removed`));
+    } catch (e) { toast((e as Error).message); }
   };
 
   return (
@@ -92,11 +94,13 @@ const STAPLE_SUGGESTIONS = ['levure chimique', 'vanille', 'bouillon', 'maïzena'
 function Staples({ staples, pantryBases }: { staples: string[]; pantryBases: string[] }) {
   useTranslations();
   const [value, setValue] = useState('');
-  const save = async (next: string[]) => { await api.setStaples(next); await refreshPantry(); };
+  const save = async (next: string[]): Promise<boolean> => {
+    try { await api.setStaples(next); await refreshPantry(); return true; }
+    catch (e) { toast((e as Error).message); return false; }
+  };
   const add = async (v = value) => {
     if (!v.trim()) return;
-    await save([...staples, v.trim()]);
-    setValue('');
+    if (await save([...staples, v.trim()])) setValue('');
   };
   const have = new Set([...staples, ...pantryBases].map(s => s.toLowerCase()));
   const suggestions = STAPLE_SUGGESTIONS.filter(s => !have.has(s.toLowerCase()));
@@ -123,9 +127,11 @@ export function IngredientsPage() {
   if (!pantry) return null;
 
   const confirm = async () => {
-    await api.confirm();
-    await refreshPantry();
-    navigate('/recettes');
+    try {
+      await api.confirm();
+      await refreshPantry();
+      navigate('/recettes');
+    } catch (e) { toast((e as Error).message); }
   };
 
   return (

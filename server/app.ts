@@ -12,17 +12,21 @@ import { maybeUpdateProfile, profileStatus, profileText } from './profile.ts';
 import { askAboutRecipe, ChatError, chatHistory } from './chat.ts';
 import { exportData } from './export.ts';
 import { addMember, deleteMember, eaterIds, listMembers, setEaters, updateMember } from './members.ts';
-import { askProvider, claudeStatus, cooldownOf, invalidateLocalStatus, localStatus, route, type Provider } from './ai.ts';
+import { askProvider, claudeStatus, cooldownOf, gpuMemoryGB, invalidateLocalStatus, localStatus, recommendedLocalModel, route, type Provider } from './ai.ts';
 import { connectClaude, setupLocal, setupTask } from './setup.ts';
 import { setMeta } from './db.ts';
 import { AIUnavailable } from './ai.ts';
 import { L, lang, recipeTranslationStatus, requestTranslations, setLang, suggestTranslated, toFrench } from './i18n.ts';
 
 /** Modèles locaux proposés (Ollama) : le 12B par défaut, le 4B pour les PC sans grosse carte graphique. */
-const LOCAL_MODELS = () => [
-  { id: 'gemma3:12b', label: 'Gemma 3 12B', size: L('8 Go', '8 GB'), hint: L('recommandé avec une carte graphique de 12 Go ou plus', 'recommended with a graphics card of 12 GB or more') },
-  { id: 'gemma3:4b', label: 'Gemma 3 4B', size: L('3 Go', '3 GB'), hint: L('plus léger, pour une petite carte graphique ou sans carte graphique', 'lighter, for a small graphics card or none') },
-];
+const LOCAL_MODELS = () => {
+  const gb = gpuMemoryGB();
+  const forThisPC = (id: string) => (id === recommendedLocalModel() ? L(' — conseillé pour ce PC', ' — best for this PC') + (gb ? L(` (carte graphique de ${gb} Go)`, ` (${gb} GB graphics card)`) : '') : '');
+  return [
+    { id: 'gemma3:12b', label: 'Gemma 3 12B', size: L('8 Go', '8 GB'), hint: L('meilleur, pour une carte graphique de 10 Go ou plus', 'better, for a graphics card of 10 GB or more') + forThisPC('gemma3:12b') },
+    { id: 'gemma3:4b', label: 'Gemma 3 4B', size: L('3 Go', '3 GB'), hint: L('plus léger, pour une petite carte graphique ou sans carte graphique', 'lighter, for a small graphics card or none') + forThisPC('gemma3:4b') },
+  ];
+};
 const toFrenchAll = (db: Db, xs: unknown) => Promise.all((Array.isArray(xs) ? xs : []).map(x => toFrench(db, String(x))));
 
 const MIME: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };

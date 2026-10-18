@@ -46,7 +46,10 @@ function MemberRow({ m }: { m: Member }) {
         {m.isSelf && <span className="ai-pill ok">{L('Moi', 'Me')}</span>}
         {!m.isSelf && (
           <button className="icon-btn danger" title={L(`Retirer ${m.name}`, `Remove ${m.name}`)} aria-label={L(`Retirer ${m.name}`, `Remove ${m.name}`)}
-            onClick={async () => { await api.deleteMember(m.id); await refreshMembers(); invalidateLists(); toast(L(`${m.name} retiré·e`, `${m.name} removed`)); }}><Trash2 size={17} /></button>
+            onClick={async () => {
+              try { await api.deleteMember(m.id); await refreshMembers(); invalidateLists(); toast(L(`${m.name} retiré·e`, `${m.name} removed`)); }
+              catch (e) { toast((e as Error).message); }
+            }}><Trash2 size={17} /></button>
         )}
       </div>
       {m.isSelf ? (
@@ -73,7 +76,7 @@ function MemberRow({ m }: { m: Member }) {
 export function MembersCard() {
   const data = useMembers();
   const [name, setName] = useState('');
-  useEffect(() => { void refreshMembers(); }, []);
+  useEffect(() => { refreshMembers().catch(() => {}); }, []);
   if (!data) return null;
 
   const add = async () => {

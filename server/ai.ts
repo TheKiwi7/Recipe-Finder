@@ -1,5 +1,6 @@
 import { L } from './i18n.ts';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { constants as osConstants, setPriority } from 'node:os';
 import { existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_DIR, getMeta, type Db } from './db.ts';
@@ -18,12 +19,29 @@ export type Lane = 'background' | 'interactive';
 
 export class AIUnavailable extends Error {}
 
-export const DEFAULT_LOCAL_MODEL = 'gemma3:12b';
 const OLLAMA = 'http://127.0.0.1:11434';
 
+// ---------- modèle local adapté au PC ----------
+// Le 12B demande une carte graphique de 10-12 Go ; sur une carte plus petite (ou sans), il déborderait sur le
+// processeur et ferait tourner le PC à fond. Mémoire vidéo lue dans le registre (toutes marques de cartes).
+let gpuGB: number | null = null;
+function detectGpuMemory(): void {
+  const key = 'HKLM:\\SYSTEM\\ControlSet001\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0*';
+  const ps = spawn('powershell', ['-NoProfile', '-Command',
+    `(Get-ItemProperty '${key}' -ErrorAction SilentlyContinue | ForEach-Object { $_.'HardwareInformation.qwMemorySize' }) | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum`],
+  { windowsHide: true });
+  let out = '';
+  ps.stdout.on('data', d => (out += d));
+  ps.on('error', () => {});
+  ps.on('close', () => { const bytes = Number(out.trim()); if (bytes > 0) gpuGB = Math.round(bytes / 1024 ** 3); });
+}
+export const gpuMemoryGB = () => gpuGB;
+/** Modèle conseillé pour ce PC : le 12B avec ≥ 10 Go de mémoire vidéo, sinon le 4B (inconnu : le 4B, par prudence). */
+export const recommendedLocalModel = () => (gpuGB !== null && gpuGB >= 10 ? 'gemma3:12b' : 'gemma3:4b');
+
 let db: Db | null = null;
-export function initAI(database: Db): void { db = database; }
-export const localModel = () => (db && getMeta(db, 'local_model')) || DEFAULT_LOCAL_MODEL;
+export function initAI(database: Db): void { db = database; detectGpuMemory(); }
+export const localModel = () => (db && getMeta(db, 'local_model')) || recommendedLocalModel();
 
 // ---------- localisation des exécutables (y compris juste après une installation par winget) ----------
 
@@ -43,12 +61,12 @@ export const ollamaExe = () => findExe('ollama', [join(LOCALAPPDATA, 'Programs',
 // ---------- pause après une erreur (limite d'usage, panne) ----------
 
 /** Un fournisseur en échec est laissé tranquille un moment : pas d'essais en rafale, l'autre prend le relais. */
-const cooldowns = new Map<Provider, { until: number; reason: string }>();
+const cooldowns = new Map<Provider, { until: number; reason: string; limit: boolean }>();
 const LIMIT = /hit your limit|usage limit|rate limit|limit reached|quota/i;
 
 function coolDown(p: Provider, error: string): void {
-  const ms = LIMIT.test(error) ? 30 * 60_000 : 2 * 60_000;
-  cooldowns.set(p, { until: Date.now() + ms, reason: error.slice(0, 200) });
+  const limit = LIMIT.test(error);
+  cooldowns.set(p, { until: Date.now() + (limit ? 30 * 60_000 : 2 * 60_000), reason: error.slice(0, 200), limit });
 }
 export function cooldownOf(p: Provider): { until: string; reason: string } | null {
   const c = cooldowns.get(p);
@@ -104,12 +122,30 @@ export async function localStatus(): Promise<LocalStatus> {
   return value;
 }
 
-/** Ordre de préférence selon la tâche, restreint aux fournisseurs prêts et pas en pause. */
+/** Fournisseurs : état et appel. Remplaçables dans les tests (bascule Claude ↔ modèle local). */
+export const providers = {
+  async ready(p: Provider): Promise<boolean> {
+    if (p === 'claude') return (await claudeStatus()).state === 'ready';
+    const s = await localStatus();
+    if (s.state === 'not-running') reviveOllama(); // Ollama planté ou arrêté : on le relance pour la prochaine fois
+    return s.state === 'ready';
+  },
+  call: (p: Provider, prompt: string, opts: AskOptions): Promise<string> => (p === 'claude' ? callClaude(prompt, opts) : callLocal(prompt, opts)),
+};
+
+/**
+ * Ordre de préférence selon la tâche, restreint aux fournisseurs prêts et pas en pause. Si tous les fournisseurs
+ * prêts sont en pause, on retente quand même ceux qui ont eu une simple panne (pas ceux qui ont atteint leur limite).
+ */
 export async function route(lane: Lane): Promise<Provider[]> {
-  const [c, l] = await Promise.all([claudeStatus(), localStatus()]);
   const order: Provider[] = lane === 'interactive' ? ['claude', 'local'] : ['local', 'claude'];
-  return order.filter(p => (p === 'claude' ? c.state === 'ready' : l.state === 'ready') && !cooldownOf(p));
+  const ready = (await Promise.all(order.map(async p => ((await providers.ready(p)) ? p : null)))).filter((p): p is Provider => !!p);
+  const free = ready.filter(p => !cooldownOf(p));
+  return free.length ? free : ready.filter(p => !cooldowns.get(p)?.limit);
 }
+
+/** Pour les tests : oublie les pauses et la fermeture. */
+export function resetAIState(): void { cooldowns.clear(); closing = false; }
 
 // ---------- Ollama : démarré caché avec l'app, arrêté avec elle ----------
 
@@ -122,7 +158,13 @@ export async function ensureOllama(): Promise<boolean> {
   if (s.state !== 'not-running') return s.state !== 'not-installed';
   const exe = ollamaExe();
   if (!exe) return false;
-  spawn(exe, ['serve'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  // Pas « detached » : sans console, chaque sous-programme d'Ollama (moteur du modèle, détection de la carte
+  // graphique) ouvrirait sa propre fenêtre. Avec une console masquée, ils en héritent et restent invisibles ;
+  // et Ollama s'arrête aussi si le serveur de l'app plante.
+  const child = spawn(exe, ['serve'], { stdio: 'ignore', windowsHide: true });
+  child.unref();
+  // Priorité basse : sur un PC sans grosse carte graphique, le modèle ne doit pas ralentir le reste.
+  try { if (child.pid) setPriority(child.pid, osConstants.priority.PRIORITY_BELOW_NORMAL); } catch { /* sans importance */ }
   ollamaStartedByUs = true;
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 1_000));
@@ -131,6 +173,14 @@ export async function ensureOllama(): Promise<boolean> {
     if (s.state !== 'not-running') return true;
   }
   return false;
+}
+
+let lastRevive = 0;
+/** Ollama installé mais arrêté (planté, fermé par quelqu'un) : relancé, au plus une fois par minute. */
+function reviveOllama(): void {
+  if (closing || !ollamaExe() || Date.now() - lastRevive < 60_000) return;
+  lastRevive = Date.now();
+  void ensureOllama();
 }
 
 /**
@@ -190,30 +240,54 @@ export function abortAllAI(): void {
 
 export type AskOptions = { tier: Tier; lane: Lane; system?: string; timeoutMs?: number; json?: boolean };
 
+/**
+ * Tâches de fond sur le modèle local : après chacune, la carte graphique se repose deux fois plus longtemps
+ * qu'elle n'a travaillé (≤ 33 % du temps occupée en moyenne, au lieu de 100 % pendant une longue traduction).
+ * Rien de tel pour ce que la personne attend à l'écran (chat, traduction d'une recette ouverte).
+ */
+const REST_RATIO = 2;
+const MAX_REST_MS = 2 * 60_000;
+let backgroundRest = 0;
+
 export function askAI(prompt: string, opts: AskOptions): Promise<string> {
   const job = lanes[opts.lane].catch(() => {}).then(() => askRouted(prompt, opts));
-  lanes[opts.lane] = job;
+  lanes[opts.lane] = opts.lane === 'background'
+    ? job.catch(() => {}).then(() => { const ms = backgroundRest; backgroundRest = 0; return ms && !closing ? new Promise(r => setTimeout(r, ms)) : undefined; })
+    : job;
   return job;
+}
+
+/** Réponse inutilisable (vide, ou pas du JSON quand on en attend) : l'autre IA prend le relais, sans mettre celle-ci en pause. */
+class BadReply extends Error {}
+function checkReply(text: string, opts: AskOptions): string {
+  if (!text.trim()) throw new BadReply('Réponse vide');
+  if (opts.json) { try { parseJsonReply(text); } catch { throw new BadReply(`Réponse illisible : ${text.slice(0, 120)}`); } }
+  return text;
 }
 
 async function askRouted(prompt: string, opts: AskOptions): Promise<string> {
   if (closing) throw new AIUnavailable(L('L’app se ferme', 'The app is closing'));
-  const providers = await route(opts.lane);
-  if (providers.length === 0) {
+  const candidates = await route(opts.lane);
+  if (candidates.length === 0) {
     const paused = (['claude', 'local'] as Provider[]).map(cooldownOf).find(Boolean);
     throw new AIUnavailable(paused ? L(`IA en pause (${paused.reason})`, `AI paused (${paused.reason})`) : L("Aucune IA n'est configurée (Réglages → Intelligence artificielle)", 'No AI is set up (Settings → Artificial intelligence)'));
   }
   let lastError: unknown;
-  for (const p of providers) {
+  for (const p of candidates) {
+    const started = Date.now();
     try {
-      return p === 'claude' ? await callClaude(prompt, opts) : await callLocal(prompt, opts);
+      return checkReply(await providers.call(p, prompt, opts), opts);
     } catch (e) {
       if (closing) throw new AIUnavailable(L('L’app se ferme', 'The app is closing'));
       lastError = e;
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`[ia] ${new Date().toISOString()} ${p} ${opts.lane}/${opts.tier} : ${msg}`);
-      coolDown(p, msg);
-      if (p === 'local') invalidateLocalStatus();
+      if (!(e instanceof BadReply)) {
+        coolDown(p, msg);
+        if (p === 'local') invalidateLocalStatus();
+      }
+    } finally {
+      if (p === 'local' && opts.lane === 'background') backgroundRest = Math.min(MAX_REST_MS, (Date.now() - started) * REST_RATIO);
     }
   }
   throw lastError instanceof AIUnavailable ? lastError : new AIUnavailable(String((lastError as Error)?.message ?? lastError));
