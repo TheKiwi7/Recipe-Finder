@@ -68,7 +68,7 @@ export function bannedBases(db: Db): Set<string> {
   return new Set((db.prepare('SELECT base FROM banned_ingredients').all() as Array<{ base: string }>).map(r => r.base));
 }
 
-function availableBases(db: Db) {
+export function availableBases(db: Db) {
   const pantry = db.prepare('SELECT base, urgent FROM pantry').all() as Array<{ base: string; urgent: number }>;
   const staples = new Set((db.prepare('SELECT base FROM staples').all() as Array<{ base: string }>).map(r => r.base));
   return { available: withGenerics(new Set([...pantry.map(p => p.base), ...staples])), urgent: new Set(pantry.filter(p => p.urgent).map(p => p.base)), staples };

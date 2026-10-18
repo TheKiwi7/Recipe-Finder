@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { CircleDashed, Loader2, SearchX } from 'lucide-react';
+import { CircleDashed, Compass, Loader2, SearchX } from 'lucide-react';
 import type { Mode } from '../api.ts';
 import { RecipeCard } from '../components/RecipeCard.tsx';
 import { usePantry } from '../pantry-store.ts';
-import { ensureList, listFilters, loadMore, setFilters, useList } from '../recipes-store.ts';
+import { ensureList, listFilters, loadMore, PAGE, setFilters, useList } from '../recipes-store.ts';
 import { navigate } from '../router.ts';
 import { refreshMembers, toggleEater, useMembers } from '../members-store.ts';
 import { toast } from '../toast.tsx';
@@ -44,10 +44,12 @@ export function RecipesPage({ mode }: { mode: Mode }) {
   useEffect(() => { void ensureList(mode, version); }, [mode, version, list.stale]);
 
   const visible = list.items.length;
-  const title = mode === 'ready' ? L('Recettes', 'Recipes') : L('Presque', 'Almost');
-  const sub = mode === 'ready'
-    ? L('Faisables avec ce que tu as, sans rien acheter.', 'Doable with what you have, nothing to buy.')
-    : L('Il te manque 1 à 3 ingrédients — souvent faciles à trouver.', 'You’re missing 1 to 3 ingredients — usually easy to find.');
+  const title = { ready: L('Recettes', 'Recipes'), almost: L('Presque', 'Almost'), discover: L('Découvrir', 'Discover') }[mode];
+  const sub = {
+    ready: L('Faisables avec ce que tu as, sans rien acheter.', 'Doable with what you have, nothing to buy.'),
+    almost: L('Il te manque 1 à 3 ingrédients — souvent faciles à trouver.', 'You’re missing 1 to 3 ingredients — usually easy to find.'),
+    discover: L('Des recettes qui devraient te plaire d’après tes goûts, pour lesquelles il faudra faire quelques courses.', 'Recipes you should like based on your tastes — you’ll need to do some shopping for them.'),
+  }[mode];
 
   return (
     <>
@@ -73,15 +75,15 @@ export function RecipesPage({ mode }: { mode: Mode }) {
 
       {!list.loaded && list.loading ? <SkeletonGrid /> : visible === 0 && list.loaded ? (
         <div className="card empty">
-          <SearchX size={36} />
+          {mode === 'discover' ? <Compass size={36} /> : <SearchX size={36} />}
           <b>{mode === 'ready' ? L('Aucune recette faisable avec ton stock actuel', 'No recipe doable with your current pantry') : L('Rien à proposer pour le moment', 'Nothing to suggest for now')}</b>
-          {mode === 'ready'
+          {mode === 'discover' ? L('Essaie un autre filtre.', 'Try another filter.') : mode === 'ready'
             ? <>{L('Essaie un autre filtre, ajoute des ingrédients, ou regarde ', 'Try another filter, add ingredients, or look at ')}<a href="/presque" onClick={e => { e.preventDefault(); navigate('/presque'); }}>{L('les recettes où il manque presque rien', 'the recipes where almost nothing is missing')}</a>.</>
             : L('Essaie un autre filtre ou ajoute des ingrédients à ton stock.', 'Try another filter or add ingredients to your pantry.')}
         </div>
       ) : (
         <>
-          <div className="grid">{list.items.map(c => <RecipeCard key={c.id} card={c} showMissing={mode === 'almost'} showType={list.filters.type === 'Tous'} />)}</div>
+          <div className="grid">{list.items.map(c => <RecipeCard key={c.id} card={c} showMissing={mode !== 'ready'} showType={list.filters.type === 'Tous'} />)}</div>
           {list.exhausted ? (
             <p className="endnote">
               {mode === 'ready'
@@ -90,7 +92,7 @@ export function RecipesPage({ mode }: { mode: Mode }) {
             </p>
           ) : (
             <button className="btn btn-ghost more" onClick={() => loadMore(mode)} disabled={list.loading}>
-              {list.loading ? <Loader2 size={17} className="spin" /> : null}{L('Charger 10 recettes de plus', 'Load 10 more recipes')}
+              {list.loading ? <Loader2 size={17} className="spin" /> : null}{L(`Charger ${PAGE} recettes de plus`, `Load ${PAGE} more recipes`)}
             </button>
           )}
         </>

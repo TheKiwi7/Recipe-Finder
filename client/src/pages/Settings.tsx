@@ -9,7 +9,7 @@ import { toast } from '../toast.tsx';
 import { LoadState, useLoad } from '../use-load.tsx';
 import { LangSwitch } from '../components/LangSwitch.tsx';
 import { TranslatedName } from '../components/RecipeCard.tsx';
-import { L, num, tTerm, useTranslations } from '../i18n.ts';
+import { L, num, tTerm, typeLabel, useTranslations } from '../i18n.ts';
 
 function ago(iso: string | null): string {
   if (!iso) return L('jamais', 'never');
@@ -159,7 +159,39 @@ function CatalogCard() {
         ))}
       </div>
       {s.pending === 0 && <p className="muted small" style={{ marginTop: 12 }}>{L('Toutes les recettes disponibles sur Marmiton ont été parcourues.', 'Every recipe available on Marmiton has been browsed.')}</p>}
+      <ImportPriority />
       <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>{L('Plus de recettes = plus de propositions faisables avec ton stock. L’import lit une page toutes les 2,5 s pour rester discret envers Marmiton, puis continue d’ajouter ~100 recettes par semaine.', 'More recipes = more suggestions doable with your pantry. The import reads one page every 2.5 s to stay gentle on Marmiton, then keeps adding ~100 recipes a week.')}</p>
+    </div>
+  );
+}
+
+const IMPORT_TYPES = ['Plat', 'Entrée', 'Accompagnement', 'Dessert', 'Apéro', 'Petit-déj.', 'Boisson', 'Sauce'];
+
+/** Types de recettes à importer en priorité (le type est deviné d'après le nom, avant de lire la page). */
+function ImportPriority() {
+  const { data: p, setData } = useLoad(() => api.importPriority());
+  if (!p) return null;
+  const toggle = async (t: string) => {
+    const types = p.types.includes(t) ? p.types.filter(x => x !== t) : [...p.types, t];
+    try { setData(await api.setImportPriority(types)); } catch (e) { toast((e as Error).message); }
+  };
+  return (
+    <div className="import-priority">
+      <span className="muted small">{L('Importer en priorité :', 'Import first:')}</span>
+      <div className="qchips">
+        {IMPORT_TYPES.map(t => <button key={t} className={`fchip ${p.types.includes(t) ? 'on' : ''}`} onClick={() => toggle(t)}>{typeLabel(t)}</button>)}
+      </div>
+      <p className="muted small" style={{ margin: '8px 0 0' }}>
+        {p.types.length === 0
+          ? L('Aucune priorité : les recettes arrivent dans un ordre aléatoire, tous types mélangés.', 'No priority: recipes arrive in random order, all types mixed.')
+          : p.remaining > 0 && p.baseline >= 0.65
+            ? L(`Ces types font déjà la majorité des recettes (${Math.round(p.baseline * 10)} sur 10) : la priorité change peu de choses. ${num(p.remaining)} recettes prioritaires restent à importer, puis l’import continue avec les autres types.`,
+              `These types are already most recipes (${Math.round(p.baseline * 10)} in 10): the priority makes little difference. ${num(p.remaining)} priority recipes are left to import, then the import carries on with the other types.`)
+          : p.remaining > 0
+            ? L(`Ces types passent en premier : environ 8 recettes importées sur 10 en seront (contre ${Math.max(1, Math.round(p.baseline * 10))} sur 10 sans priorité). Ce n’est pas un filtre : le type n’est connu qu’une fois la recette lue, l’app le devine d’après son nom. ${num(p.remaining)} recettes prioritaires restent à importer ; ensuite, l’import continue avec les autres types.`,
+              `These types come first: about 8 in 10 imported recipes will be of them (vs ${Math.max(1, Math.round(p.baseline * 10))} in 10 without priority). It isn’t a filter: a recipe’s type is only known once it’s read, so the app guesses it from its name. ${num(p.remaining)} priority recipes are left to import; after that, the import carries on with the other types.`)
+            : L('Plus de nouvelles recettes de ces types à importer : l’import continue avec les autres types.', 'No more new recipes of these types to import: the import carries on with the other types.')}
+      </p>
     </div>
   );
 }

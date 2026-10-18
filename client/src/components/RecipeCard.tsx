@@ -58,7 +58,7 @@ export function RecipeCard({ card, showMissing, showType, onReaction }: { card: 
       <div className="rcard-body">
         <h3 className="rcard-name"><TranslatedName id={card.id} name={card.name} /></h3>
         {showMissing && card.missing.length > 0 && (
-          <p className="rcard-missing">{L('Manque : ', 'Missing: ')}{card.missing.map(tTerm).join(', ')}</p>
+          <p className="rcard-missing">{L('Manque : ', 'Missing: ')}{card.missing.length > 4 ? `${card.missing.slice(0, 3).map(tTerm).join(', ')} +${card.missing.length - 3}` : card.missing.map(tTerm).join(', ')}</p>
         )}
         <div className="meta">
           <span title={L('Temps total', 'Total time')}><Clock size={14} />{fmtTime(card.totalMin)}</span>

@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { typeGuesser } from '../catalog/importer.ts';
 import assert from 'node:assert/strict';
 import { allergenKey, DEFAULT_QUESTIONNAIRE, exclusionWords } from '../preferences.ts';
 import { bayesianRating, pickBatch, rankCandidates, similarity, type Context, type Entry } from './rank.ts';
@@ -133,4 +134,28 @@ test('lot : 10 recettes dont ~3 explorations, sans doublon', () => {
   const batch = pickBatch(ranked, 10, () => ((seed = (seed * 16807) % 2147483647) / 2147483647));
   assert.equal(batch.length, 10);
   assert.equal(new Set(batch.map(s => s.entry.id)).size, 10);
+});
+
+test('onglet Découvrir : recettes à plus de 3 manquants, classées d’après les goûts', () => {
+  const liked = entry(['saumon', 'aneth', 'citron', 'crème fraîche', 'pomme de terre']);
+  const proche = entry(['saumon', 'aneth', 'citron', 'fenouil', 'pomme de terre']);
+  const loin = entry(['boeuf', 'carotte', 'navet', 'poireau', 'céleri'], { rating: 4.9, reviews: 300 });
+  const presque = entry(['poulet', 'safran']); // 1 manquant : c'est pour l'onglet Presque
+  // Assez de likes : les recettes proches passent devant une recette mieux notée mais éloignée des goûts.
+  const r = rankCandidates([proche, loin, presque], ctx({ liked: Array(8).fill(liked) }), 'discover', {});
+  assert.deepEqual(r.map(s => s.entry.id), [proche.id, loin.id]);
+  // Un seul like ne tire pas toute la liste : c'est alors le profil qui oriente.
+  const profil = { ingredients: { boeuf: 0.7, poireau: 0.5 } };
+  const r1 = rankCandidates([proche, loin], ctx({ liked: [liked], weights: profil }), 'discover', {});
+  assert.deepEqual(r1.map(s => s.entry.id), [loin.id, proche.id]);
+});
+
+test('priorité d’import : le type est deviné d’après les mots de l’adresse', () => {
+  const ex = (slug: string, type: string) => ({ url: `https://www.marmiton.org/recettes/recette_${slug}_1.aspx`, type });
+  const guess = typeGuesser([
+    ex('gateau-au-chocolat', 'Dessert'), ex('tarte-aux-pommes', 'Dessert'), ex('mousse-au-chocolat', 'Dessert'),
+    ex('poulet-basquaise', 'Plat'), ex('roti-de-porc', 'Plat'), ex('poulet-au-curry', 'Plat'), ex('puree-de-carottes', 'Accompagnement'),
+  ], ['Plat', 'Accompagnement']);
+  assert.ok(guess('https://www.marmiton.org/recettes/recette_poulet-roti_9.aspx') > 0.5);
+  assert.ok(guess('https://www.marmiton.org/recettes/recette_fondant-au-chocolat_9.aspx') < 0.5);
 });

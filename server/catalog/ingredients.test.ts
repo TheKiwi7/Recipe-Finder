@@ -27,6 +27,14 @@ test('sans quantité, fractions, parenthèses, alternatives', () => {
   assert.equal(parseIngredientLine('quelques feuilles de basilic').name, 'feuilles de basilic');
 });
 
+test('parenthèse cassée par le site : la mesure avant, l’ingrédient après', () => {
+  assert.deepEqual(parseIngredientLine("2 riz ) d'eau bouillante"), { raw: '2 volumes de riz d’eau bouillante', qty: 2, unit: 'volumes de riz', name: 'eau bouillante' });
+  assert.equal(parseIngredientLine("1 pot de yaourt ) d'huile").name, 'huile');
+  assert.equal(parseIngredientLine("1 pot de yaourt ) d'huile").raw, '1 pot de yaourt d’huile');
+  assert.equal(parseIngredientLine('4 tranches d\'escalopes ) de poulet').name, 'poulet');
+  assert.equal(base("2 riz ) d'eau bouillante"), 'eau');
+});
+
 test('ingrédient de base', () => {
   assert.equal(base("2 gousses d'ail hachées"), 'ail');
   assert.equal(base('3 oeufs'), 'oeuf');

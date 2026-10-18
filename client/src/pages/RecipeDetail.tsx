@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Archive, ExternalLink, Languages, Loader2, Minus, Plus, RefreshCw, Star, ThumbsDown, Undo2 } from 'lucide-react';
+import { ArrowLeft, Archive, ChefHat, ExternalLink, Languages, Loader2, Minus, Plus, RefreshCw, Star, ThumbsDown, Undo2 } from 'lucide-react';
 import { api, type RecipeDetail, type RecipeTranslation } from '../api.ts';
 import { RecipeImage, ReactButtons } from '../components/RecipeCard.tsx';
 import { dishesLabel, fmtTime, scaleLine } from '../format.ts';
@@ -7,6 +7,7 @@ import { dec, L, lang, rememberName, tName, tTerm, typeLabel, useTranslations } 
 import { invalidateLists } from '../recipes-store.ts';
 import { navigate } from '../router.ts';
 import { toast } from '../toast.tsx';
+import { setShopping } from '../shopping-store.ts';
 
 function Stat({ label, value }: { label: string; value: string }) {
   return <div className="stat"><small>{label}</small><b>{value}</b></div>;
@@ -76,6 +77,17 @@ export function RecipeDetailPage({ id, onChat }: { id: number; onChat?: (r: Reci
   const banned = new Set(r.banned);
   const steps = tx?.steps ?? r.steps;
 
+  // « Je la fais » : ce qui manque pour ce nombre de personnes (absent, ou pas en quantité suffisante) part dans les Courses.
+  const cook = async () => {
+    try {
+      const res = await api.cook(r.id, people);
+      setShopping(res.items);
+      const n = res.added.length;
+      toast(n === 0 ? L('Tu as tout ce qu’il faut, bon appétit !', 'You have everything you need, enjoy!')
+        : L(`${n} ingrédient${n > 1 ? 's' : ''} ajouté${n > 1 ? 's' : ''} à tes courses`, `${n} ingredient${n > 1 ? 's' : ''} added to your shopping list`));
+    } catch (e) { toast((e as Error).message); }
+  };
+
   const toggleBan = async (base: string) => {
     if (pendingBans.has(base)) return; // un double-clic ne doit pas exclure puis réautoriser aussitôt
     const isBanned = banned.has(base);
@@ -98,6 +110,9 @@ export function RecipeDetailPage({ id, onChat }: { id: number; onChat?: (r: Reci
           <RecipeImage src={r.image} className="detail-img" />
           <div className="detail-actions">
             <ReactButtons card={r} large onChange={reaction => setR({ ...r, reaction })} />
+            {!r.archived && <button className="btn btn-primary cook-btn" onClick={cook} title={L(`Ce qui manque pour ${people} pers. part dans tes courses`, `What’s missing for ${people} ${people > 1 ? 'people' : 'person'} goes on your shopping list`)}>
+              <ChefHat size={17} />{L('Je la fais', 'I’ll make it')}
+            </button>}
             {r.url && <a className="srclink" href={r.url} target="_blank" rel="noopener noreferrer">{L('Voir sur Marmiton', 'View on Marmiton (French)')}<ExternalLink size={15} /></a>}
           </div>
           {r.archived && <p className="archived"><Archive size={14} />{L('Copie locale : la recette n’est plus disponible sur le site.', 'Local copy: the recipe is no longer available on the site.')}</p>}

@@ -32,7 +32,20 @@ function toNumber(text: string): number {
   return b ? a / b : a;
 }
 
+// Précision entre parenthèses cassée par Marmiton : « 2 riz ) d'eau bouillante » (pour « 2 volumes (de riz) d'eau
+// bouillante »), « 1 pot de yaourt ) d'huile ». Ce qui précède la parenthèse est une mesure, l'ingrédient vient après.
+const ORPHAN = /^(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?)\s+([^()]+?)\s*\)\s*(d['’]\s*|de\s+)([^()]+)$/i;
+const MEASURE_WORD = new RegExp(`^(${WORD_UNITS.join('|')})\\b`, 'i');
+
 export function parseIngredientLine(raw: string): Omit<IngredientLine, 'base'> {
+  const orphan = raw.replace(/\s+/g, ' ').trim().match(ORPHAN);
+  if (orphan) {
+    const [, q, measure, de, rest] = orphan;
+    const qty = toNumber(q);
+    const unit = MEASURE_WORD.test(measure) ? measure : `${qty > 1 ? 'volumes' : 'volume'} de ${measure}`;
+    const of = /^d['’]/i.test(de) ? 'd’' : 'de ';
+    return { raw: `${q} ${unit} ${of}${rest.trim()}`, qty, unit, name: parseIngredientLine(rest).name };
+  }
   let s = raw.replace(/[½¼¾⅓⅔]/g, c => FRACTIONS[c]).replace(/\s+/g, ' ').trim();
   let qty: number | null = null;
   let unit: string | null = null;

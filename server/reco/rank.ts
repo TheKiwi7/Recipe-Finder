@@ -19,7 +19,8 @@ export type Entry = {
   stepsKey?: string;
 };
 
-export type Mode = 'ready' | 'almost';
+/** ready : faisable ; almost : 1 à 3 manquants ; discover : plus de manquants, choisies d'après les goûts. */
+export type Mode = 'ready' | 'almost' | 'discover';
 export type Filters = { type?: string; maxTime?: number };
 
 export type Context = {
@@ -93,7 +94,7 @@ function isEligible(e: Entry, ctx: Context, mode: Mode, filters: Filters, missin
   if (e.hasImage === false) return false; // les listes montrent des recettes avec photo
   if (filters.type && filters.type !== 'Tous' && e.type !== filters.type) return false;
   if (filters.maxTime && (e.totalMin === 0 || e.totalMin > filters.maxTime)) return false;
-  if (mode === 'ready' ? missing.length !== 0 : missing.length < 1 || missing.length > MAX_MISSING) return false;
+  if (mode === 'ready' ? missing.length !== 0 : mode === 'almost' ? missing.length < 1 || missing.length > MAX_MISSING : missing.length <= MAX_MISSING) return false;
   // Au moins un vrai ingrédient hors placard : sinon une recette dont rien n'est reconnu serait toujours « faisable ».
   if (!e.bases.some(b => !ctx.staples.has(b))) return false;
   if (e.bases.some(b => ctx.banned.has(b))) return false;
@@ -114,19 +115,24 @@ export function bayesianRating(rating: number, reviews: number): number {
 
 export function scoreEntry(e: Entry, ctx: Context, missing: string[], mode: Mode): Scored {
   let score = 0;
+  const discover = mode === 'discover';
   const own = e.bases.filter(b => ctx.available.has(b) && !ctx.staples.has(b));
 
-  // Utiliser son stock, en priorité ce qui doit être fini vite.
-  score += Math.min(0.6, 0.12 * own.length);
+  // Utiliser son stock, en priorité ce qui doit être fini vite. (Découvrir : le stock ne compte pas, seulement les goûts.)
+  if (!discover) score += Math.min(0.6, 0.12 * own.length);
   score += Math.min(1.2, 0.6 * own.filter(b => ctx.urgent.has(b)).length);
 
   // Recettes éprouvées ; malus léger sans note (Q34). Peu d'avis : la note est ramenée vers la moyenne.
   score += e.rating === null || e.reviews === 0 ? -0.15 : (bayesianRating(e.rating, e.reviews) - 4.2) * 0.4 + Math.min(0.15, Math.log10(1 + e.reviews) * 0.05);
 
-  // Goûts : léger bonus vers les likes, pénalité vers les dislikes.
+  // Goûts : léger bonus vers les likes, pénalité vers les dislikes. Onglet Découvrir : ils pèsent plus, d'autant plus
+  // qu'il y en a (un seul like ne doit pas tirer toute la liste vers lui ; le profil décide alors).
   const likeSim = ctx.liked.reduce((m, l) => Math.max(m, similarity(e, l, ctx.idf)), 0);
   const dislikeSim = ctx.disliked.reduce((m, d) => Math.max(m, similarity(e, d, ctx.idf)), 0);
-  score += 0.5 * likeSim - 0.7 * dislikeSim;
+  const trust = (n: number) => Math.min(1, n / 8);
+  score += discover
+    ? 1.2 * trust(ctx.liked.length) * likeSim - 0.9 * Math.max(0.5, trust(ctx.disliked.length)) * dislikeSim
+    : 0.5 * likeSim - 0.7 * dislikeSim;
 
   // Préférences du questionnaire et réglages issus du profil.
   const maxTime = ctx.weights.maxTotalMin ?? ctx.questionnaire.maxTime;
@@ -134,10 +140,11 @@ export function scoreEntry(e: Entry, ctx: Context, missing: string[], mode: Mode
   // La tolérance à la vaisselle du questionnaire prime sur le profil : c'est un choix explicite de la personne.
   const maxDishes = DISH_LIMIT[ctx.questionnaire.dishTolerance];
   if (e.dishes > maxDishes) score -= 0.2 * (e.dishes - maxDishes);
-  score += profileBonus(e, ctx.weights);
+  score += (discover ? 2 : 1) * profileBonus(e, ctx.weights);
 
-  // Onglet Presque : chaque manquant coûte, moins s'il est courant.
+  // Onglet Presque : chaque manquant coûte, moins s'il est courant. Découvrir : une longue liste de courses coûte un peu.
   if (mode === 'almost') score -= missing.reduce((s, m) => s + (ctx.common.has(m) ? 0.2 : 0.45), 0);
+  if (discover) score -= 0.02 * missing.length;
 
   return { entry: e, missing, score, likeSim, dislikeSim };
 }

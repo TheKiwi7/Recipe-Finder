@@ -16,7 +16,7 @@ const SYSTEM = `Tu tiens à jour le profil culinaire d'une personne pour une app
    { "ingredients": { "<ingrédient de base>": poids }, "keywords": { "<mot du titre, ex. curry, gratin, salade>": poids }, "types": { "Plat"|"Entrée"|"Accompagnement"|"Dessert"|"Apéro"|"Petit-déj."|"Boisson"|"Sauce": poids }, "maxTotalMin": nombre ou null, "exclude": [ "mot" ] }
    (La tolérance à la vaisselle vient du questionnaire : ne la règle pas.)
    "exclude" : les aversions FERMES et explicites (dites dans les notes, ou rejets répétés d'une même famille), qui excluront strictement toute recette contenant un ingrédient où le mot apparaît.
-   Utilise des noms d'ingrédients simples au singulier ou ces familles : "poisson", "fruit de mer", "crustace", "lait", "oeuf", "gluten", "fruit a coque" (chaque famille couvre ses membres, ex. "poisson" → saumon, cabillaud, thon…).
+   Utilise des noms d'ingrédients simples au singulier ou ces familles : "poisson", "fruit de mer", "crustace", "lait", "oeuf", "gluten", "fruit a coque", "fromage fort" (chaque famille couvre ses membres, ex. "poisson" → saumon, cabillaud, thon…).
    N'y mets pas les simples préférences (« pas fan de… », un seul rejet) : celles-là passent par des poids négatifs. Maximum 40 entrées.
    Au plus 25 entrées dans ingredients et 15 dans keywords. Ne mets pas de poids très négatif sur un ingrédient que la personne a seulement rejeté une fois dans une recette : c'est peut-être la recette qui ne plaisait pas.
 Réponds uniquement par un objet JSON {"profile": "...", "weights": {...}}.`;
@@ -69,7 +69,7 @@ export async function maybeUpdateProfile(db: Db, force = false): Promise<Profile
   try {
     const signals = db.prepare('SELECT id, kind, detail, at FROM signals WHERE consumed = 0 ORDER BY id LIMIT 200').all() as Array<{ id: number; kind: string; detail: string; at: string }>;
     const q = getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE;
-    const label: Record<string, string> = { questionnaire: 'A modifié son questionnaire', like: 'A aimé', dislike: 'A rejeté la recette', ban_ingredient: "N'aime pas l'ingrédient", unban_ingredient: "Ne rejette plus l'ingrédient", chat: 'A demandé' };
+    const label: Record<string, string> = { questionnaire: 'A modifié son questionnaire', like: 'A aimé', dislike: 'A rejeté la recette', ban_ingredient: "N'aime pas l'ingrédient", unban_ingredient: "Ne rejette plus l'ingrédient", chat: 'A demandé', cook: 'Veut cuisiner' };
     const prompt = `Questionnaire :
 - ${q.persons} personne(s), temps habituel max ${q.maxTime} min, tolérance à la vaisselle : ${q.dishTolerance}, régime : ${q.diet}
 - Allergies / exclusions : ${q.allergies.join(', ') || 'aucune'}

@@ -6,11 +6,31 @@ import { countDishes, deduceUtensils, devicesInName, utensilsFor, withNameDevice
 import { parseIngredientLine, resolveBase, type IngredientLine } from './ingredients.ts';
 import type { ParsedRecipe } from './recipe.ts';
 import { normalizeKey } from './text.ts';
+import { familyOf, isGeneric } from '../reco/generic.ts';
 
 type Aliases = ReadonlyMap<string, string | null>;
 
+/**
+ * Ingrédient générique précisé par le titre : « 100 g de fromages » dans une « Sauce au bleu d'Auvergne » est du
+ * fromage bleu, « 1 kg de viande » dans un « Rôti de porc » est du porc. Seulement si la recette ne le liste pas déjà.
+ */
+function refineFromTitle(lines: IngredientLine[], title: string, aliases: Aliases): IngredientLine[] {
+  const words = normalizeKey(title).split(' ').filter(Boolean);
+  const present = new Set(lines.map(l => l.base));
+  return lines.map(l => {
+    if (!l.base || !isGeneric(l.base)) return l;
+    for (let n = Math.min(4, words.length); n > 0; n--) {
+      for (let i = 0; i + n <= words.length; i++) {
+        const b = aliases.get(words.slice(i, i + n).join(' '));
+        if (b && familyOf(b) === l.base && !present.has(b)) return { ...l, base: b };
+      }
+    }
+    return l;
+  });
+}
+
 /** Résout les bases ; les termes inconnus sont mis de côté dans unknown_terms pour Claude. */
-function resolveLines(db: Db, lines: Omit<IngredientLine, 'base'>[], aliases: Aliases) {
+function resolveLines(db: Db, lines: Omit<IngredientLine, 'base'>[], aliases: Aliases, title = '') {
   const note = db.prepare(`INSERT INTO unknown_terms (key, example) VALUES (?, ?)
     ON CONFLICT(key) DO UPDATE SET occurrences = occurrences + 1`);
   let unresolved = 0;
@@ -22,7 +42,7 @@ function resolveLines(db: Db, lines: Omit<IngredientLine, 'base'>[], aliases: Al
     }
     return { ...l, base: base ?? null };
   });
-  return { resolved, unresolved };
+  return { resolved: title ? refineFromTitle(resolved, title, aliases) : resolved, unresolved };
 }
 
 function writeIngredients(db: Db, recipeId: number | bigint, lines: IngredientLine[]) {
@@ -35,7 +55,7 @@ export function saveRecipe(db: Db, r: ParsedRecipe, aliases: Aliases): void {
   const now = new Date().toISOString();
   db.exec('BEGIN');
   try {
-    const { resolved, unresolved } = resolveLines(db, r.ingredients, aliases);
+    const { resolved, unresolved } = resolveLines(db, r.ingredients, aliases, r.name);
     const res = db.prepare(`INSERT INTO recipes (source, url, name, image, category_raw, type, total_min, prep_min, cook_min, servings,
         rating, reviews, keywords, ingredients, steps, utensils, utensils_from_site, dishes, unresolved, imported_at, checked_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -56,12 +76,12 @@ export function saveRecipe(db: Db, r: ParsedRecipe, aliases: Aliases): void {
 /** Re-résout les recettes qui avaient des ingrédients inconnus (ou toutes, après un changement du dictionnaire). */
 export function reresolveRecipes(db: Db, all = false): number {
   const aliases = loadAliases(db);
-  const rows = db.prepare(`SELECT id, ingredients FROM recipes ${all ? '' : 'WHERE unresolved > 0'}`).all() as Array<{ id: number; ingredients: string }>;
+  const rows = db.prepare(`SELECT id, name, ingredients FROM recipes ${all ? '' : 'WHERE unresolved > 0'}`).all() as Array<{ id: number; name: string; ingredients: string }>;
   const update = db.prepare('UPDATE recipes SET ingredients = ?, unresolved = ? WHERE id = ?');
   let fixed = 0;
   db.exec('BEGIN');
   for (const row of rows) {
-    const { resolved, unresolved } = resolveLines(db, JSON.parse(row.ingredients), aliases);
+    const { resolved, unresolved } = resolveLines(db, JSON.parse(row.ingredients), aliases, row.name);
     update.run(JSON.stringify(resolved), unresolved, row.id);
     writeIngredients(db, row.id, resolved);
     if (unresolved === 0) fixed++;
@@ -79,7 +99,7 @@ export function syncSeed(db: Db): void {
   setMeta(db, 'seed_hash', hash);
 }
 
-const CATALOG_MIGRATION = '7';
+const CATALOG_MIGRATION = '8';
 
 /** Applique aux recettes déjà importées les corrections faites depuis (titres, types, appareils cités dans le titre, images génériques). */
 export function migrateCatalog(db: Db): void {
@@ -115,6 +135,24 @@ function canonicalizeClaudeBases(db: Db): void {
   for (const b of bases) {
     const target = seed.get(normalizeKey(b));
     if (target && target !== b) update.run(target, b);
+  }
+  // Profil : les poids d'un ingrédient renommé suivent (sinon « roquefort : -0,55 » ne s'appliquerait plus).
+  const raw = getMeta(db, 'profile_weights');
+  if (raw) {
+    const w = JSON.parse(raw) as { ingredients?: Record<string, number> };
+    let changed = false;
+    for (const [b, v] of Object.entries(w.ingredients ?? {})) {
+      const target = seed.get(normalizeKey(b));
+      if (target && target !== b) { delete w.ingredients![b]; w.ingredients![target] ??= v; changed = true; }
+    }
+    if (changed) setMeta(db, 'profile_weights', JSON.stringify(w));
+  }
+  // Stock, placard et rejets suivent un ingrédient renommé dans le dictionnaire (« roquefort » → « fromage bleu »).
+  for (const table of ['pantry', 'staples', 'banned_ingredients']) {
+    for (const { base } of db.prepare(`SELECT DISTINCT base FROM ${table}`).all() as Array<{ base: string }>) {
+      const target = seed.get(normalizeKey(base));
+      if (target && target !== base) db.prepare(`UPDATE OR IGNORE ${table} SET base = ? WHERE base = ?`).run(target, base);
+    }
   }
   db.exec('COMMIT');
 }

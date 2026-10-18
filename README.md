@@ -14,15 +14,17 @@ Recipe Finder est une app perso, 100 % locale, qui propose de **vraies recettes*
 ## Fonctionnalités
 
 - **Mes ingrédients** : ton stock avec quantités, autocomplétion, badge « à finir vite » pour écouler ce qui va se perdre, et un placard de base (sel, huile, farine…) toujours considéré comme disponible.
-- **Recettes** : des recettes faisables **sans rien acheter**, 10 par 10, filtrables par type (plat, entrée, accompagnement, dessert, apéro, petit-déj., boisson, sauce) et par durée. La liste se met à jour dès que ton stock change.
+- **Recettes** : des recettes faisables **sans rien acheter**, 20 par 20, filtrables par type (plat, entrée, accompagnement, dessert, apéro, petit-déj., boisson, sauce) et par durée. La liste se met à jour dès que ton stock change.
 - **Presque** : les recettes où il te manque 1 à 3 ingrédients, de préférence faciles à trouver.
+- **Découvrir** : des recettes qui devraient te plaire d'après tes goûts (profil, likes), même s'il te manque plusieurs ingrédients.
+- **« Je la fais » et Courses** : sur une recette, un bouton calcule ce qu'il te manque pour le nombre de personnes choisi (ingrédient absent, ou quantité insuffisante, unités converties) et l'ajoute à l'onglet **Courses**. Un article acheté est rangé dans ton stock d'un clic.
 - **Like / dislike** : un like range la recette dans tes favoris (copie locale complète, même si la page disparaît) ; un dislike l'écarte. Tu peux aussi rejeter un ingrédient précis d'un clic.
 - **Fiche recette** : quantités recalculées pour ton nombre de personnes, temps, ustensiles, nombre de pièces à laver, étapes, lien vers la source, et un **chat avec l'IA** (Claude ou le modèle local) qui connaît déjà la recette, ton stock et tes goûts.
 - **Profil** : un questionnaire de départ (personnes, temps, vaisselle, régime, allergies, appareils, goûts), puis un profil que l'IA affine à partir de tes likes, rejets et questions. Tes aversions fermes (« rien qui vienne de la mer ») deviennent des exclusions strictes.
 - **Pour qui je cuisine** : ajoute les membres de ta famille, chacun avec son régime, ses allergies et ce qu'il n'aime pas. Au moment de choisir, tu coches qui mange : les exclusions de chacun s'appliquent et les portions s'adaptent.
 - **Allergies et régimes** : exclusions strictes par famille (gluten, lactose, fruits à coque, poisson…), vérifiées sur les ingrédients mais aussi sur le texte complet des recettes.
 - **Français ou anglais** : l'app est pensée pour le français, puisque les recettes viennent de Marmiton, en français. Elle fonctionne aussi en anglais (interface entière, saisie des ingrédients en anglais), mais les recettes doivent d'abord être traduites par l'IA, unités comprises (c. à soupe → tbsp) : quelques secondes pour les noms, 15 à 30 s pour une recette la première fois qu'elle s'ouvre, puis c'est instantané (la traduction est gardée sur ton PC). Sans IA, les recettes restent en français.
-- **Catalogue** : 5 000 recettes bien notées au premier lancement (environ 5 h d'import, l'app est utilisable dès les premières centaines), extensibles depuis les Réglages.
+- **Catalogue** : 5 000 recettes bien notées au premier lancement (environ 5 h d'import, l'app est utilisable dès les premières centaines), extensibles depuis les Réglages. Tu peux y faire passer certains types en priorité (plats et accompagnements, par exemple) : ce n'est pas un filtre, mais leur part dans l'import passe d'environ 4 recettes sur 10 à 8 sur 10, puis l'import continue avec les autres types.
 
 > **Claude, modèle local ou les deux ?** Toutes les fonctionnalités marchent avec l'un ou l'autre. La différence est la qualité : avec le **modèle local seul**, les réponses du chat sont plus simples et parfois moins sûres (substitutions, conseils de cuisson), et le profil saisit moins finement les nuances de tes notes. Avec **ton abonnement Claude**, le chat et le profil sont nettement meilleurs ; le modèle local, s'il est installé, se charge alors des tâches de fond pour ménager ton abonnement. Sans aucune IA, tout fonctionne sauf le chat, la mise à jour du profil, la reconnaissance des nouveaux ingrédients et la traduction en anglais.
 
@@ -90,15 +92,17 @@ Recipe Finder is a personal, 100% local app that suggests **real recipes** (from
 ## Features
 
 - **My ingredients**: your pantry with quantities, autocomplete, a “use soon” badge to finish what would go to waste, and cupboard basics (salt, oil, flour…) always counted as available.
-- **Recipes**: recipes you can make **without buying anything**, 10 at a time, filterable by type (main, starter, side, dessert, appetiser, breakfast, drink, sauce) and by time. The list updates as soon as your pantry changes.
+- **Recipes**: recipes you can make **without buying anything**, 20 at a time, filterable by type (main, starter, side, dessert, appetiser, breakfast, drink, sauce) and by time. The list updates as soon as your pantry changes.
 - **Almost**: recipes where you're missing 1 to 3 ingredients, preferably easy to find.
+- **Discover**: recipes you should like based on your tastes (profile, likes), even if several ingredients are missing.
+- **“I'll make it” and Shopping**: on a recipe, one button works out what you're missing for the number of people you picked (missing ingredient, or not enough of it, units converted) and adds it to the **Shopping** tab. A bought item goes into your pantry in one click.
 - **Like / dislike**: a like saves the recipe to your favourites (a full local copy, even if the page disappears); a dislike hides it. You can also reject a specific ingredient in one click.
 - **Recipe page**: quantities scaled to the number of people, times, equipment, number of items to wash, steps, link to the source, and a **chat with the AI** (Claude or the local model) that already knows the recipe, your pantry and your tastes.
 - **Profile**: a short welcome questionnaire (people, time, washing up, diet, allergies, appliances, tastes), then a profile the AI refines from your likes, rejections and questions. Firm dislikes (“nothing from the sea”) become strict exclusions.
 - **Who I cook for**: add your family members, each with their own diet, allergies and dislikes. When choosing, you tick who is eating: everyone's exclusions apply and portions adjust.
 - **Allergies and diets**: strict exclusions by family (gluten, lactose, nuts, fish…), checked against the ingredients and the full recipe text.
 - **French or English**: the app is designed for French, since recipes come from Marmiton, in French. It also works in English (full interface, ingredients typed in English), but recipes must first be translated by the AI, units included (c. à soupe → tbsp): a few seconds for names, 15 to 30 s for a recipe the first time it opens, then it's instant (the translation is kept on your PC). Without an AI, recipes stay in French.
-- **Catalogue**: 5,000 well-rated recipes on first launch (about 5 hours of import; the app is usable after the first few hundred), expandable from Settings.
+- **Catalogue**: 5,000 well-rated recipes on first launch (about 5 hours of import; the app is usable after the first few hundred), expandable from Settings. You can put some types first (mains and sides, for instance): it isn't a filter, but their share of the import goes from about 4 in 10 recipes to 8 in 10, then the import carries on with the other types.
 
 > **Claude, local model or both?** Every feature works with either. The difference is quality: with the **local model alone**, chat answers are simpler and sometimes less reliable (substitutions, cooking advice), and the profile captures the nuances of your notes less finely. With **your Claude subscription**, chat and profile are clearly better; the local model, if installed, then handles background tasks to spare your subscription. Without any AI, everything works except chat, profile updates, recognising new ingredients and English translation.
 

@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { readFileSync } from 'node:fs';
 import type { Db } from './db.ts';
-import { getCatalogTarget, importProgress, setCatalogTarget } from './catalog/importer.ts';
+import { getCatalogTarget, getImportPriority, importProgress, prioritizeQueue, priorityBaseline, priorityRemaining, setCatalogTarget, setImportPriority } from './catalog/importer.ts';
+import { addShoppingItem, buyAllShopping, buyShoppingItem, clearShopping, cookRecipe, CookError, listShopping, removeShoppingItem } from './shopping.ts';
 import {
   addPantryItem, confirmPantry, deletePantryItem, listPantry, listStaples, pantryState, setStaples, suggestIngredients, updatePantryItem,
 } from './pantry.ts';
@@ -15,7 +16,6 @@ import { addMember, deleteMember, eaterIds, listMembers, setEaters, updateMember
 import { askProvider, claudeStatus, cooldownOf, gpuMemoryGB, invalidateLocalStatus, localStatus, recommendedLocalModel, route, type Provider } from './ai.ts';
 import { connectClaude, setupLocal, setupTask } from './setup.ts';
 import { setMeta } from './db.ts';
-import { AIUnavailable } from './ai.ts';
 import { L, lang, recipeTranslationStatus, requestTranslations, setLang, suggestTranslated, toFrench } from './i18n.ts';
 
 /** Modèles locaux proposés (Ollama) : le 12B par défaut, le 4B pour les PC sans grosse carte graphique. */
@@ -86,13 +86,34 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
 
   api.post('/recommendations', async c => {
     const body = await c.req.json() as { mode: Mode; filters?: { type?: string; maxTime?: number }; current?: number[]; want?: number };
-    if (body.mode !== 'ready' && body.mode !== 'almost') throw new Error('mode invalide');
+    if (!['ready', 'almost', 'discover'].includes(body.mode)) throw new Error('mode invalide');
     return c.json(recommend(db, { mode: body.mode, filters: body.filters ?? {}, current: body.current ?? [], want: Math.min(500, body.want ?? 10) }));
   });
   api.get('/recipes/:id', c => {
     const r = recipeDetail(db, Number(c.req.param('id')));
     return r ? c.json(r) : c.json({ error: L('Recette introuvable', 'Recipe not found') }, 404);
   });
+  // « Je la fais » : ce qui manque pour ce nombre de personnes part sur la liste de courses.
+  api.post('/recipes/:id/cook', async c => {
+    try {
+      const r = cookRecipe(db, Number(c.req.param('id')), Number((await c.req.json()).persons) || 1);
+      status.preferencesChanged();
+      return c.json(r);
+    } catch (e) {
+      if (e instanceof CookError) return c.json({ error: e.message }, 404);
+      throw e;
+    }
+  });
+  api.get('/shopping', c => c.json(listShopping(db)));
+  api.post('/shopping', async c => {
+    const body = await c.req.json();
+    return c.json(addShoppingItem(db, { term: await toFrench(db, String(body.label ?? '')), qty: body.qty ?? null, unit: body.unit ?? null }));
+  });
+  api.post('/shopping/:id/bought', c => { buyShoppingItem(db, Number(c.req.param('id'))); return c.json(listShopping(db)); });
+  api.post('/shopping/bought', c => { buyAllShopping(db); return c.json(listShopping(db)); });
+  api.delete('/shopping/:id', c => { removeShoppingItem(db, Number(c.req.param('id'))); return c.json(listShopping(db)); });
+  api.delete('/shopping', c => { clearShopping(db); return c.json(listShopping(db)); });
+
   api.post('/recipes/:id/reaction', async c => {
     await setReaction(db, Number(c.req.param('id')), (await c.req.json()).kind ?? null);
     status.preferencesChanged();
@@ -111,6 +132,14 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
   });
 
   api.get('/import/status', c => c.json({ ...importProgress(db, getCatalogTarget(db)), running: status.importing(), build: status.build(), server: SERVER_STARTED }));
+  // Types de recettes à importer en priorité (Réglages) : la file d'import est réordonnée tout de suite.
+  const priority = () => ({ types: getImportPriority(db), remaining: priorityRemaining(db), baseline: priorityBaseline(db) });
+  api.get('/import/priority', c => c.json(priority()));
+  api.put('/import/priority', async c => {
+    setImportPriority(db, (await c.req.json()).types ?? []);
+    prioritizeQueue(db);
+    return c.json(priority());
+  });
   // « Ajouter des recettes » (Réglages) : relève l'objectif et lance l'import tout de suite.
   api.post('/import/more', async c => {
     const add = Math.max(0, Math.min(10_000, Math.round(Number((await c.req.json()).add) || 0)));

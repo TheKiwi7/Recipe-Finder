@@ -54,7 +54,10 @@
 .detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 44px; align-items: start; }
 .detail-media { position: sticky; top: 28px; }
 .detail-img { aspect-ratio: 4 / 3; border-radius: var(--radius); }
-.detail-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+.detail-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+.cook-btn { margin-right: auto; margin-left: 4px; }
+.import-priority { margin-top: 18px; }
+.import-priority .qchips { margin-top: 8px; }
 .srclink { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; text-decoration: none; }
 .srclink:hover { text-decoration: underline; }
 .archived { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; margin-top: 12px; }

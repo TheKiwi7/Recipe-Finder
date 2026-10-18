@@ -2,14 +2,14 @@ import { useSyncExternalStore } from 'react';
 
 // Routage minimal : quelques pages, pas besoin d'une bibliothèque.
 export type Route =
-  | { page: 'ingredients' | 'recettes' | 'presque' | 'favoris' | 'reglages' | 'home' }
+  | { page: 'ingredients' | 'recettes' | 'presque' | 'decouvrir' | 'favoris' | 'courses' | 'reglages' | 'home' }
   | { page: 'recette'; id: number };
 
 function parse(path: string): Route {
   const m = path.match(/^\/recette\/(\d+)/);
   if (m) return { page: 'recette', id: Number(m[1]) };
   const page = path.replace(/^\/|\/$/g, '');
-  if (['ingredients', 'recettes', 'presque', 'favoris', 'reglages'].includes(page)) return { page } as Route;
+  if (['ingredients', 'recettes', 'presque', 'decouvrir', 'favoris', 'courses', 'reglages'].includes(page)) return { page } as Route;
   return { page: 'home' };
 }
 

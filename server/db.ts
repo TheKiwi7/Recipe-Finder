@@ -113,6 +113,15 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS chat_messages_recipe ON chat_messages(recipe_id, id);
+-- Liste de courses : ce qui manque pour les recettes qu'on veut faire (« Je la fais »), ou ajouté à la main.
+CREATE TABLE IF NOT EXISTS shopping (
+  id INTEGER PRIMARY KEY,
+  base TEXT NOT NULL,
+  qty REAL,
+  unit TEXT,
+  recipes TEXT NOT NULL DEFAULT '[]',  -- JSON [{ id, name }]
+  created_at TEXT NOT NULL
+);
 -- Personnes pour qui on cuisine (« Moi » + famille), chacune avec ses exclusions.
 CREATE TABLE IF NOT EXISTS members (
   id INTEGER PRIMARY KEY,

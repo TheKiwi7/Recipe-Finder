@@ -70,7 +70,7 @@ mozzarella: boule de mozzarella
 parmesan: parmigiano
 gruyère: gruyère râpé | emmental | emmental râpé | fromage râpé | comté
 chèvre: fromage de chèvre | bûche de chèvre | buche de chevre | chèvre frais
-roquefort: bleu | gorgonzola
+fromage bleu: roquefort | bleu | gorgonzola | bleu d auvergne | bleu de gex | bleu des causses | fourme d ambert | fourme de montbrison | saint agur | fromage persillé
 feta:
 reblochon: fromage pour tartiflette | fromage à tartiflette
 fromage fondu: toastinette | fromage à croque monsieur | fromage pour croque monsieur | fromage à hamburger | fromage pour hamburger | fromage en tranche

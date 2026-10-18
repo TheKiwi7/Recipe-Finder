@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, CircleDashed, Heart, Lock, Moon, RefreshCw, Settings, ShoppingBasket, Soup, Sun } from 'lucide-react';
+import { BookOpen, CircleDashed, Compass, Heart, Lock, Moon, RefreshCw, Settings, ShoppingBasket, ShoppingCart, Soup, Sun } from 'lucide-react';
 import { api, type ImportStatus } from '../api.ts';
 import { navigate, type Route } from '../router.ts';
 import { usePantry } from '../pantry-store.ts';
 import { invalidateLists } from '../recipes-store.ts';
 import { L, num } from '../i18n.ts';
+import { refreshShopping, useShopping } from '../shopping-store.ts';
 
 function useTheme() {
   const systemDark = () => matchMedia('(prefers-color-scheme: dark)').matches;
@@ -45,12 +46,15 @@ export function Sidebar({ route }: { route: Route }) {
   const { theme, toggle } = useTheme();
   const status = useImportStatus();
   const locked = !pantry?.gateOpen;
+  const shopping = useShopping();
+  useEffect(() => { refreshShopping().catch(() => {}); }, []);
 
-  const item = (page: string, Icon: typeof Heart, label: string, opts: { gated?: boolean } = {}) => (
+  const item = (page: string, Icon: typeof Heart, label: string, opts: { gated?: boolean; count?: number } = {}) => (
     <button className={`nav ${route.page === page || (page === 'recettes' && route.page === 'recette') ? 'on' : ''}`} onClick={() => navigate(`/${page}`)}>
       <Icon size={19} strokeWidth={2} />
       <span className="txt">{label}</span>
       {opts.gated && locked && <Lock size={14} className="lock" />}
+      {!!opts.count && <span className="badge">{opts.count}</span>}
     </button>
   );
 
@@ -68,7 +72,9 @@ export function Sidebar({ route }: { route: Route }) {
       {item('ingredients', ShoppingBasket, L('Ingrédients', 'Ingredients'))}
       {item('recettes', BookOpen, L('Recettes', 'Recipes'), { gated: true })}
       {item('presque', CircleDashed, L('Presque', 'Almost'), { gated: true })}
+      {item('decouvrir', Compass, L('Découvrir', 'Discover'))}
       {item('favoris', Heart, L('Favoris', 'Favourites'))}
+      {item('courses', ShoppingCart, L('Courses', 'Shopping'), { count: shopping?.length })}
       <div className="spacer" />
       {status && status.imported < status.target && (
         <div className="side-foot" title={L(`${status.rejected} recettes écartées (note insuffisante)`, `${status.rejected} recipes skipped (rating too low)`)}>

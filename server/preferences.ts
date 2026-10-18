@@ -89,6 +89,8 @@ const ALLERGEN_FAMILIES: Record<string, string[]> = {
   lait: ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel', 'chantilly', 'lactose', 'petit suisse', 'kiri', 'babybel'],
   'produit laitier': ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel', 'chantilly', 'lactose', 'petit suisse', 'kiri', 'babybel'],
   oeuf: ['oeuf', 'mayonnaise', 'meringue'],
+  // Fromages au goût prononcé : bleus et croûtes lavées.
+  'fromage fort': ['fromage bleu', 'roquefort', 'gorgonzola', 'bleu', 'fourme', 'munster', 'maroille', 'livarot', 'epoisse', 'pont l eveque', 'langres', 'vieux lille', 'herve'],
   poisson: ['poisson', 'saumon', 'thon', 'cabillaud', 'dorade', 'daurade', 'sardine', 'anchois', 'truite', 'maquereau', 'merlu', 'colin', 'lieu', 'bar', 'loup', 'sole', 'surimi', 'fumet', 'pangasius', 'merou', 'limande', 'lotte', 'hareng', 'haddock', 'morue', 'eglefin', 'fletan', 'turbot', 'saint pierre', 'raie', 'rouget', 'anguille', 'sandre', 'brochet', 'carpe', 'perche', 'espadon', 'merlan', 'tilapia', 'mulet', 'congre', 'tarama', 'caviar'],
   crustace: ['crevette', 'gambas', 'crabe', 'homard', 'langoustine', 'ecrevisse', 'surimi'],
   'fruit de mer': ['fruit de mer', 'crevette', 'gambas', 'crabe', 'homard', 'langouste', 'langoustine', 'ecrevisse', 'moule', 'huitre', 'saint jacques', 'petoncle', 'calamar', 'calmar', 'encornet', 'poulpe', 'seiche', 'coque', 'palourde', 'bigorneau', 'bulot', 'couteaux', 'oursin', 'surimi'],

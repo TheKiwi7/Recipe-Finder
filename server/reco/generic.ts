@@ -11,6 +11,14 @@ const FAMILIES: Record<string, string[]> = {
 
 const FAMILY_WORDS = Object.fromEntries(Object.entries(FAMILIES).map(([g, ws]) => [g, ws.map(normalizeKey)]));
 
+/** Famille générique (« fromage », « viande », « poisson ») dont fait partie un ingrédient précis, ou null. */
+export function familyOf(base: string): string | null {
+  const key = normalizeKey(base);
+  for (const [generic, words] of Object.entries(FAMILY_WORDS)) if (key !== generic && containsWord(key, words)) return generic;
+  return null;
+}
+export const isGeneric = (base: string) => base in FAMILIES;
+
 /** Ajoute aux bases disponibles les génériques satisfaits (« fromage » si le stock contient du gruyère). */
 export function withGenerics(available: Set<string>): Set<string> {
   const keys = [...available].map(normalizeKey);

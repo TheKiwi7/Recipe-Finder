@@ -12,6 +12,7 @@ import { LockedPage } from './pages/Placeholders.tsx';
 import { RecipeDetailPage } from './pages/RecipeDetail.tsx';
 import { RecipesPage } from './pages/Recipes.tsx';
 import { SettingsPage } from './pages/Settings.tsx';
+import { ShoppingPage } from './pages/Shopping.tsx';
 import { WelcomePage } from './pages/Welcome.tsx';
 import { refreshPantry, usePantry } from './pantry-store.ts';
 import { navigate, useRoute } from './router.ts';
@@ -51,11 +52,14 @@ function App() {
   return (
     <div className="app">
       <Sidebar route={route} />
-      <main className="content">
+      {/* Grilles de recettes : plus large, pour remplir les grands écrans (5 recettes par ligne en 1920 px). */}
+      <main className={`content ${['recettes', 'presque', 'decouvrir', 'favoris'].includes(route.page) ? 'content-wide' : ''}`}>
         {route.page === 'ingredients' && <IngredientsPage />}
         {route.page === 'recettes' && gated(<RecipesPage mode="ready" />)}
         {route.page === 'presque' && gated(<RecipesPage mode="almost" />)}
+        {route.page === 'decouvrir' && <RecipesPage mode="discover" />}
         {route.page === 'favoris' && <FavoritesPage />}
+        {route.page === 'courses' && <ShoppingPage />}
         {route.page === 'reglages' && <SettingsPage />}
         {route.page === 'recette' && <RecipeDetailPage key={route.id} id={route.id} onChat={r => <ChatPanel recipe={r} />} />}
       </main>
@@ -89,20 +93,5 @@ class Crash extends Component<{ children: ReactNode }, { error: Error | null }> 
     );
   }
 }
-
-// Fenêtre d'app (Chrome, Edge, Brave… ouverts par le raccourci, sans barre d'adresse) : le navigateur la rouvre à
-// une taille par défaut, sans tenir compte de l'écran. À l'ouverture, elle prend toute la zone utile de l'écran ;
-// une fois par fenêtre seulement (un rechargement ne défait pas une taille choisie à la main).
-try {
-  const appWindow = !window.toolbar.visible;
-  if (appWindow && !sessionStorage.getItem('rf-sized')) {
-    sessionStorage.setItem('rf-sized', '1');
-    const s = screen as Screen & { availLeft?: number; availTop?: number };
-    if (window.outerWidth < s.availWidth * 0.9 || window.outerHeight < s.availHeight * 0.9) {
-      window.moveTo(s.availLeft ?? 0, s.availTop ?? 0);
-      window.resizeTo(s.availWidth, s.availHeight);
-    }
-  }
-} catch { /* navigateur qui refuse : la fenêtre garde sa taille */ }
 
 createRoot(document.getElementById('root')!).render(<StrictMode><Crash><App /></Crash></StrictMode>);

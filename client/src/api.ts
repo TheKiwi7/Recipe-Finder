@@ -14,7 +14,11 @@ export type RecipeDetail = RecipeCard & {
   ingredients: IngredientLine[]; steps: string[]; utensils: string[]; banned: string[]; available: string[]; archived: boolean;
 };
 export type RecipeTranslation = { name: string; ingredients: string[]; steps: string[] };
-export type Mode = 'ready' | 'almost';
+export type Mode = 'ready' | 'almost' | 'discover';
+export type ShoppingItem = { id: number; base: string; qty: number | null; unit: string | null; recipes: Array<{ id: number; name: string }> };
+export type Need = { base: string; qty: number | null; unit: string | null };
+/** baseline : part de ces types sans priorité (dans le catalogue actuel). */
+export type ImportPriority = { types: string[]; remaining: number; baseline: number };
 export type Filters = { type: string; maxTime: number | null };
 export type Recommendations = { items: RecipeCard[]; exhausted: boolean; catalogSize: number };
 export type Rejections = { recipes: Array<{ id: number; name: string; image: string | null; at: string }>; ingredients: Array<{ base: string; at: string }> };
@@ -90,6 +94,15 @@ export const api = {
   updateProfile: () => call<ProfileStatus & { result: 'updated' | 'nothing-new' | 'busy' | 'not-yet' | 'unavailable' }>('POST', '/profile/update'),
   chat: (id: number) => call<ChatMessage[]>('GET', `/recipes/${id}/chat`),
   ask: (id: number, message: string) => call<ChatMessage[]>('POST', `/recipes/${id}/chat`, { message }),
+  cook: (id: number, persons: number) => call<{ added: Need[]; items: ShoppingItem[] }>('POST', `/recipes/${id}/cook`, { persons }),
+  shopping: () => call<ShoppingItem[]>('GET', '/shopping'),
+  addShopping: (item: { label: string; qty: number | null; unit: string | null }) => call<ShoppingItem[]>('POST', '/shopping', item),
+  buyShopping: (id: number) => call<ShoppingItem[]>('POST', `/shopping/${id}/bought`),
+  buyAllShopping: () => call<ShoppingItem[]>('POST', '/shopping/bought'),
+  removeShopping: (id: number) => call<ShoppingItem[]>('DELETE', `/shopping/${id}`),
+  clearShopping: () => call<ShoppingItem[]>('DELETE', '/shopping'),
+  importPriority: () => call<ImportPriority>('GET', '/import/priority'),
+  setImportPriority: (types: string[]) => call<ImportPriority>('PUT', '/import/priority', { types }),
   settings: () => call<{ lang: Lang }>('GET', '/settings'),
   setLang: (l: Lang) => call<{ lang: Lang }>('PUT', '/settings', { lang: l }),
   /** La traduction si elle est prête, sinon `{ pending: true }` : redemander un peu plus tard. */
