@@ -72,7 +72,7 @@ export async function setupLocal(): Promise<void> {
     if (s.state === 'not-installed') {
       set({ step: L('Installation d’Ollama (quelques minutes selon ta connexion)…', 'Installing Ollama (a few minutes depending on your connection)…') });
       await wingetInstall('Ollama.Ollama');
-      hideOllamaAfterInstall();
+      await hideOllamaAfterInstall();
       s = await fresh();
     }
     if (s.state === 'not-running' || s.state === 'not-installed') s = await startOllama();
@@ -83,10 +83,10 @@ export async function setupLocal(): Promise<void> {
         // Ollama trop ancien pour ce modèle (« requires a newer version of Ollama ») : mise à jour, puis nouvel essai.
         if (!/newer version of Ollama/i.test((e as Error).message)) throw e;
         set({ step: L('Mise à jour d’Ollama (quelques minutes selon ta connexion)…', 'Updating Ollama (a few minutes depending on your connection)…'), progress: undefined });
-        killOllama();
+        await killOllama();
         await sleep(2_000);
         await wingetInstall('Ollama.Ollama', 'upgrade');
-        hideOllamaAfterInstall();
+        await hideOllamaAfterInstall();
         await startOllama();
         await pullModel(localModel());
       }
@@ -111,8 +111,8 @@ async function startOllama() {
  * L'installateur d'Ollama ouvre sa fenêtre et l'inscrit au démarrage de Windows. L'app le pilote elle-même
  * (démarré caché avec l'app, arrêté avec elle) : on ferme cette fenêtre et on retire le lancement automatique.
  */
-function hideOllamaAfterInstall(): void {
-  killOllama();
+async function hideOllamaAfterInstall(): Promise<void> {
+  await killOllama();
   removeOllamaAutostart();
   adoptOllama();
   // L'installateur relance parfois l'icône et remet le raccourci de démarrage quelques secondes plus tard : on repasse.

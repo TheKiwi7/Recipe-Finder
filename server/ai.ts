@@ -180,6 +180,7 @@ let lastRevive = 0;
 function reviveOllama(): void {
   if (closing || !ollamaExe() || Date.now() - lastRevive < 60_000) return;
   lastRevive = Date.now();
+  killOrphanRunners(); // le moteur du modèle de l'Ollama planté lui a survécu
   void ensureOllama();
 }
 
@@ -191,7 +192,7 @@ export async function releaseOllama(): Promise<void> {
   try {
     await fetch(`${OLLAMA}/api/generate`, { method: 'POST', body: JSON.stringify({ model: localModel(), keep_alive: 0 }), signal: AbortSignal.timeout(3_000) });
   } catch { /* déjà arrêté */ }
-  if (ollamaStartedByUs) killOllama();
+  if (ollamaStartedByUs) await killOllama();
 }
 
 /**
@@ -210,24 +211,28 @@ export function killOllamaTray(): void {
 
 /** Ollama installé ou mis à jour par l'app : il est à elle, elle l'arrête en se fermant. */
 export function adoptOllama(): void { ollamaStartedByUs = true; }
-/** Ollama est-il à l'app ? Transmis au serveur qui prend le relais après une mise à jour. */
-export const ownsOllama = () => ollamaStartedByUs;
 
 /**
  * Arrête Ollama, y compris son application de bureau (fenêtre et icône) et ses sous-programmes (/T) : sans eux, le
  * moteur du modèle (llama-server, ~12 Go de mémoire réservée) survivrait à Ollama.
+ * À attendre avant de quitter : Windows arrête avec le serveur de l'app les programmes qu'il a lancés (taskkill
+ * compris, même pas fini), mais pas les sous-programmes d'Ollama.
  */
-export function killOllama(): void {
-  for (const image of ['ollama app.exe', 'ollama.exe']) {
-    spawn('taskkill', ['/IM', image, '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
-  }
+export function killOllama(): Promise<void> {
   ollamaStartedByUs = false;
+  return Promise.all(['ollama app.exe', 'ollama.exe'].map(image => new Promise<void>(done => {
+    const p = spawn('taskkill', ['/IM', image, '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+    p.on('error', () => done());
+    p.on('close', () => done());
+    setTimeout(done, 5_000);
+  }))).then(() => {});
 }
 
 /**
- * Moteurs de modèle d'Ollama dont l'Ollama parent n'existe plus : laissés par un arrêt brutal (serveur de l'app tué,
- * plantage, PC éteint en force). Personne ne les arrêterait et chacun réserve ~12 Go : l'app les arrête au démarrage.
- * Ceux d'un Ollama qui tourne (lancé par l'app ou par quelqu'un d'autre) ne sont pas touchés.
+ * Moteurs de modèle d'Ollama dont l'Ollama parent n'existe plus : laissés par un arrêt brutal (serveur de l'app tué ou
+ * planté, Ollama planté, PC éteint en force). Personne ne les arrêterait et chacun réserve ~12 Go : l'app les arrête à
+ * son démarrage et quand elle relance un Ollama planté. Ceux d'un Ollama qui tourne (lancé par l'app ou par quelqu'un
+ * d'autre) ne sont pas touchés.
  */
 export function killOrphanRunners(): void {
   spawn('powershell', ['-NoProfile', '-Command',
