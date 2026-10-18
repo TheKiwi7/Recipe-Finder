@@ -20,6 +20,8 @@ export type ImportProgress = {
   target: number;
   rejected: number;
   pending: number;
+  /** Pages de recettes listées par Marmiton (sitemap) : le maximum atteignable. */
+  available: number;
   unresolvedRecipes: number;
   last?: string;
 };
@@ -59,6 +61,7 @@ export function importProgress(db: Db, target: number): ImportProgress {
     target,
     rejected: count(`SELECT COUNT(*) n FROM crawl_queue WHERE status = 'rejected'`),
     pending: count(`SELECT COUNT(*) n FROM crawl_queue WHERE status = 'pending'`),
+    available: count('SELECT COUNT(*) n FROM crawl_queue'),
     unresolvedRecipes: count('SELECT COUNT(*) n FROM recipes WHERE unresolved > 0'),
   };
 }
@@ -79,7 +82,7 @@ async function flushUnknown(db: Db, force: boolean, log: (m: string) => void): P
  * Importe des recettes jusqu'à atteindre `target` recettes en base. Reprend là où il s'était arrêté.
  * S'arrête proprement quand `signal` est annulé.
  */
-export async function runImport(db: Db, opts: { target: number; signal?: AbortSignal; onProgress?: (p: ImportProgress) => void; log?: (m: string) => void }): Promise<void> {
+export async function runImport(db: Db, opts: { target: number | (() => number); signal?: AbortSignal; onProgress?: (p: ImportProgress) => void; log?: (m: string) => void }): Promise<void> {
   const log = opts.log ?? (() => {});
   await seedQueue(db, opts.signal);
   const next = db.prepare(`SELECT url FROM crawl_queue WHERE status = 'pending' ORDER BY position LIMIT 1`);
@@ -88,9 +91,10 @@ export async function runImport(db: Db, opts: { target: number; signal?: AbortSi
   let backoff = 0;
   let addedThisRun = 0;
 
+  const targetNow = () => (typeof opts.target === 'function' ? opts.target() : opts.target);
   while (!opts.signal?.aborted) {
-    const p = importProgress(db, opts.target);
-    if (p.imported >= opts.target) break;
+    const p = importProgress(db, targetNow());
+    if (p.imported >= p.target) break;
     const row = next.get() as { url: string } | undefined;
     if (!row) { log('Plus aucune URL à importer'); break; }
 
@@ -121,13 +125,13 @@ export async function runImport(db: Db, opts: { target: number; signal?: AbortSi
 
     const before = (db.prepare('SELECT COUNT(*) n FROM unknown_terms').get() as { n: number }).n;
     if (before >= UNKNOWN_BATCH) { await flushUnknown(db, false, log); aliases = loadAliases(db); }
-    opts.onProgress?.({ ...importProgress(db, opts.target), last });
+    opts.onProgress?.({ ...importProgress(db, targetNow()), last });
   }
   if (!opts.signal?.aborted) {
     await flushUnknown(db, true, log);
     // Objectif atteint : on fusionne les ingrédients de base en double apparus pendant l'import.
     // Seulement si des recettes ont été ajoutées : la vérification horaire du serveur ne doit pas appeler Claude pour rien.
-    if (addedThisRun > 0 && importProgress(db, opts.target).imported >= opts.target) {
+    if (addedThisRun > 0 && importProgress(db, 0).imported >= targetNow()) {
       try { log(`${(await consolidateBases(db)).length} ingrédients en double fusionnés`); }
       catch (e) { log(`Consolidation reportée (${e instanceof ClaudeUnavailable ? e.message : String(e)})`); }
     }
@@ -154,17 +158,28 @@ export function releaseImportLock(): void {
   try { if (readFileSync(LOCK_FILE, 'utf8') === String(process.pid)) unlinkSync(LOCK_FILE); } catch { /* déjà libéré */ }
 }
 
-export const INITIAL_TARGET = 8000;
+export const DEFAULT_TARGET = 10_000;
 const WEEKLY_GROWTH = 100;
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 
-/** Objectif du moment : compléter l'import initial, puis +100 recettes par semaine (Q26). */
+/** Objectif du catalogue (nombre de recettes), modifiable depuis les Réglages. */
+export function getCatalogTarget(db: Db): number {
+  return Number(getMeta(db, 'catalog_target') ?? DEFAULT_TARGET);
+}
+
+export function setCatalogTarget(db: Db, target: number): void {
+  setMeta(db, 'catalog_target', String(Math.max(0, Math.round(target))));
+}
+
+/** Objectif du moment : compléter le catalogue, puis +100 recettes par semaine (Q26). */
 export function currentTarget(db: Db): number {
   const imported = importProgress(db, 0).imported;
-  if (imported < INITIAL_TARGET) return INITIAL_TARGET;
+  const target = getCatalogTarget(db);
+  if (imported < target) return target;
   const last = getMeta(db, 'last_growth_at');
-  if (!last) { setMeta(db, 'last_growth_at', new Date().toISOString()); return imported; }
-  if (Date.now() - Date.parse(last) < WEEK_MS) return imported;
+  if (!last) { setMeta(db, 'last_growth_at', new Date().toISOString()); return target; }
+  if (Date.now() - Date.parse(last) < WEEK_MS) return target;
   setMeta(db, 'last_growth_at', new Date().toISOString());
+  setCatalogTarget(db, imported + WEEKLY_GROWTH);
   return imported + WEEKLY_GROWTH;
 }

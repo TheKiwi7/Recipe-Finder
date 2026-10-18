@@ -75,6 +75,12 @@ export function Sidebar({ route }: { route: Route }) {
           <div className="progress"><i style={{ width: `${Math.min(100, (100 * status.imported) / status.target)}%` }} /></div>
         </div>
       )}
+      {status && status.imported >= status.target && status.pending > 0 && (
+        <div className="side-foot">
+          Catalogue complet : {status.imported.toLocaleString('fr-FR')} recettes ·{' '}
+          <a href="/reglages" onClick={e => { e.preventDefault(); navigate('/reglages'); }}>en ajouter</a>
+        </div>
+      )}
       <button className="nav" onClick={toggle}>
         {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
         <span className="txt">{theme === 'dark' ? 'Thème clair' : 'Thème sombre'}</span>

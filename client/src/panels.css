@@ -94,3 +94,7 @@ body.chat-open .content { padding-right: 424px; }
 
 /* ---------- nouvelle version disponible ---------- */
 .update-banner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 18px; border-radius: 99px; background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; box-shadow: var(--shadow); animation: rise 0.2s ease-out; }
+
+/* ---------- ajouter des recettes ---------- */
+.add-recipes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+.goal-reached { display: flex; align-items: center; gap: 8px; padding: 10px 14px; margin-bottom: 14px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 14px; }

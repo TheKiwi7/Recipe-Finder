@@ -121,7 +121,8 @@ CREATE TABLE IF NOT EXISTS meta (
 
 export type Db = DatabaseSync;
 
-export function openDb(file = join(DATA_DIR, 'recipe-finder.db')): Db {
+// RF_DB : autre fichier de base (tests sur une copie, sans toucher aux données de l'utilisateur).
+export function openDb(file = process.env.RF_DB ?? join(DATA_DIR, 'recipe-finder.db')): Db {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   // busy_timeout : l'app et le script d'import peuvent écrire en même temps.

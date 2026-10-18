@@ -26,7 +26,7 @@ export type Questionnaire = {
 };
 export type ProfileStatus = { updatedAt: string | null; pendingSignals: number; hasProfile: boolean; lastError: string | null; exclusions: string[] };
 export type ChatMessage = { id: number; role: 'user' | 'assistant'; text: string; at: string };
-export type ImportStatus = { imported: number; target: number; rejected: number; pending: number; unresolvedRecipes: number; running: boolean; build: string; server: string };
+export type ImportStatus = { imported: number; target: number; rejected: number; pending: number; available: number; unresolvedRecipes: number; running: boolean; build: string; server: string };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -48,6 +48,7 @@ export const api = {
   confirm: () => call<PantryState>('POST', '/pantry/confirm'),
   suggest: (q: string) => call<string[]>('GET', `/ingredients/suggest?q=${encodeURIComponent(q)}`),
   importStatus: () => call<ImportStatus>('GET', '/import/status'),
+  importMore: (add: number) => call<ImportStatus>('POST', '/import/more', { add }),
   recommend: (mode: Mode, filters: Filters, current: number[], want: number) =>
     call<Recommendations>('POST', '/recommendations', { mode, filters: { type: filters.type, maxTime: filters.maxTime ?? undefined }, current, want }),
   recipe: (id: number) => call<RecipeDetail>('GET', `/recipes/${id}`),

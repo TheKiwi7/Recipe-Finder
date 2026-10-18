@@ -13,7 +13,7 @@ App perso, locale, qui recommande des recettes **réelles** (trouvées en ligne)
 
 - Source v1 : **Marmiton** (JSON-LD schema.org/Recipe, sitemap `wsitemap_recipes_index.xml`). Import organisé en **adaptateurs par site** pour ajouter CuisineAZ plus tard.
 - Usage strictement personnel : respect de `robots.txt`, 1 requête / 2-3 s.
-- Import initial ~**8 000 recettes** en tâche de fond (quelques heures, reprend à chaque ouverture de l'app, barre de progression, app utilisable dès les premières centaines). Puis ~**100 nouvelles / semaine** quand l'app est ouverte. Recettes dont la page a disparu supprimées, sauf favoris.
+- Objectif du catalogue ~**10 000 recettes** (relevable depuis Réglages → « Ajouter des recettes » : +500 / +1 000 / +2 500), import en tâche de fond (quelques heures, reprend à chaque ouverture de l'app, barre de progression, app utilisable dès les premières centaines). Puis ~**100 nouvelles / semaine** quand l'app est ouverte. Recettes dont la page a disparu supprimées, sauf favoris.
 - Sélection aléatoire dans le sitemap ; rejet si note < 4/5. Peu ou pas d'avis : acceptée ; au classement, la note est ramenée vers la moyenne quand il y a peu d'avis (moyenne bayésienne) et les recettes sans note ont un léger malus.
 - **Normalisation des ingrédients** : parseur local (quantités, unités, adjectifs, synonymes) → ingrédient de base. Termes inconnus envoyés à Claude par lots de quelques centaines, résultat mis en cache définitivement.
 - **Ustensiles** : section « Ustensiles » de Marmiton en priorité, sinon déduction locale par mots-clés dans les étapes. Estimation du nombre de pièces à laver.

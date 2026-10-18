@@ -5,7 +5,7 @@ import { existsSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { DATA_DIR, openDb } from './db.ts';
 import { createApi } from './app.ts';
-import { acquireImportLock, currentTarget, releaseImportLock, runImport } from './catalog/importer.ts';
+import { acquireImportLock, currentTarget, getCatalogTarget, releaseImportLock, runImport } from './catalog/importer.ts';
 import { migrateCatalog, syncSeed } from './catalog/store.ts';
 import { ensureStaples } from './pantry.ts';
 import { maybeUpdateProfile } from './profile.ts';
@@ -24,7 +24,7 @@ const checkProfile = () => { void maybeUpdateProfile(db); };
 const app = new Hono();
 // Identifiant de la version de l'interface construite : l'app compare et propose de recharger quand il change.
 const clientBuild = () => { try { return String(statSync(join(CLIENT_DIST, 'index.html')).mtimeMs); } catch { return 'dev'; } };
-app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild }));
+app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild, startImport: () => { void backgroundImport(); } }));
 setInterval(checkProfile, 30 * 60 * 1000);
 checkProfile();
 
@@ -41,10 +41,11 @@ serve({ fetch: app.fetch, port: PORT, hostname: '127.0.0.1' }, info => console.l
 // Import en tâche de fond : compléter le catalogue initial, puis ~100 recettes par semaine.
 async function backgroundImport() {
   if (importing || process.env.RF_NO_IMPORT || !acquireImportLock()) return;
-  const target = currentTarget(db);
+  currentTarget(db); // relève l'objectif de 100 recettes si la croissance hebdomadaire est due
   importing = true;
   try {
-    await runImport(db, { target, log: m => console.log(`[import] ${m}`) });
+    // Objectif relu en continu : l'ajout de recettes depuis les Réglages prolonge un import en cours.
+    await runImport(db, { target: () => getCatalogTarget(db), log: m => console.log(`[import] ${m}`) });
   } catch (e) {
     console.error('[import]', e);
   } finally {

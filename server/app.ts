@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { readFileSync } from 'node:fs';
 import type { Db } from './db.ts';
-import { importProgress, INITIAL_TARGET } from './catalog/importer.ts';
+import { getCatalogTarget, importProgress, setCatalogTarget } from './catalog/importer.ts';
 import {
   addPantryItem, confirmPantry, deletePantryItem, listPantry, listStaples, pantryState, setStaples, suggestIngredients, updatePantryItem,
 } from './pantry.ts';
@@ -17,7 +17,7 @@ const MIME: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg', jp
 /** Change à chaque démarrage du serveur : l'app recalcule alors ses listes (règles ou catalogue ont pu changer). */
 const SERVER_STARTED = new Date().toISOString();
 
-export function createApi(db: Db, status: { importing: () => boolean; preferencesChanged: () => void; build: () => string }) {
+export function createApi(db: Db, status: { importing: () => boolean; preferencesChanged: () => void; build: () => string; startImport: () => void }) {
   const api = new Hono();
 
   api.onError((err, c) => c.json({ error: err.message }, 400));
@@ -56,7 +56,15 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     return c.body(readFileSync(p), 200, { 'Content-Type': MIME[file.split('.').pop()!.toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'max-age=31536000' });
   });
 
-  api.get('/import/status', c => c.json({ ...importProgress(db, INITIAL_TARGET), running: status.importing(), build: status.build(), server: SERVER_STARTED }));
+  api.get('/import/status', c => c.json({ ...importProgress(db, getCatalogTarget(db)), running: status.importing(), build: status.build(), server: SERVER_STARTED }));
+  // « Ajouter des recettes » (Réglages) : relève l'objectif et lance l'import tout de suite.
+  api.post('/import/more', async c => {
+    const add = Math.max(0, Math.min(10_000, Math.round(Number((await c.req.json()).add) || 0)));
+    const { imported } = importProgress(db, 0);
+    setCatalogTarget(db, Math.max(getCatalogTarget(db), imported) + add);
+    status.startImport();
+    return c.json({ ...importProgress(db, getCatalogTarget(db)), running: true });
+  });
 
   api.get('/questionnaire', c => c.json({ questionnaire: getQuestionnaire(db), defaults: DEFAULT_QUESTIONNAIRE, equipment: OPTIONAL_EQUIPMENT }));
   api.put('/questionnaire', async c => {

@@ -1,16 +1,16 @@
-// Import du catalogue en ligne de commande : npm run import -- [--target 8000] [--normalize-only] [--renormalize-ignored] [--consolidate] [--requeue-rated]
+// Import du catalogue en ligne de commande : npm run import -- [--target N (défaut : objectif des Réglages)] [--normalize-only] [--renormalize-ignored] [--consolidate] [--requeue-rated]
 // Reprend là où il s'était arrêté. Ctrl+C pour arrêter proprement.
 import { parseArgs } from 'node:util';
 import { openDb } from '../db.ts';
-import { acquireImportLock, importProgress, runImport } from '../catalog/importer.ts';
+import { acquireImportLock, getCatalogTarget, importProgress, runImport } from '../catalog/importer.ts';
 import { consolidateBases, requeueSuspiciousAliases, resolveUnknownTerms } from '../catalog/normalize-unknown.ts';
 import { migrateCatalog, reresolveRecipes, syncSeed } from '../catalog/store.ts';
 
-const { values } = parseArgs({ options: { target: { type: 'string', default: '8000' }, 'normalize-only': { type: 'boolean', default: false }, 'renormalize-ignored': { type: 'boolean', default: false }, consolidate: { type: 'boolean', default: false }, 'requeue-rated': { type: 'boolean', default: false } } });
+const { values } = parseArgs({ options: { target: { type: 'string' }, 'normalize-only': { type: 'boolean', default: false }, 'renormalize-ignored': { type: 'boolean', default: false }, consolidate: { type: 'boolean', default: false }, 'requeue-rated': { type: 'boolean', default: false } } });
 const db = openDb();
 syncSeed(db);
 migrateCatalog(db);
-let target = Number(values.target);
+let target = values.target ? Number(values.target) : getCatalogTarget(db);
 
 if (values['requeue-rated']) {
   // Remet en tête de file les pages écartées pour « trop peu d'avis » mais notées ≥ 4/5 (règle Q34 révisée)
