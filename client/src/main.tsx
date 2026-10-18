@@ -23,9 +23,15 @@ function App() {
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
   const [offline, setOffline] = useState(false);
 
+  // Au lancement, le serveur peut mettre quelques secondes à répondre : on réessaie pendant ~1 min.
   useEffect(() => {
-    refreshPantry().catch(() => setOffline(true));
-    api.questionnaire().then(r => setOnboarded(!!r.questionnaire)).catch(() => setOffline(true));
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const boot = () => Promise.all([refreshPantry(), api.questionnaire()])
+      .then(([, r]) => { setOffline(false); setOnboarded(!!r.questionnaire); })
+      .catch(() => { if (++tries < 30) timer = setTimeout(boot, 2000); else setOffline(true); });
+    void boot();
+    return () => clearTimeout(timer);
   }, []);
 
   // Accueil : directement aux recettes si le stock a été confirmé il y a moins de 12 h.
