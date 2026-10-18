@@ -49,42 +49,14 @@ Au premier lancement :
 
 L'import du catalogue démarre aussitôt ; les premières recettes arrivent en quelques minutes et l'app reste utilisable pendant l'import. Sans IA, l'app fonctionne aussi : seuls le chat, la mise à jour du profil et la reconnaissance des nouveaux ingrédients sont en pause.
 
-Pour développer : `npm install`, puis `npm run dev` (voir les commandes ci-dessous).
-
-## Commandes
-
-| Commande | Rôle |
-|---|---|
-| `npm start` | Serveur sur http://127.0.0.1:5317 (sert l'interface construite) |
-| `npm run dev` | Développement : serveur + Vite avec rechargement (http://localhost:5318) |
-| `npm run build` | Construit l'interface (`client/dist`) |
-| `npm test` | Tests (analyse des ingrédients, pages Marmiton, classement, mise en forme) |
-| `npm run typecheck` | Vérification TypeScript, serveur et client |
-| `npm run audit` | Rapport de qualité du catalogue importé |
-| `npm run import` | Import en ligne de commande jusqu'à l'objectif des Réglages (`-- --target N` pour un autre objectif) |
-| `npm run import -- --normalize-only` | Envoie à l'IA les ingrédients non reconnus en attente |
-| `npm run import -- --consolidate` | Fusionne les ingrédients de base en double |
-
-## Organisation du code
-
-```
-server/            Serveur Node (Hono + node:sqlite), TypeScript exécuté directement par Node 24
-  catalog/         Import Marmiton, analyse des lignes d'ingrédients, ustensiles, normalisation
-  reco/            Classement local (rank.ts, sans base ni IA) et accès aux données
-  ai.ts            Seul point d'appel à l'IA : abonnement Claude (CLI) ou modèle local (Ollama), routage et repli
-  setup.ts         Installation et connexion de l'IA en un clic (winget, Ollama)
-  profile.ts       Profil et réglages structurés (Sonnet)
-  chat.ts          Chat par recette (Haiku)
-client/            Interface React (Vite)
-scripts/           Installation, lanceur (navigateur par défaut) et création du raccourci
-docs/SPEC.md       Spécification détaillée et décisions de conception
-data/              Base SQLite, images des favoris, journaux (hors git)
-```
-
 ## Données et vie privée
 
-Tout reste sur ta machine, dans `data/` (exclu de git). Réglages → « Exporter mes données » produit un fichier JSON avec ton stock, tes favoris, tes rejets, tes préférences, ton profil et tes conversations. Avec le modèle local, rien ne sort de ton PC. Avec Claude, seul ce qui est nécessaire à chaque appel (la recette, ton stock, ton profil) est envoyé, via ton propre compte.
+Tout reste sur ton PC, dans le dossier de l'app. Réglages → « Exporter mes données » produit un fichier JSON avec ton stock, tes favoris, tes rejets, tes préférences, ton profil et tes conversations. Avec le modèle local, rien ne sort de ton PC. Avec Claude, seul ce qui est nécessaire à chaque appel (la recette, ton stock, ton profil) est envoyé, via ton propre compte.
 
 ## Sources
 
 Les recettes, photos et textes appartiennent à [Marmiton](https://www.marmiton.org) et à leurs auteurs ; chaque fiche renvoie vers la page d'origine. Ce projet est un outil **personnel** : il ne lit que les pages autorisées par le `robots.txt` du site, à raison d'une page toutes les 2,5 secondes, et ne redistribue aucun contenu (la base reste locale). Merci de respecter ces conditions si tu le réutilises.
+
+---
+
+Pour contribuer ou modifier l'app : [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md).
