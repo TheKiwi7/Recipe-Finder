@@ -3,6 +3,7 @@ import { ArrowUpCircle, Check, Download, Eye, Loader2, Plus, RefreshCw, Undo2 } 
 import { api } from '../api.ts';
 import { QuestionnaireForm } from '../components/QuestionnaireForm.tsx';
 import { AiCard } from '../components/AiCard.tsx';
+import { Autocomplete } from '../components/Autocomplete.tsx';
 import { MembersCard } from '../components/MembersCard.tsx';
 import { invalidateLists } from '../recipes-store.ts';
 import { toast } from '../toast.tsx';
@@ -20,6 +21,7 @@ function ago(iso: string | null): string {
 function RejectionsCard() {
   useTranslations();
   const { data: r, failed, reload } = useLoad(() => api.rejections());
+  const [value, setValue] = useState('');
   if (!r) return <div className="card settings-card"><LoadState failed={failed} onRetry={reload} /></div>;
 
   const undo = async (action: () => Promise<unknown>, message: string) => {
@@ -27,13 +29,22 @@ function RejectionsCard() {
   };
   const undoRecipe = (id: number) => undo(() => api.react(id, null), L('Rejet annulé', 'Rejection undone'));
   const undoIngredient = (base: string) => undo(() => api.unban(base), L(`« ${base} » à nouveau autorisé`, `“${tTerm(base)}” allowed again`));
+  const add = async (text = value) => {
+    if (!text.trim()) return;
+    try {
+      const { base } = await api.banTyped(text);
+      setValue(''); invalidateLists(); await reload();
+      toast(L(`« ${base} » ne te sera plus proposé`, `You won’t see “${tTerm(base)}” again`));
+    } catch (e) { toast((e as Error).message); }
+  };
 
   return (
     <div className="card settings-card">
       <h3 className="h3">{L('Ingrédients rejetés', 'Rejected ingredients')}</h3>
-      {r.ingredients.length === 0 ? <p className="muted small">{L('Aucun.', 'None.')}</p> : (
-        <div className="qchips">{r.ingredients.map(i => <span className="chip" key={i.base}>{tTerm(i.base)}<button onClick={() => undoIngredient(i.base)} title={L('Annuler', 'Undo')} aria-label={L(`Autoriser ${i.base}`, `Allow ${tTerm(i.base)}`)}><Undo2 size={13} /></button></span>)}</div>
-      )}
+      <div className="staples-row chips-add">
+        {r.ingredients.map(i => <span className="chip" key={i.base}>{tTerm(i.base)}<button onClick={() => undoIngredient(i.base)} title={L('Annuler', 'Undo')} aria-label={L(`Autoriser ${i.base}`, `Allow ${tTerm(i.base)}`)}><Undo2 size={13} /></button></span>)}
+        <Autocomplete submitOnPick value={value} onChange={setValue} onSubmit={add} placeholder={L('+ ajouter un rejet', '+ add a rejection')} />
+      </div>
       <h3 className="h3" style={{ marginTop: 22 }}>{L('Recettes rejetées', 'Rejected recipes')}</h3>
       {r.recipes.length === 0 ? <p className="muted small">{L('Aucune.', 'None.')}</p> : (
         <ul className="rej-list">

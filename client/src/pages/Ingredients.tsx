@@ -110,7 +110,7 @@ function Staples({ staples, pantryBases }: { staples: string[]; pantryBases: str
         {staples.map(s => (
           <span className="chip" key={s}>{tTerm(s)}<button onClick={() => save(staples.filter(x => x !== s))} aria-label={L(`Retirer ${s} du placard`, `Remove ${tTerm(s)} from the cupboard`)}><X size={13} /></button></span>
         ))}
-        <Autocomplete value={value} onChange={setValue} onSubmit={add} placeholder={L('+ ajouter au placard', '+ add to the cupboard')} />
+        <Autocomplete submitOnPick value={value} onChange={setValue} onSubmit={add} placeholder={L('+ ajouter au placard', '+ add to the cupboard')} />
       </div>
       {suggestions.length > 0 && (
         <div className="staples-sugg">

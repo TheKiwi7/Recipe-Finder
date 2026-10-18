@@ -7,13 +7,18 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return <>{text.slice(0, i)}<mark>{text.slice(i, i + query.trim().length)}</mark>{text.slice(i + query.trim().length)}</>;
 }
 
-/** Saisie libre avec suggestions tirées du vocabulaire du catalogue. Entrée valide la saisie. */
-export function Autocomplete({ value, onChange, onSubmit, placeholder, inputRef }: {
+/**
+ * Saisie libre avec suggestions tirées du vocabulaire du catalogue. Entrée valide la saisie.
+ * submitOnPick : choisir une suggestion l'ajoute aussitôt (listes de puces : placard, rejets, allergies) ; sinon elle
+ * remplit seulement le champ (ajout au stock, où l'on précise ensuite la quantité).
+ */
+export function Autocomplete({ value, onChange, onSubmit, placeholder, inputRef, submitOnPick }: {
   value: string;
   onChange: (v: string) => void;
   onSubmit: (v: string) => void;
   placeholder?: string;
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  submitOnPick?: boolean;
 }) {
   const [items, setItems] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
@@ -28,7 +33,7 @@ export function Autocomplete({ value, onChange, onSubmit, placeholder, inputRef 
     return () => clearTimeout(t);
   }, [value]);
 
-  const pick = (v: string) => { onChange(v); setOpen(false); setItems([]); };
+  const pick = (v: string) => { onChange(v); setOpen(false); setItems([]); if (submitOnPick) onSubmit(v); };
 
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     const shown = open && items.length > 0;

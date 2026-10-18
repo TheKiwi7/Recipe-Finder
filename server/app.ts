@@ -5,7 +5,7 @@ import { displayProgress, getCatalogTarget, getImportPriority, importProgress, p
 import { checkForUpdate, initUpdateState, updateState } from './update.ts';
 import { addShoppingItem, buyAllShopping, buyShoppingItem, clearShopping, cookRecipe, CookError, listShopping, removeShoppingItem } from './shopping.ts';
 import {
-  addPantryItem, confirmPantry, deletePantryItem, listPantry, listStaples, pantryState, setStaples, suggestIngredients, updatePantryItem,
+  addPantryItem, baseFor, confirmPantry, deletePantryItem, listPantry, listStaples, pantryState, setStaples, suggestIngredients, updatePantryItem,
 } from './pantry.ts';
 import { banIngredient, favorites, imagePath, recipeDetail, recommend, rejections, setReaction } from './reco/service.ts';
 import type { Mode } from './reco/rank.ts';
@@ -125,7 +125,16 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     return c.json({ ok: true });
   });
   api.get('/favorites', c => c.json(favorites(db)));
-  api.post('/banned', async c => { banIngredient(db, (await c.req.json()).base, true); status.preferencesChanged(); return c.json({ ok: true }); });
+  // typed : saisi à la main (Réglages → Mes rejets) → ramené à l'ingrédient du catalogue, comme le placard (« tomates », « garlic » → « tomate », « ail »).
+  // Sinon (page recette), c'est déjà l'ingrédient du catalogue.
+  api.post('/banned', async c => {
+    const body = await c.req.json() as { base: string; typed?: boolean };
+    const base = body.typed ? baseFor(db, await toFrench(db, String(body.base ?? ''))) : body.base;
+    if (!base?.trim()) return c.json({ error: L('Ingrédient vide', 'Empty ingredient') }, 400);
+    banIngredient(db, base, true);
+    status.preferencesChanged();
+    return c.json({ ok: true, base });
+  });
   api.delete('/banned/:base', c => { banIngredient(db, decodeURIComponent(c.req.param('base')), false); return c.json({ ok: true }); });
   api.get('/rejections', c => c.json(rejections(db)));
 

@@ -95,6 +95,8 @@ export const api = {
   react: (id: number, kind: Reaction) => call('POST', `/recipes/${id}/reaction`, { kind }),
   favorites: () => call<RecipeCard[]>('GET', '/favorites'),
   ban: (base: string) => call('POST', '/banned', { base }),
+  /** Rejet saisi à la main : le serveur le ramène à l'ingrédient du catalogue, qu'il renvoie. */
+  banTyped: (text: string) => call<{ ok: true; base: string }>('POST', '/banned', { base: text, typed: true }),
   unban: (base: string) => call('DELETE', `/banned/${encodeURIComponent(base)}`),
   rejections: () => call<Rejections>('GET', '/rejections'),
   questionnaire: () => call<{ questionnaire: Questionnaire | null; defaults: Questionnaire; equipment: string[] }>('GET', '/questionnaire'),

@@ -27,7 +27,7 @@ function ChipList({ label, hint, values, placeholder, onChange }: { label: strin
       <span className="member-label">{label}<small>{hint}</small></span>
       <div className="qchips">
         {values.map(v => <span className="chip" key={v}>{tTerm(v)}<button onClick={() => onChange(values.filter(x => x !== v))} aria-label={L(`Retirer ${v}`, `Remove ${tTerm(v)}`)}><X size={13} /></button></span>)}
-        <div className="qchip-input"><Autocomplete value={input} onChange={setInput} onSubmit={add} placeholder={placeholder} /></div>
+        <div className="qchip-input"><Autocomplete submitOnPick value={input} onChange={setInput} onSubmit={add} placeholder={placeholder} /></div>
       </div>
     </div>
   );

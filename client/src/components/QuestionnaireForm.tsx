@@ -85,7 +85,7 @@ export function QuestionnaireForm({ submitLabel, onSaved }: { submitLabel: strin
         <div className="qlabel"><b>{L('Allergies ou ingrédients à éviter absolument', 'Allergies or ingredients to avoid at all costs')}</b><span>{L('Aucune recette ne les contiendra.', 'No recipe will contain them.')}</span></div>
         <div className="qchips">
           {q.allergies.map(a => <span className="chip" key={a}>{tTerm(a)}<button type="button" onClick={() => up({ allergies: q.allergies.filter(x => x !== a) })} aria-label={L(`Retirer ${a}`, `Remove ${tTerm(a)}`)}><X size={13} /></button></span>)}
-          <div className="qchip-input"><Autocomplete value={allergy} onChange={setAllergy} onSubmit={addAllergy} placeholder={L('+ ajouter (ex. arachide)', '+ add (e.g. peanut)')} /></div>
+          <div className="qchip-input"><Autocomplete submitOnPick value={allergy} onChange={setAllergy} onSubmit={addAllergy} placeholder={L('+ ajouter (ex. arachide)', '+ add (e.g. peanut)')} /></div>
         </div>
       </section>
 
