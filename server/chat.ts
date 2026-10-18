@@ -1,8 +1,9 @@
 import { AIUnavailable, askAI } from './ai.ts';
 import type { Db } from './db.ts';
 import { listPantry, listStaples } from './pantry.ts';
-import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, recordSignal } from './preferences.ts';
+import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, recordSignal, type Questionnaire } from './preferences.ts';
 import { profileText } from './profile.ts';
+import { mealContext } from './members.ts';
 import { recipeDetail } from './reco/service.ts';
 
 // Chat sur une recette (Q16) : Claude Haiku, contexte automatique (recette, stock, profil), conversation mémorisée.
@@ -12,6 +13,24 @@ export type ChatMessage = { id: number; role: 'user' | 'assistant'; text: string
 const SYSTEM = `Tu es l'assistant culinaire d'une app perso de recettes. Tu réponds en français, de façon concise et concrète (quelques phrases ou une courte liste), comme un ami qui cuisine bien.
 Tu connais la recette affichée, le stock de la personne et son profil : sers-t'en (propose des substitutions avec ce qu'elle a, adapte au nombre de personnes, signale ce qui manque).
 Ne reformule pas toute la recette. Si on te demande quelque chose hors cuisine, ramène gentiment la conversation à la recette.`;
+
+const DIETS: Record<string, string> = { omnivore: 'mange de tout', pescetarian: 'pas de viande', vegetarian: 'végétarien', vegan: 'végan' };
+
+/** Pour qui est ce repas, avec les contraintes de chacun. */
+function mealLine(db: Db, q: Questionnaire): string {
+  const meal = mealContext(db);
+  const who = meal.eaters.map(m => {
+    const diet = m.isSelf ? q.diet : m.diet;
+    const allergies = m.isSelf ? q.allergies : m.allergies;
+    const parts = [m.isSelf ? `${m.name} (la personne qui pose la question)` : m.name];
+    if (diet !== 'omnivore') parts.push(DIETS[diet] ?? diet);
+    if (allergies.length) parts.push(`allergies : ${allergies.join(', ')}`);
+    if (!m.isSelf && m.aversions.length) parts.push(`n'aime pas : ${m.aversions.join(', ')}`);
+    if (!m.isSelf && m.notes) parts.push(`notes : ${m.notes}`);
+    return parts.join(' — ');
+  });
+  return `Ce repas est pour ${meal.persons} personne(s) :\n${who.map(w => `- ${w}`).join('\n')}`;
+}
 
 export function chatHistory(db: Db, recipeId: number): ChatMessage[] {
   return db.prepare('SELECT id, role, text, at FROM chat_messages WHERE recipe_id = ? ORDER BY id').all(recipeId) as ChatMessage[];
@@ -40,7 +59,7 @@ Ingrédients de la recette absents du stock : ${r.missing.join(', ') || 'aucun'}
 
 # Stock de la personne
 ${pantry.join(', ') || '(vide)'} — placard de base : ${listStaples(db).join(', ')}
-Elle cuisine en général pour ${q.persons} personne(s) ; régime : ${q.diet}${q.allergies.length ? ` ; allergies : ${q.allergies.join(', ')}` : ''}.
+${mealLine(db, q)}
 
 # Profil
 ${profileText(db) || '(pas encore de profil)'}

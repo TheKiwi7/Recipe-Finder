@@ -61,11 +61,13 @@ export function parseIngredientLine(raw: string): Omit<IngredientLine, 'base'> {
 // « X de Y » dont seul X est connu : souvent Y est le vrai ingrédient (« eau de fleur d'oranger », « noisette de beurre »).
 // On laisse alors Claude trancher, sauf pour ces compléments sans ambiguïté.
 const CONNECTOR = /^(de|d|a|au|aux|en)\b/;
-const SAFE_TAILS = ['en poudre', 'en morceau', 'en de', 'en tranche', 'en conserve', 'en boite', 'en branche', 'en grain', 'en feuille', 'a temperature ambiante', 'a la temperature ambiante', 'de preference', 'de votre choix', 'au choix', 'du jardin', 'de saison'];
+const SAFE_TAILS = ['en poudre', 'en morceau', 'en de', 'en tranche', 'en conserve', 'en boite', 'en branche', 'en grain', 'en feuille', 'a temperature ambiante', 'a la temperature ambiante', 'de preference', 'de votre choix', 'a votre choix', 'au choix', 'a volonte', 'du jardin', 'de saison'];
+// Comparés sous forme normalisée (singulier, sans accents), comme la fin du nom.
+const SAFE_KEYS = SAFE_TAILS.map(normalizeKey);
 
 /** Reste de nom (normalisé) après la partie reconnue : « de saumon » est ambigu, « en poudre » ne l'est pas. */
 export function isAmbiguousTail(tail: string): boolean {
-  return !!tail && CONNECTOR.test(tail) && !SAFE_TAILS.some(s => tail.startsWith(s));
+  return !!tail && CONNECTOR.test(tail) && !SAFE_KEYS.some(s => tail.startsWith(s));
 }
 
 const LEADING_ADJECTIVES = new Set(['gros', 'grosse', 'petit', 'petite', 'beau', 'belle', 'bon', 'bonne', 'jeune', 'demi', 'grand', 'grande', 'fin', 'fine', 'bel']);

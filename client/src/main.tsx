@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from 'react';
+import { Component, StrictMode, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import './recipes.css';
@@ -65,4 +65,20 @@ window.addEventListener('pagehide', () => navigator.sendBeacon('/api/bye'));
 // Signe de vie, sur toutes les pages (y compris l'accueil, sans barre latérale).
 setInterval(() => { fetch('/api/ping').catch(() => {}); }, 30_000);
 
-createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
+/** Erreur d'affichage : un message et un bouton plutôt qu'un écran vide. */
+class Crash extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="lock-screen">
+        <h1 className="h1" style={{ fontSize: 22 }}>Oups, l'affichage a planté</h1>
+        <p className="sub">Si ça persiste, ferme l'app puis relance-la (le serveur se met alors à jour).<br /><small className="muted">{this.state.error.message}</small></p>
+        <button className="btn btn-primary" onClick={() => location.reload()}>Recharger</button>
+      </div>
+    );
+  }
+}
+
+createRoot(document.getElementById('root')!).render(<StrictMode><Crash><App /></Crash></StrictMode>);

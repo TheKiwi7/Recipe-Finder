@@ -26,6 +26,8 @@ export type Questionnaire = {
 };
 export type ProfileStatus = { updatedAt: string | null; pendingSignals: number; hasProfile: boolean; lastError: string | null; exclusions: string[] };
 export type ChatMessage = { id: number; role: 'user' | 'assistant'; text: string; at: string };
+export type Member = { id: number; name: string; isSelf: boolean; diet: 'omnivore' | 'vegetarian' | 'vegan' | 'pescetarian'; allergies: string[]; aversions: string[]; notes: string };
+export type Members = { members: Member[]; eaters: number[] };
 export type AIProvider = 'claude' | 'local';
 export type AIStatus = {
   claude: { state: 'ready' | 'no-subscription' | 'not-logged-in' | 'not-installed' | 'error'; plan?: string; detail?: string };
@@ -42,8 +44,11 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  const data = await res.json().catch(() => ({}));
+  const json = (res.headers.get('Content-Type') ?? '').includes('application/json');
+  const data = json ? await res.json().catch(() => ({})) : {};
   if (!res.ok) throw new Error(data.error ?? `Erreur ${res.status}`);
+  // Réponse non JSON sur une route d'API : serveur d'une version plus ancienne que l'interface.
+  if (!json && res.status !== 204) throw new Error('Serveur pas à jour : ferme et relance l’app');
   return data as T;
 }
 
@@ -57,6 +62,11 @@ export const api = {
   suggest: (q: string) => call<string[]>('GET', `/ingredients/suggest?q=${encodeURIComponent(q)}`),
   importStatus: () => call<ImportStatus>('GET', '/import/status'),
   importMore: (add: number) => call<ImportStatus>('POST', '/import/more', { add }),
+  members: () => call<Members>('GET', '/members'),
+  addMember: (name: string) => call<Member>('POST', '/members', { name }),
+  updateMember: (id: number, patch: Partial<Omit<Member, 'id' | 'isSelf'>>) => call('PATCH', `/members/${id}`, patch),
+  deleteMember: (id: number) => call('DELETE', `/members/${id}`),
+  setEaters: (ids: number[]) => call<{ eaters: number[] }>('PUT', '/eaters', { ids }),
   aiStatus: () => call<AIStatus>('GET', '/ai/status'),
   connectClaude: () => call('POST', '/ai/claude/connect'),
   setupLocal: () => call('POST', '/ai/local/setup'),

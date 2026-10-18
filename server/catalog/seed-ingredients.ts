@@ -180,7 +180,7 @@ saint-jacques: noix de saint jacques | coquille saint jacques | saint jacques
 sardine:
 surimi:
 tofu:
--: moule à | moules à | papier sulfurisé | papier cuisson | film alimentaire | pique en bois | cure dent | décoration
+-: moule à cake | moule à manqué | moule à tarte | moule à gâteau | moule à muffins | moule à charlotte | moule à savarin | moule à cannelés | moule à madeleines | moule à soufflé | moule à gratin | moule à kouglof | moule en silicone | papier sulfurisé | papier cuisson | film alimentaire | pique en bois | cure dent | décoration
 `;
 
 export function seedAliases(): Array<[alias: string, base: string | null]> {

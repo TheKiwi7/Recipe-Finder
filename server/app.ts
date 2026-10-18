@@ -11,6 +11,7 @@ import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, getWeights, OPTIONAL_EQUIPMENT
 import { maybeUpdateProfile, profileStatus, profileText } from './profile.ts';
 import { askAboutRecipe, ChatError, chatHistory } from './chat.ts';
 import { exportData } from './export.ts';
+import { addMember, deleteMember, eaterIds, listMembers, setEaters, updateMember } from './members.ts';
 import { askProvider, claudeStatus, cooldownOf, invalidateLocalStatus, localStatus, route, type Provider } from './ai.ts';
 import { connectClaude, setupLocal, setupTask } from './setup.ts';
 import { setMeta } from './db.ts';
@@ -127,6 +128,13 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
       return c.json({ ok: false, ms: Date.now() - started, error: (e as Error).message.slice(0, 300) });
     }
   });
+
+  // ---------- pour qui je cuisine ----------
+  api.get('/members', c => c.json({ members: listMembers(db), eaters: eaterIds(db) }));
+  api.post('/members', async c => c.json(addMember(db, String((await c.req.json()).name ?? ''))));
+  api.patch('/members/:id', async c => { updateMember(db, Number(c.req.param('id')), await c.req.json()); return c.json({ members: listMembers(db) }); });
+  api.delete('/members/:id', c => { deleteMember(db, Number(c.req.param('id'))); return c.json({ members: listMembers(db), eaters: eaterIds(db) }); });
+  api.put('/eaters', async c => { setEaters(db, (await c.req.json()).ids ?? []); return c.json({ eaters: eaterIds(db) }); });
 
   api.get('/export', c => c.json(exportData(db), 200, { 'Content-Disposition': `attachment; filename="recipe-finder-${new Date().toISOString().slice(0, 10)}.json"` }));
 

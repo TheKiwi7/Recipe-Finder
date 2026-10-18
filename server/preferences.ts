@@ -53,15 +53,29 @@ export function recordSignal(db: Db, kind: string, detail: string): void {
   db.prepare('INSERT INTO signals (kind, detail, at) VALUES (?, ?, ?)').run(kind, detail, new Date().toISOString());
 }
 
-// Ingrédients exclus selon le régime. Comparés aux bases normalisées du catalogue.
-const MEAT = ['poulet', 'dinde', 'canard', 'boeuf', 'boeuf haché', 'veau', 'porc', 'agneau', 'lardons', 'jambon', 'jambon cru', 'chorizo', 'saucisse', 'bacon', 'lapin', 'pintade', 'caille', 'magret', 'foie gras', 'gibier', 'chair à saucisse', 'rillettes', 'boudin', 'andouille', 'gélatine'];
-const FISH = ['saumon', 'saumon fumé', 'thon', 'cabillaud', 'dorade', 'crevette', 'moule', 'sardine', 'surimi', 'saint-jacques', 'anchois', 'truite', 'maquereau', 'calamar', 'poulpe', 'crabe', 'homard', 'langoustine', 'bar', 'sole', 'merlan', 'oeufs de saumon', 'poisson', 'fruits de mer'];
-const ANIMAL = ['oeuf', 'lait', 'crème fraîche', 'beurre', 'yaourt', 'fromage blanc', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyère', 'chèvre', 'roquefort', 'feta', 'reblochon', 'camembert', 'raclette', 'cheddar', 'miel', 'fromage', 'lait concentré'];
+// Ingrédients exclus selon le régime. Comparés mot à mot aux ingrédients ET au texte des lignes d'ingrédients
+// (« bouillon de volaille » est rangé sous « bouillon », mais « volaille » l'écarte pour un végétarien).
+const MEAT = [
+  'viande', 'boeuf', 'veau', 'porc', 'agneau', 'mouton', 'cheval', 'poulet', 'dinde', 'canard', 'oie', 'pintade', 'caille',
+  'chapon', 'coq', 'volaille', 'lapin', 'gibier', 'cerf', 'chevreuil', 'sanglier', 'biche', 'faisan', 'perdrix', 'pigeon',
+  'jambon', 'jambonneau', 'lardon', 'lard', 'bacon', 'pancetta', 'coppa', 'bresaola', 'prosciutto', 'speck', 'saucisse', 'saucisson',
+  'salami', 'chorizo', 'pepperoni', 'merguez', 'chipolata', 'knack', 'francfort', 'boudin', 'andouille', 'andouillette', 'rillette',
+  'chair a saucisse', 'foie', 'rognon', 'gesier', 'abat', 'tripe', 'magret', 'confit', 'escalope', 'cote de porc', 'echine', 'poitrine',
+  'travers', 'filet mignon', 'gigot', 'jarret', 'joue', 'cordon bleu', 'nugget', 'kebab', 'gelatine', 'fond de veau',
+  'graisse de canard', 'graisse d oie', 'saindoux', 'suif', 'steak hache', 'paupiette', 'osso buco',
+];
+const SEA = ['poisson', 'fruit de mer', 'anchois', 'surimi', 'fumet', 'nuoc mam', 'sauce poisson', 'dashi', 'bonite', 'caviar', 'tarama', 'oeufs de saumon'];
+const ANIMAL = [
+  'oeuf', 'lait', 'creme', 'beurre', 'yaourt', 'fromage', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte',
+  'chevre', 'roquefort', 'feta', 'reblochon', 'camembert', 'raclette', 'cheddar', 'miel', 'mayonnaise', 'chantilly', 'ghee', 'meringue', 'brioche',
+];
 
 export function dietExclusions(diet: Questionnaire['diet']): Set<string> {
-  if (diet === 'vegetarian') return new Set([...MEAT, ...FISH]);
+  // Poisson et fruits de mer : toute la famille (saumon, cabillaud, crevettes…), comme pour les allergies.
+  const sea = () => [...SEA, ...ALLERGEN_FAMILIES['poisson'], ...ALLERGEN_FAMILIES['fruit de mer']];
+  if (diet === 'vegetarian') return new Set([...MEAT, ...sea()]);
   if (diet === 'pescetarian') return new Set(MEAT);
-  if (diet === 'vegan') return new Set([...MEAT, ...FISH, ...ANIMAL]);
+  if (diet === 'vegan') return new Set([...MEAT, ...sea(), ...ANIMAL]);
   return new Set();
 }
 
@@ -70,9 +84,10 @@ const ALLERGEN_FAMILIES: Record<string, string[]> = {
   arachide: ['arachide', 'cacahuete', 'cacahouete', 'beurre de cacahuete'],
   cacahuete: ['arachide', 'cacahuete', 'cacahouete'],
   'fruit a coque': ['noix', 'noisette', 'amande', 'cajou', 'pistache', 'pecan', 'macadamia', 'pignon', 'praline', 'nougat', 'frangipane', 'massepain'],
-  gluten: ['farine', 'pate', 'pates', 'pain', 'semoule', 'chapelure', 'biscuit', 'boulgour', 'ble', 'orge', 'seigle', 'epeautre', 'brioche', 'couscous', 'tortilla', 'croutons', 'boudoir', 'speculoos'],
-  lactose: ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel'],
-  lait: ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel'],
+  gluten: ['gluten', 'farine', 'pate', 'pates', 'pain', 'semoule', 'chapelure', 'biscuit', 'boulgour', 'ble', 'orge', 'seigle', 'epeautre', 'avoine', 'brioche', 'couscous', 'tortilla', 'crouton', 'boudoir', 'speculoos', 'biere', 'sauce soja', 'crepe', 'gaufre', 'cracker', 'wrap', 'blini', 'nouille', 'gnocchi', 'ravioli', 'lasagne', 'spaghetti', 'tagliatelle', 'macaroni', 'vermicelle'],
+  lactose: ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel', 'chantilly', 'lactose', 'petit suisse', 'kiri', 'babybel'],
+  lait: ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel', 'chantilly', 'lactose', 'petit suisse', 'kiri', 'babybel'],
+  'produit laitier': ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel', 'chantilly', 'lactose', 'petit suisse', 'kiri', 'babybel'],
   oeuf: ['oeuf', 'mayonnaise', 'meringue'],
   poisson: ['poisson', 'saumon', 'thon', 'cabillaud', 'dorade', 'daurade', 'sardine', 'anchois', 'truite', 'maquereau', 'merlu', 'colin', 'lieu', 'bar', 'loup', 'sole', 'surimi', 'fumet', 'pangasius', 'merou', 'limande', 'lotte', 'hareng', 'haddock', 'morue', 'eglefin', 'fletan', 'turbot', 'saint pierre', 'raie', 'rouget', 'anguille', 'sandre', 'brochet', 'carpe', 'perche', 'espadon', 'merlan', 'tilapia', 'mulet', 'congre', 'tarama', 'caviar'],
   crustace: ['crevette', 'gambas', 'crabe', 'homard', 'langoustine', 'ecrevisse', 'surimi'],
@@ -89,10 +104,21 @@ const ALLERGEN_FAMILIES: Record<string, string[]> = {
  * allergies (avec leur famille) et régime. Par mot plutôt que par nom exact : « arachide » doit aussi
  * exclure « huile d'arachide », « porc » doit exclure « filet de porc ».
  */
+/**
+ * Saisie libre → clé d'allergène : « Sans gluten », « intolérance au lactose », « allergie aux arachides »,
+ * « produits laitiers » sont ramenés à « gluten », « lactose », « arachide », « produit laitier ».
+ */
+export function allergenKey(text: string): string {
+  return normalizeKey(text)
+    .replace(/^(san|sans|intolerance|intolerant|intolerante|allergie|allergique|allergi)\b\s*/, '')
+    .replace(/^(au|aux|a la|a l|a|de|du|des|d)\b\s*/, '')
+    .trim();
+}
+
 export function exclusionWords(q: Questionnaire, aversions: string[] = []): string[] {
   const words = new Set<string>();
   for (const a of [...q.allergies, ...aversions]) {
-    const k = normalizeKey(a);
+    const k = allergenKey(a);
     if (!k) continue;
     words.add(k);
     for (const w of ALLERGEN_FAMILIES[k] ?? []) words.add(normalizeKey(w));

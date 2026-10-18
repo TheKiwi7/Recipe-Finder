@@ -117,3 +117,18 @@ body.chat-open .content { padding-right: 424px; }
 .welcome-next .small { margin: 0; }
 .profile-details { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
 .profile-text { white-space: pre-wrap; line-height: 1.6; font-size: 14.5px; margin: 0 0 16px; }
+
+/* ---------- membres de la famille ---------- */
+.member { padding: 14px 0; border-top: 1px solid var(--line); }
+.member-head { display: flex; align-items: center; gap: 10px; }
+.member-name { height: 36px; font-weight: 600; max-width: 260px; }
+.member-head .icon-btn { margin-left: auto; }
+.member-self { margin: 8px 0 0; }
+.member-body { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.member-field { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.member-label { font-size: 14px; font-weight: 600; padding-top: 6px; }
+.member-label small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.member-add { display: flex; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.member-add .field { height: 36px; max-width: 260px; }
+.chips.eaters { margin: -12px 0 14px; }
+@media (max-width: 760px) { .member-field { grid-template-columns: 1fr; gap: 6px; } }

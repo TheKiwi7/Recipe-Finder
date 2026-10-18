@@ -3,8 +3,30 @@ import { CircleDashed, Loader2, SearchX } from 'lucide-react';
 import type { Mode } from '../api.ts';
 import { RecipeCard } from '../components/RecipeCard.tsx';
 import { usePantry } from '../pantry-store.ts';
-import { ensureList, loadMore, setFilters, useList } from '../recipes-store.ts';
+import { ensureList, listFilters, loadMore, setFilters, useList } from '../recipes-store.ts';
 import { navigate } from '../router.ts';
+import { refreshMembers, toggleEater, useMembers } from '../members-store.ts';
+import { toast } from '../toast.tsx';
+
+/** « Pour : Arthur · Julie · Léo » — qui mange ce repas (affiché dès qu'il y a plusieurs membres). */
+function EatersFilter({ mode }: { mode: Mode }) {
+  const data = useMembers();
+  useEffect(() => { if (!data) void refreshMembers(); }, [data]);
+  if (!data || data.members.length < 2) return null;
+  const toggle = async (id: number) => {
+    try { await toggleEater(id); await setFilters(mode, listFilters(mode)); }
+    catch (e) { toast((e as Error).message); }
+  };
+  return (
+    <div className="chips eaters">
+      <span className="muted small">Pour :</span>
+      {data.members.map(m => (
+        <button key={m.id} className={`fchip ${data.eaters.includes(m.id) ? 'on' : ''}`} onClick={() => toggle(m.id)} aria-pressed={data.eaters.includes(m.id)}>{m.name}</button>
+      ))}
+      <span className="muted small">· {data.eaters.length} pers.</span>
+    </div>
+  );
+}
 
 const TYPES = ['Tous', 'Plat', 'Entrée', 'Dessert', 'Apéro', 'Petit-déj.'];
 const TIMES: Array<[number | null, string]> = [[null, 'Toutes durées'], [20, '≤ 20 min'], [45, '≤ 45 min']];
@@ -35,6 +57,7 @@ export function RecipesPage({ mode }: { mode: Mode }) {
         </div>
       </header>
 
+      <EatersFilter mode={mode} />
       <div className="chips">
         {TYPES.map(t => (
           <button key={t} className={`fchip ${list.filters.type === t ? 'on' : ''}`} onClick={() => setFilters(mode, { ...list.filters, type: t })}>{t}</button>

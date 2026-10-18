@@ -2,7 +2,8 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_DIR, type Db } from '../db.ts';
 import type { IngredientLine } from '../catalog/ingredients.ts';
-import { containsWord, DEFAULT_QUESTIONNAIRE, exclusionWords, getQuestionnaire, getWeights, recordSignal } from '../preferences.ts';
+import { containsWord, DEFAULT_QUESTIONNAIRE, getQuestionnaire, getWeights, recordSignal } from '../preferences.ts';
+import { mealContext } from '../members.ts';
 import { normalizeKey } from '../catalog/text.ts';
 import { withGenerics } from './generic.ts';
 import { pickBatch, rankCandidates, type Context, type Entry, type Filters, type Mode } from './rank.ts';
@@ -32,7 +33,7 @@ export function loadCatalog(db: Db): Catalog {
   const key = `${k.n}:${k.u}:${k.ri}`;
   if (cache?.key === key) return cache;
 
-  const rows = db.prepare(`SELECT id, name, image, type, total_min, dishes, rating, reviews, keywords, utensils, steps FROM recipes WHERE unresolved = 0`).all() as Array<Record<string, any>>;
+  const rows = db.prepare(`SELECT id, name, image, type, total_min, dishes, rating, reviews, keywords, utensils, steps, ingredients FROM recipes WHERE unresolved = 0`).all() as Array<Record<string, any>>;
   const bases = new Map<number, string[]>();
   for (const r of db.prepare('SELECT recipe_id, base FROM recipe_ingredients').all() as Array<{ recipe_id: number; base: string }>) {
     (bases.get(r.recipe_id) ?? bases.set(r.recipe_id, []).get(r.recipe_id)!).push(r.base);
@@ -40,7 +41,8 @@ export function loadCatalog(db: Db): Catalog {
   const entries = rows.map(r => ({
     id: r.id, name: r.name, image: r.image, type: r.type, totalMin: r.total_min, dishes: r.dishes, rating: r.rating, reviews: r.reviews,
     bases: bases.get(r.id) ?? [], keywords: JSON.parse(r.keywords), utensils: JSON.parse(r.utensils), hasImage: !!r.image,
-    stepsKey: ` ${normalizeKey((JSON.parse(r.steps) as string[]).join(' '))} `,
+    // Texte des lignes d'ingrédients + étapes : rattrape ce que la base d'ingrédient ou la liste oublie.
+    stepsKey: ` ${normalizeKey([...(JSON.parse(r.ingredients) as Array<{ raw: string }>).map(l => l.raw), ...(JSON.parse(r.steps) as string[])].join(' '))} `,
   }));
   const df = new Map<string, number>();
   for (const e of entries) for (const b of e.bases) df.set(b, (df.get(b) ?? 0) + 1);
@@ -67,6 +69,7 @@ function availableBases(db: Db) {
 }
 
 function buildContext(db: Db, catalog: Catalog, mode: Mode): Context {
+  const meal = mealContext(db);
   const liked = ids(db, `SELECT recipe_id id FROM reactions WHERE kind = 'like'`);
   const disliked = ids(db, `SELECT recipe_id id FROM reactions WHERE kind = 'dislike'`);
   const seen = ids(db, 'SELECT recipe_id id FROM seen WHERE mode = ? AND at > ? AND at < ?', mode,
@@ -74,13 +77,14 @@ function buildContext(db: Db, catalog: Catalog, mode: Mode): Context {
   const pick = (s: Set<number>) => [...s].map(id => catalog.byId.get(id)).filter((e): e is Entry & { image: string | null } => !!e);
   return {
     ...availableBases(db),
-    banned: bannedBases(db),
-    exclusionWords: exclusionWords(getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE, getWeights(db).exclude),
+    // Selon qui mange (filtre « Pour : … ») : mes rejets et mon profil ne comptent que si je mange.
+    banned: meal.selfEats ? bannedBases(db) : new Set<string>(),
+    exclusionWords: meal.exclusionWords,
     liked: pick(liked),
     disliked: pick(disliked),
     excluded: new Set([...liked, ...disliked, ...seen]),
     questionnaire: getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE,
-    weights: getWeights(db),
+    weights: meal.selfEats ? getWeights(db) : {},
     idf: catalog.idf,
     common: catalog.common,
   };
@@ -134,9 +138,10 @@ export function recipeDetail(db: Db, id: number): RecipeDetail | null {
   const fav = db.prepare('SELECT snapshot, image_file FROM favorites WHERE recipe_id = ?').get(id) as { snapshot: string; image_file: string | null } | undefined;
   const row = db.prepare('SELECT * FROM recipes WHERE id = ?').get(id) as Record<string, any> | undefined;
   const { available, urgent } = availableBases(db);
-  const words = exclusionWords(getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE, getWeights(db).exclude);
-  const userBanned = bannedBases(db);
-  const persons = (getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE).persons;
+  const meal = mealContext(db);
+  const words = meal.exclusionWords;
+  const userBanned = meal.selfEats ? bannedBases(db) : new Set<string>();
+  const persons = meal.persons;
   const localImage = fav?.image_file ? `/api/images/${fav.image_file}` : null;
 
   if (!row) {

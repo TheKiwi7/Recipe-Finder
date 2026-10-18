@@ -64,6 +64,9 @@ export function invalidateLists() {
   for (const mode of ['ready', 'almost'] as Mode[]) if (lists[mode].loaded) set(mode, { stale: true });
 }
 
+/** Filtres actuels d'une liste (sans s'abonner). */
+export const listFilters = (mode: Mode): Filters => lists[mode].filters;
+
 export function useList(mode: Mode): ListState {
   return useSyncExternalStore(cb => { listeners.add(cb); return () => listeners.delete(cb); }, () => lists[mode]);
 }

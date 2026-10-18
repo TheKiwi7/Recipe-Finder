@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_QUESTIONNAIRE, exclusionWords } from '../preferences.ts';
+import { allergenKey, DEFAULT_QUESTIONNAIRE, exclusionWords } from '../preferences.ts';
 import { bayesianRating, pickBatch, rankCandidates, similarity, type Context, type Entry } from './rank.ts';
 
 let nextId = 1;
@@ -75,6 +75,19 @@ test('aversions fermes du profil : exclusion par famille', () => {
   const omelette = entry(['oeuf', 'poulet']);
   const words = exclusionWords(DEFAULT_QUESTIONNAIRE, ['poisson', 'fruit de mer']);
   assert.deepEqual(rankCandidates([fondue, pangasius, omelette], ctx({ available: avail, exclusionWords: words }), 'ready', {}).map(s => s.entry.id), [omelette.id]);
+});
+
+test('allergies saisies librement : gluten, lactose, produits laitiers', () => {
+  assert.equal(allergenKey('Sans gluten'), 'gluten');
+  assert.equal(allergenKey('intolérance au lactose'), 'lactose');
+  assert.equal(allergenKey('Allergie aux arachides'), 'arachide');
+  assert.equal(allergenKey('produits laitiers'), 'produit laitier');
+  const words = exclusionWords({ ...DEFAULT_QUESTIONNAIRE, allergies: ['sans gluten', 'intolérance au lactose'] });
+  const avail = new Set(['pâtes', 'farine', 'crème fraîche', 'riz', 'poulet', 'sauce soja', 'huile']);
+  const carbo = entry(['pâtes', 'crème fraîche']);
+  const wok = entry(['riz', 'poulet', 'sauce soja']);
+  const poulet = entry(['riz', 'poulet', 'huile']);
+  assert.deepEqual(rankCandidates([carbo, wok, poulet], ctx({ available: avail, exclusionWords: words }), 'ready', {}).map(r => r.entry.id), [poulet.id]);
 });
 
 test('« à finir vite » et likes remontent une recette, dislikes la font descendre', () => {

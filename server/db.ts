@@ -113,6 +113,16 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS chat_messages_recipe ON chat_messages(recipe_id, id);
+-- Personnes pour qui on cuisine (« Moi » + famille), chacune avec ses exclusions.
+CREATE TABLE IF NOT EXISTS members (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  is_self INTEGER NOT NULL DEFAULT 0,
+  diet TEXT NOT NULL DEFAULT 'omnivore',
+  allergies TEXT NOT NULL DEFAULT '[]',  -- JSON string[]
+  aversions TEXT NOT NULL DEFAULT '[]',  -- JSON string[]
+  notes TEXT NOT NULL DEFAULT ''
+);
 CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

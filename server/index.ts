@@ -8,6 +8,7 @@ import { createApi } from './app.ts';
 import { acquireImportLock, currentTarget, getCatalogTarget, releaseImportLock, runImport } from './catalog/importer.ts';
 import { migrateCatalog, syncSeed } from './catalog/store.ts';
 import { ensureStaples } from './pantry.ts';
+import { ensureSelf } from './members.ts';
 import { maybeUpdateProfile } from './profile.ts';
 import { abortAllAI, ensureOllama, initAI, ollamaExe, releaseOllama } from './ai.ts';
 
@@ -19,6 +20,7 @@ initAI(db);
 syncSeed(db);
 migrateCatalog(db);
 ensureStaples(db);
+ensureSelf(db);
 
 let importing = false;
 // Mise à jour du profil en tâche de fond : vérifiée après chaque signal et toutes les 30 min (≥ 10 signaux, ≤ 1 / heure).
@@ -56,6 +58,8 @@ if (ollamaExe()) void ensureOllama();
 // Identifiant de la version de l'interface construite : l'app compare et propose de recharger quand il change.
 const clientBuild = () => { try { return String(statSync(join(CLIENT_DIST, 'index.html')).mtimeMs); } catch { return 'dev'; } };
 app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild, startImport: () => { void backgroundImport(); } }));
+// Route d'API inconnue : JSON 404, jamais la page HTML (sinon le client croit recevoir des données vides).
+app.all('/api/*', c => c.json({ error: 'Route inconnue — relance l’app pour mettre le serveur à jour' }, 404));
 setInterval(checkProfile, 30 * 60 * 1000);
 checkProfile();
 

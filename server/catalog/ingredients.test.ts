@@ -45,6 +45,7 @@ test('ingrédient de base', () => {
   assert.equal(base('800 g de noix de saint-jacques surgelées'), 'saint-jacques');
   assert.equal(base('65 g de cerneaux de noix'), 'noix');
   assert.equal(base('1 moules à cake'), null);
+  assert.equal(base('2 kg de moules à votre choix'), 'moule');
   assert.equal(base('1 truc introuvable'), undefined);
   assert.equal(base('40 couteaux'), 'couteaux');
   assert.equal(base('1 Fromage pour Tartiflette Nature RICHESMONTS®'), 'reblochon');

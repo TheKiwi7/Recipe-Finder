@@ -1,7 +1,7 @@
 // Mots dont le s/x final ne marque pas le pluriel ("pates" reste distinct de "pate" : pâtes ≠ pâte brisée).
 const INVARIANT = new Set([
   'noix', 'riz', 'pois', 'radis', 'anchois', 'cassis', 'ananas', 'mais', 'frais', 'gras', 'bois', 'brebis',
-  'couscous', 'pates', 'paris', 'tapas', 'jus', 'nems', 'lys', 'houmous', 'chips', 'cornichons', 'gros',
+  'couscous', 'pates', 'paris', 'tapas', 'jus', 'nems', 'lys', 'houmous', 'chips', 'cornichons', 'gros', 'choix', 'prix', 'noix',
 ]);
 
 function singular(token: string): string {
