@@ -17,6 +17,10 @@ export type RecipeTranslation = { name: string; ingredients: string[]; steps: st
 export type Mode = 'ready' | 'almost' | 'discover';
 export type ShoppingItem = { id: number; base: string; qty: number | null; unit: string | null; recipes: Array<{ id: number; name: string }> };
 export type Need = { base: string; qty: number | null; unit: string | null };
+export type UpdateState = {
+  supported: boolean; reason?: string; current: { sha: string; date: string } | null; behind: number; changes: string[];
+  checkedAt: string | null; status: 'idle' | 'checking' | 'updating' | 'restarting' | 'error'; step?: string; error?: string;
+};
 /** baseline : part de ces types sans priorité (dans le catalogue actuel). */
 export type ImportPriority = { types: string[]; remaining: number; baseline: number };
 export type Filters = { type: string; maxTime: number | null };
@@ -107,6 +111,9 @@ export const api = {
   clearShopping: () => call<ShoppingItem[]>('DELETE', '/shopping'),
   importPriority: () => call<ImportPriority>('GET', '/import/priority'),
   setImportPriority: (types: string[]) => call<ImportPriority>('PUT', '/import/priority', { types }),
+  update: () => call<UpdateState>('GET', '/update'),
+  checkUpdate: () => call<UpdateState>('POST', '/update/check'),
+  applyUpdate: () => call<UpdateState>('POST', '/update'),
   settings: () => call<{ lang: Lang }>('GET', '/settings'),
   setLang: (l: Lang) => call<{ lang: Lang }>('PUT', '/settings', { lang: l }),
   /** La traduction si elle est prête, sinon `{ pending: true }` : redemander un peu plus tard. */

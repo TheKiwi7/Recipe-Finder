@@ -1,7 +1,8 @@
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import { existsSync, statSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { existsSync, openSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { DATA_DIR, openDb } from './db.ts';
 import { createApi } from './app.ts';
@@ -13,9 +14,18 @@ import { maybeUpdateProfile } from './profile.ts';
 import { abortAllAI, ensureOllama, initAI, ollamaExe, releaseOllama, removeOllamaAutostart } from './ai.ts';
 import { L, lang, loadLang, prefillTranslations } from './i18n.ts';
 import { isFromApp } from './guard.ts';
+import { applyUpdate, checkForUpdate } from './update.ts';
 
 export const PORT = Number(process.env.PORT ?? 5317);
 const CLIENT_DIST = join(DATA_DIR, '..', 'client', 'dist');
+
+// Relancé après une mise à jour : on attend que l'ancien serveur ait libéré le port.
+if (process.env.RF_AFTER_UPDATE) {
+  for (let i = 0; i < 40; i++) {
+    try { await fetch(`http://127.0.0.1:${PORT}/api/ping`, { signal: AbortSignal.timeout(500) }); } catch { break; }
+    await new Promise(r => setTimeout(r, 250));
+  }
+}
 
 const db = openDb();
 loadLang(db);
@@ -72,7 +82,7 @@ setInterval(() => {
 if (ollamaExe()) { removeOllamaAutostart(); void ensureOllama(); }
 // Identifiant de la version de l'interface construite : l'app compare et propose de recharger quand il change.
 const clientBuild = () => { try { return String(statSync(join(CLIENT_DIST, 'index.html')).mtimeMs); } catch { return 'dev'; } };
-app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild, startImport: () => { void backgroundImport(); }, languageChanged: () => { void backgroundTranslate(); } }));
+app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild, startImport: () => { void backgroundImport(); }, languageChanged: () => { void backgroundTranslate(); }, update: () => { void applyUpdate(restartServer); } }));
 // Route d'API inconnue : JSON 404, jamais la page HTML (sinon le client croit recevoir des données vides).
 app.all('/api/*', c => c.json({ error: L('Route inconnue — relance l’app pour mettre le serveur à jour', 'Unknown route — restart the app to update the server') }, 404));
 setInterval(checkProfile, 30 * 60 * 1000);
@@ -86,7 +96,26 @@ if (existsSync(CLIENT_DIST)) {
   app.get('*', serveStatic({ root, path: 'index.html' })); // routes côté client
 }
 
-serve({ fetch: app.fetch, port: PORT, hostname: '127.0.0.1' }, info => console.log(`Recipe Finder sur http://127.0.0.1:${info.port}`));
+const httpServer = serve({ fetch: app.fetch, port: PORT, hostname: '127.0.0.1' }, info => console.log(`Recipe Finder sur http://127.0.0.1:${info.port}`));
+
+// ---------- mises à jour (git) ----------
+// Vérifiées peu après le démarrage puis toutes les 6 h ; installées à la demande depuis les Réglages.
+setTimeout(() => { void checkForUpdate(); }, 30_000);
+setInterval(() => { void checkForUpdate(); }, 6 * 3600 * 1000);
+
+/** Après une mise à jour : un nouveau serveur (nouveau code) prend le relais, détaché de celui-ci, qui s'arrête. */
+function restartServer(): void {
+  importCtrl.abort();
+  abortAllAI();
+  const out = openSync(join(DATA_DIR, 'server.log'), 'a');
+  const err = openSync(join(DATA_DIR, 'server-errors.log'), 'a');
+  spawn(process.execPath, [...process.execArgv, ...process.argv.slice(1)], {
+    cwd: process.cwd(), detached: true, windowsHide: true, stdio: ['ignore', out, err], env: { ...process.env, RF_AFTER_UPDATE: '1' },
+  }).unref();
+  httpServer.close();
+  releaseImportLock();
+  setTimeout(() => process.exit(0), 300);
+}
 
 // Import en tâche de fond : compléter le catalogue initial, puis ~100 recettes par semaine.
 async function backgroundImport() {
@@ -103,7 +132,8 @@ async function backgroundImport() {
     releaseImportLock();
   }
 }
-void backgroundImport();
+// Après une mise à jour, l'ancien serveur libère le verrou d'import en s'arrêtant : on lui laisse un instant.
+setTimeout(() => { void backgroundImport(); }, process.env.RF_AFTER_UPDATE ? 5_000 : 0);
 setInterval(backgroundImport, 3600 * 1000);
 
 // App en anglais : vocabulaire et noms de recettes traduits d'avance (nouvelles recettes comprises), en tâche de fond.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, CircleDashed, Compass, Heart, Lock, Moon, RefreshCw, Settings, ShoppingBasket, ShoppingCart, Soup, Sun } from 'lucide-react';
-import { api, type ImportStatus } from '../api.ts';
+import { api, type ImportStatus, type UpdateState } from '../api.ts';
 import { navigate, type Route } from '../router.ts';
 import { usePantry } from '../pantry-store.ts';
 import { invalidateLists } from '../recipes-store.ts';
@@ -26,9 +26,11 @@ const SEEN_SERVER: { value: string | null } = { value: null };
 
 function useImportStatus() {
   const [status, setStatus] = useState<ImportStatus | null>(null);
+  const [update, setUpdate] = useState<UpdateState | null>(null);
   useEffect(() => {
     let alive = true;
     const tick = () => api.importStatus().then(s => {
+      api.update().then(u => { if (alive) setUpdate(u); }).catch(() => {});
       LOADED_BUILD.value ??= s.build;
       if (SEEN_SERVER.value && SEEN_SERVER.value !== s.server) invalidateLists();
       SEEN_SERVER.value = s.server;
@@ -38,13 +40,13 @@ function useImportStatus() {
     const t = setInterval(tick, 15_000);
     return () => { alive = false; clearInterval(t); };
   }, []);
-  return status;
+  return { status, update };
 }
 
 export function Sidebar({ route }: { route: Route }) {
   const pantry = usePantry();
   const { theme, toggle } = useTheme();
-  const status = useImportStatus();
+  const { status, update } = useImportStatus();
   const locked = !pantry?.gateOpen;
   const shopping = useShopping();
   useEffect(() => { refreshShopping().catch(() => {}); }, []);
@@ -64,7 +66,7 @@ export function Sidebar({ route }: { route: Route }) {
     <nav className="side">
       {outdated && (
         <div className="update-banner" role="status">
-          {L('Une nouvelle version de l’app est disponible.', 'A new version of the app is available.')}
+          {L('L’app a été mise à jour.', 'The app has been updated.')}
           <button className="btn btn-primary small-btn" onClick={() => location.reload()}><RefreshCw size={14} />{L('Recharger', 'Reload')}</button>
         </div>
       )}
@@ -86,6 +88,11 @@ export function Sidebar({ route }: { route: Route }) {
         <div className="side-foot">
           {L('Catalogue complet : ', 'Catalogue complete: ')}{num(status.imported)} {L('recettes', 'recipes')} ·{' '}
           <a href="/reglages" onClick={e => { e.preventDefault(); navigate('/reglages'); }}>{L('en ajouter', 'add more')}</a>
+        </div>
+      )}
+      {!!update?.behind && (
+        <div className="side-foot">
+          <a href="/reglages" onClick={e => { e.preventDefault(); navigate('/reglages'); }}>{L('Nouvelle version disponible', 'New version available')}</a>
         </div>
       )}
       <button className="nav" onClick={toggle}>

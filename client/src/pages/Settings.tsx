@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Check, Download, Eye, Plus, RefreshCw, Undo2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowUpCircle, Check, Download, Eye, Loader2, Plus, RefreshCw, Undo2 } from 'lucide-react';
 import { api } from '../api.ts';
 import { QuestionnaireForm } from '../components/QuestionnaireForm.tsx';
 import { AiCard } from '../components/AiCard.tsx';
@@ -9,7 +9,7 @@ import { toast } from '../toast.tsx';
 import { LoadState, useLoad } from '../use-load.tsx';
 import { LangSwitch } from '../components/LangSwitch.tsx';
 import { TranslatedName } from '../components/RecipeCard.tsx';
-import { L, num, tTerm, typeLabel, useTranslations } from '../i18n.ts';
+import { L, locale, num, tTerm, typeLabel, useTranslations } from '../i18n.ts';
 
 function ago(iso: string | null): string {
   if (!iso) return L('jamais', 'never');
@@ -199,6 +199,60 @@ function ImportPriority() {
   );
 }
 
+/** Mises à jour par git : version actuelle, nouveautés, installation en un clic (l'app redémarre et la page se recharge). */
+function UpdatesCard() {
+  const { data: u, setData } = useLoad(() => api.update());
+  const [checking, setChecking] = useState(false);
+  const working = u?.status === 'updating' || u?.status === 'restarting';
+
+  // Pendant l'installation : on suit l'avancement, puis on attend le nouveau serveur pour recharger la page.
+  useEffect(() => {
+    if (!working) return;
+    let alive = true;
+    let server: string | null = null;
+    api.importStatus().then(s => { server = s.server; }).catch(() => {});
+    const t = setInterval(async () => {
+      try { const next = await api.update(); if (alive) setData(next); if (next.status === 'error') return; } catch { /* serveur en train de redémarrer */ }
+      try { const s = await api.importStatus(); if (server && s.server !== server) location.reload(); } catch { /* pas encore revenu */ }
+    }, 1500);
+    return () => { alive = false; clearInterval(t); };
+  }, [working]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!u) return null;
+  const check = async () => {
+    setChecking(true);
+    try { setData(await api.checkUpdate()); } catch (e) { toast((e as Error).message); } finally { setChecking(false); }
+  };
+  const install = async () => {
+    try { setData(await api.applyUpdate()); } catch (e) { toast((e as Error).message); }
+  };
+  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  return (
+    <div className="card settings-card">
+      {!u.supported ? <p className="muted small" style={{ margin: 0 }}>{u.reason ?? L('Vérification en cours…', 'Checking…')}</p> : (
+        <>
+          <p className="small">
+            {u.current && <>{L('Version installée : ', 'Installed version: ')}<b>{u.current.sha}</b>{L(` du ${date(u.current.date)}`, ` from ${date(u.current.date)}`)}. </>}
+            {u.behind > 0
+              ? <b>{L(`Nouvelle version disponible (${u.behind} changement${u.behind > 1 ? 's' : ''}).`, `New version available (${u.behind} change${u.behind > 1 ? 's' : ''}).`)}</b>
+              : u.checkedAt ? L('À jour.', 'Up to date.') : null}
+          </p>
+          {u.behind > 0 && <ul className="update-changes">{u.changes.map((c, i) => <li key={i}>{c}</li>)}</ul>}
+          {working
+            ? <p className="ai-step"><Loader2 size={15} className="spin" />{u.step}</p>
+            : u.behind > 0
+              ? <button className="btn btn-primary" onClick={install}><ArrowUpCircle size={17} />{L('Mettre à jour', 'Update')}</button>
+              : <button className="btn btn-ghost small-btn" onClick={check} disabled={checking || u.status === 'checking'}>{checking ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />}{L('Vérifier maintenant', 'Check now')}</button>}
+          {u.status === 'error' && u.error && <p className="small" style={{ color: 'var(--danger)', marginBottom: 0 }}>{u.error}</p>}
+          {u.status !== 'error' && u.error && <p className="muted small" style={{ marginBottom: 0 }}>{u.error}</p>}
+          <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>{L('Vérifié automatiquement au lancement puis toutes les 6 h. Tes données (stock, favoris, profil…) ne sont jamais touchées ; l’app redémarre toute seule après la mise à jour.', 'Checked automatically at launch, then every 6 hours. Your data (pantry, favourites, profile…) is never touched; the app restarts by itself after updating.')}</p>
+        </>
+      )}
+    </div>
+  );
+}
+
 function DataCard() {
   return (
     <div className="card settings-card">
@@ -231,6 +285,8 @@ export function SettingsPage() {
       <ProfileCard version={version} />
       <h2 className="h2 settings-title">{L('Catalogue de recettes', 'Recipe catalogue')}</h2>
       <CatalogCard />
+      <h2 className="h2 settings-title">{L('Mises à jour', 'Updates')}</h2>
+      <UpdatesCard />
       <h2 className="h2 settings-title">{L('Mes données', 'My data')}</h2>
       <DataCard />
     </>

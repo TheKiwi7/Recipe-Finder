@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { readFileSync } from 'node:fs';
 import type { Db } from './db.ts';
 import { displayProgress, getCatalogTarget, getImportPriority, importProgress, prioritizeQueue, priorityBaseline, priorityRemaining, setCatalogTarget, setImportPriority } from './catalog/importer.ts';
+import { checkForUpdate, updateState } from './update.ts';
 import { addShoppingItem, buyAllShopping, buyShoppingItem, clearShopping, cookRecipe, CookError, listShopping, removeShoppingItem } from './shopping.ts';
 import {
   addPantryItem, confirmPantry, deletePantryItem, listPantry, listStaples, pantryState, setStaples, suggestIngredients, updatePantryItem,
@@ -34,7 +35,7 @@ const MIME: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg', jp
 /** Change à chaque démarrage du serveur : l'app recalcule alors ses listes (règles ou catalogue ont pu changer). */
 const SERVER_STARTED = new Date().toISOString();
 
-export function createApi(db: Db, status: { importing: () => boolean; preferencesChanged: () => void; build: () => string; startImport: () => void; languageChanged: () => void }) {
+export function createApi(db: Db, status: { importing: () => boolean; preferencesChanged: () => void; build: () => string; startImport: () => void; languageChanged: () => void; update: () => void }) {
   const api = new Hono();
 
   api.onError((err, c) => c.json({ error: err.message }, 400));
@@ -61,6 +62,10 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
   });
 
   // ---------- langue ----------
+  // Mises à jour (git) : état, vérification à la demande, installation (l'app redémarre ensuite).
+  api.get('/update', c => c.json(updateState()));
+  api.post('/update/check', async c => c.json(await checkForUpdate()));
+  api.post('/update', c => { status.update(); return c.json(updateState()); });
   api.get('/settings', c => c.json({ lang: lang() }));
   api.put('/settings', async c => {
     const l = (await c.req.json()).lang;
