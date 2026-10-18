@@ -1,4 +1,5 @@
 import { getMeta, setMeta, type Db } from './db.ts';
+import { normalizeKey } from './catalog/text.ts';
 
 /** Réponses au questionnaire de départ (Q8). */
 export type Questionnaire = {
@@ -61,4 +62,46 @@ export function dietExclusions(diet: Questionnaire['diet']): Set<string> {
   if (diet === 'pescetarian') return new Set(MEAT);
   if (diet === 'vegan') return new Set([...MEAT, ...FISH, ...ANIMAL]);
   return new Set();
+}
+
+// Familles d'allergènes : une allergie déclarée exclut tous les ingrédients de la famille.
+const ALLERGEN_FAMILIES: Record<string, string[]> = {
+  arachide: ['arachide', 'cacahuete', 'cacahouete', 'beurre de cacahuete'],
+  cacahuete: ['arachide', 'cacahuete', 'cacahouete'],
+  'fruit a coque': ['noix', 'noisette', 'amande', 'cajou', 'pistache', 'pecan', 'macadamia', 'pignon', 'praline', 'nougat', 'frangipane', 'massepain'],
+  gluten: ['farine', 'pate', 'pates', 'pain', 'semoule', 'chapelure', 'biscuit', 'boulgour', 'ble', 'orge', 'seigle', 'epeautre', 'brioche', 'couscous', 'tortilla', 'croutons', 'boudoir', 'speculoos'],
+  lactose: ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel'],
+  lait: ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel'],
+  oeuf: ['oeuf', 'mayonnaise', 'meringue'],
+  poisson: ['poisson', 'saumon', 'thon', 'cabillaud', 'dorade', 'sardine', 'anchois', 'truite', 'maquereau', 'merlu', 'colin', 'bar', 'sole', 'surimi', 'fumet'],
+  crustace: ['crevette', 'gambas', 'crabe', 'homard', 'langoustine', 'ecrevisse', 'surimi'],
+  'fruit de mer': ['crevette', 'gambas', 'crabe', 'homard', 'langoustine', 'moule', 'huitre', 'saint jacques', 'calamar', 'poulpe', 'seiche', 'coque', 'palourde'],
+  soja: ['soja', 'tofu', 'edamame', 'miso', 'tempeh'],
+  sesame: ['sesame', 'tahini', 'tahin'],
+  celeri: ['celeri'],
+  moutarde: ['moutarde'],
+  sulfite: ['vin', 'vinaigre'],
+};
+
+/**
+ * Mots (normalisés) qui excluent une recette dès qu'ils apparaissent dans un de ses ingrédients de base :
+ * allergies (avec leur famille) et régime. Par mot plutôt que par nom exact : « arachide » doit aussi
+ * exclure « huile d'arachide », « porc » doit exclure « filet de porc ».
+ */
+export function exclusionWords(q: Questionnaire): string[] {
+  const words = new Set<string>();
+  for (const a of q.allergies) {
+    const k = normalizeKey(a);
+    if (!k) continue;
+    words.add(k);
+    for (const w of ALLERGEN_FAMILIES[k] ?? []) words.add(normalizeKey(w));
+  }
+  for (const d of dietExclusions(q.diet)) words.add(normalizeKey(d));
+  return [...words];
+}
+
+/** Un ingrédient de base (clé normalisée) contient-il un des mots, en entier ? */
+export function containsWord(baseKey: string, words: string[]): boolean {
+  const padded = ` ${baseKey} `;
+  return words.some(w => padded.includes(` ${w} `));
 }

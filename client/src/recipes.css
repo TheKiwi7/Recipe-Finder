@@ -88,6 +88,7 @@
   .detail-media { position: static; }
 }
 @media (max-width: 760px) {
+  .chip-sep { display: none; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
   .rcard-name { font-size: 14.5px; }

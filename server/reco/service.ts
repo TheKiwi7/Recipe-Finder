@@ -2,12 +2,14 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_DIR, type Db } from '../db.ts';
 import type { IngredientLine } from '../catalog/ingredients.ts';
-import { baseFor } from '../pantry.ts';
-import { DEFAULT_QUESTIONNAIRE, dietExclusions, getQuestionnaire, getWeights, recordSignal } from '../preferences.ts';
+import { containsWord, DEFAULT_QUESTIONNAIRE, exclusionWords, getQuestionnaire, getWeights, recordSignal } from '../preferences.ts';
+import { normalizeKey } from '../catalog/text.ts';
 import { pickBatch, rankCandidates, type Context, type Entry, type Filters, type Mode } from './rank.ts';
 
 export const IMAGES_DIR = join(DATA_DIR, 'images');
 const COOLDOWN_MS = 14 * 24 * 3600 * 1000;
+/** Une recette vue il y a moins de 6 h (même session) peut réapparaître, par ex. en revenant sur un filtre. */
+const SAME_SESSION_MS = 6 * 3600 * 1000;
 
 export type RecipeCard = {
   id: number; name: string; image: string | null; type: string; totalMin: number; dishes: number;
@@ -51,12 +53,9 @@ export function loadCatalog(db: Db): Catalog {
 
 const ids = (db: Db, sql: string, ...p: string[]) => new Set((db.prepare(sql).all(...p) as Array<{ id: number }>).map(r => r.id));
 
+/** Ingrédients rejetés un par un (nom exact). Allergies et régime passent par exclusionWords. */
 export function bannedBases(db: Db): Set<string> {
-  const q = getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE;
-  const banned = new Set((db.prepare('SELECT base FROM banned_ingredients').all() as Array<{ base: string }>).map(r => r.base));
-  for (const a of q.allergies) banned.add(baseFor(db, a));
-  for (const d of dietExclusions(q.diet)) banned.add(d);
-  return banned;
+  return new Set((db.prepare('SELECT base FROM banned_ingredients').all() as Array<{ base: string }>).map(r => r.base));
 }
 
 function availableBases(db: Db) {
@@ -68,11 +67,13 @@ function availableBases(db: Db) {
 function buildContext(db: Db, catalog: Catalog, mode: Mode): Context {
   const liked = ids(db, `SELECT recipe_id id FROM reactions WHERE kind = 'like'`);
   const disliked = ids(db, `SELECT recipe_id id FROM reactions WHERE kind = 'dislike'`);
-  const seen = ids(db, 'SELECT recipe_id id FROM seen WHERE mode = ? AND at > ?', mode, new Date(Date.now() - COOLDOWN_MS).toISOString());
+  const seen = ids(db, 'SELECT recipe_id id FROM seen WHERE mode = ? AND at > ? AND at < ?', mode,
+    new Date(Date.now() - COOLDOWN_MS).toISOString(), new Date(Date.now() - SAME_SESSION_MS).toISOString());
   const pick = (s: Set<number>) => [...s].map(id => catalog.byId.get(id)).filter((e): e is Entry & { image: string | null } => !!e);
   return {
     ...availableBases(db),
     banned: bannedBases(db),
+    exclusionWords: exclusionWords(getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE),
     liked: pick(liked),
     disliked: pick(disliked),
     excluded: new Set([...liked, ...disliked, ...seen]),
@@ -131,17 +132,20 @@ export function recipeDetail(db: Db, id: number): RecipeDetail | null {
   const fav = db.prepare('SELECT snapshot, image_file FROM favorites WHERE recipe_id = ?').get(id) as { snapshot: string; image_file: string | null } | undefined;
   const row = db.prepare('SELECT * FROM recipes WHERE id = ?').get(id) as Record<string, any> | undefined;
   const { available, urgent } = availableBases(db);
-  const banned = [...bannedBases(db)];
+  const words = exclusionWords(getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE);
+  const userBanned = bannedBases(db);
   const persons = (getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE).persons;
   const localImage = fav?.image_file ? `/api/images/${fav.image_file}` : null;
 
   if (!row) {
     if (!fav) return null;
     const snap = JSON.parse(fav.snapshot) as RecipeDetail; // la page a disparu : on sert la copie locale
+    const banned = bannedIn(snap.ingredients, userBanned, words);
     return { ...snap, image: localImage ?? snap.image, reaction: 'like', persons, banned, available: [...available], archived: true,
       missing: snap.ingredients.map(l => l.base).filter((b): b is string => !!b && !available.has(b)) };
   }
   const ingredients = JSON.parse(row.ingredients) as IngredientLine[];
+  const banned = bannedIn(ingredients, userBanned, words);
   const bases = [...new Set(ingredients.map(l => l.base).filter((b): b is string => !!b))];
   return {
     id: row.id, name: row.name, image: localImage ?? row.image, type: row.type, totalMin: row.total_min, dishes: row.dishes,
@@ -149,6 +153,12 @@ export function recipeDetail(db: Db, id: number): RecipeDetail | null {
     reaction: reactionOf(db, id), url: row.url, prepMin: row.prep_min, cookMin: row.cook_min, servings: row.servings, persons,
     ingredients, steps: JSON.parse(row.steps), utensils: JSON.parse(row.utensils), banned, available: [...available], archived: false,
   };
+}
+
+/** Ingrédients de la recette exclus pour la personne : rejetés, ou couverts par une allergie / le régime. */
+function bannedIn(lines: IngredientLine[], userBanned: Set<string>, words: string[]): string[] {
+  const bases = new Set(lines.map(l => l.base).filter((b): b is string => !!b));
+  return [...bases].filter(b => userBanned.has(b) || containsWord(normalizeKey(b), words));
 }
 
 // ---------- réactions, favoris, rejets ----------

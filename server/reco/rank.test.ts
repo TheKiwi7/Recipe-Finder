@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_QUESTIONNAIRE } from '../preferences.ts';
+import { DEFAULT_QUESTIONNAIRE, exclusionWords } from '../preferences.ts';
 import { pickBatch, rankCandidates, similarity, type Context, type Entry } from './rank.ts';
 
 let nextId = 1;
@@ -10,7 +10,7 @@ const entry = (bases: string[], over: Partial<Entry> = {}): Entry => ({
 const ctx = (over: Partial<Context> = {}): Context => ({
   available: new Set(['sel', 'poivre', 'oeuf', 'tomate', 'poulet', 'riz', 'crème fraîche']),
   urgent: new Set(), staples: new Set(['sel', 'poivre']), banned: new Set(), liked: [], disliked: [], excluded: new Set(),
-  questionnaire: DEFAULT_QUESTIONNAIRE, weights: {}, idf: new Map(), common: new Set(['crème fraîche', 'oignon']), ...over,
+  questionnaire: DEFAULT_QUESTIONNAIRE, weights: {}, idf: new Map(), common: new Set(['crème fraîche', 'oignon']), exclusionWords: [], ...over,
 });
 
 test('onglet Recettes : uniquement les recettes faisables', () => {
@@ -37,6 +37,19 @@ test('exclusions strictes : ingrédient rejeté, appareil absent, recette exclue
   const dessert = entry(['oeuf'], { type: 'Dessert' });
   const c = ctx({ banned: new Set(['tomate']), excluded: new Set([vue.id]) });
   assert.deepEqual(rankCandidates([banned, friteuse, vue, longue, dessert], c, 'ready', { maxTime: 45, type: 'Plat' }), []);
+});
+
+test('allergies et régime : exclusion par mot, avec les familles d’allergènes', () => {
+  const avail = new Set(["huile d'arachide", 'cacahuète', 'filet de porc', 'riz', 'farine de blé', 'oeuf']);
+  const huile = entry(["huile d'arachide", 'riz']);
+  const cacahuete = entry(['cacahuète', 'riz']);
+  const porc = entry(['filet de porc', 'riz']);
+  const omelette = entry(['oeuf']);
+  const run = (q: Partial<typeof DEFAULT_QUESTIONNAIRE>) =>
+    rankCandidates([huile, cacahuete, porc, omelette], ctx({ available: avail, exclusionWords: exclusionWords({ ...DEFAULT_QUESTIONNAIRE, ...q }) }), 'ready', {}).map(s => s.entry.id).sort();
+  assert.deepEqual(run({ allergies: ['arachide'] }), [porc.id, omelette.id].sort());
+  assert.deepEqual(run({ diet: 'vegetarian' }), [huile.id, cacahuete.id, omelette.id].sort());
+  assert.deepEqual(run({ allergies: ['oeufs'] }), [huile.id, cacahuete.id, porc.id].sort());
 });
 
 test('« à finir vite » et likes remontent une recette, dislikes la font descendre', () => {

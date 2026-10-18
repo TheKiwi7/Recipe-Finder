@@ -1,7 +1,7 @@
 // Classement local des recettes (Q18) : aucune dépendance à la base ni à Claude, donc testable tel quel.
 import { normalizeKey } from '../catalog/text.ts';
 import type { ProfileWeights, Questionnaire } from '../preferences.ts';
-import { OPTIONAL_EQUIPMENT } from '../preferences.ts';
+import { containsWord, OPTIONAL_EQUIPMENT } from '../preferences.ts';
 
 export type Entry = {
   id: number;
@@ -23,7 +23,8 @@ export type Context = {
   available: Set<string>;   // stock + placard
   urgent: Set<string>;      // « à finir vite »
   staples: Set<string>;
-  banned: Set<string>;      // ingrédients rejetés + allergies + régime
+  banned: Set<string>;      // ingrédients rejetés (nom exact)
+  exclusionWords: string[]; // allergies (et leur famille) + régime : exclusion dès que le mot apparaît dans un ingrédient
   liked: Entry[];
   disliked: Entry[];
   excluded: Set<number>;    // recettes likées (déjà en favoris), rejetées, vues récemment
@@ -36,6 +37,9 @@ export type Context = {
 export type Scored = { entry: Entry; missing: string[]; score: number; likeSim: number; dislikeSim: number };
 
 export const MAX_MISSING = 3;
+
+const keyCache = new WeakMap<Entry, string[]>();
+const keysOf = (e: Entry) => keyCache.get(e) ?? keyCache.set(e, e.bases.map(normalizeKey)).get(e)!;
 const EXPLORATION = 0.3;
 
 export function missingFor(e: Entry, available: Set<string>): string[] {
@@ -57,6 +61,7 @@ export function similarity(a: Entry, b: Entry, idf: Map<string, number>): number
 function isEligible(e: Entry, ctx: Context, mode: Mode, filters: Filters, missing: string[]): boolean {
   if (ctx.excluded.has(e.id)) return false;
   if (e.bases.some(b => ctx.banned.has(b))) return false;
+  if (ctx.exclusionWords.length && keysOf(e).some(k => containsWord(k, ctx.exclusionWords))) return false;
   const owned = new Set(ctx.questionnaire.equipment);
   if (e.utensils.some(u => OPTIONAL_EQUIPMENT.includes(u) && !owned.has(u))) return false;
   if (filters.type && filters.type !== 'Tous' && e.type !== filters.type) return false;
