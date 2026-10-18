@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { typeGuesser } from '../catalog/importer.ts';
 import assert from 'node:assert/strict';
 import { allergenKey, DEFAULT_QUESTIONNAIRE, exclusionWords } from '../preferences.ts';
-import { bayesianRating, pickBatch, rankCandidates, similarity, type Context, type Entry } from './rank.ts';
+import { bayesianRating, pickBatch, rankCandidates, similarity, twins, type Context, type Entry } from './rank.ts';
 
 let nextId = 1;
 const entry = (bases: string[], over: Partial<Entry> = {}): Entry => ({
@@ -137,16 +137,19 @@ test('lot : 10 recettes dont ~3 explorations, sans doublon', () => {
 });
 
 test('lot : les recettes presque pareilles ne se suivent pas', () => {
-  const caramels = ['Caramel beurre salé', 'Crème de caramel au beurre salé', 'Beurre salé au caramel', 'Caramel au beurre salé façon pâte à tartiner', 'Caramels beurre salé maison']
+  const caramels = ['Caramel beurre salé', 'Crème de caramel au beurre salé', 'Beurre salé au caramel', 'Caramel au beurre salé façon pâte à tartiner', 'Caramels beurre salé maison', 'Caramel crémeux']
     .map(name => entry(['sucre', 'beurre salé', 'crème liquide'], { name, rating: 5, reviews: 500 }));
+  assert.ok(twins(caramels[0], caramels[5], new Map())); // un seul mot en commun, mais les mêmes ingrédients
+  assert.ok(!twins(entry(['farine', 'sucre', 'beurre', 'oeuf'], { name: 'Sablés' }), entry(['farine', 'sucre', 'beurre', 'lait'], { name: 'Crêpes' }), new Map()));
   const autres = Array.from({ length: 30 }, (_, i) => entry([`ingrédient ${i}`, `épice ${i}`], { name: `Recette ${i}` }));
   const avail = new Set([...caramels, ...autres].flatMap(e => e.bases));
   const ranked = rankCandidates([...caramels, ...autres], ctx({ available: avail }), 'ready', {});
-  assert.ok(caramels.every(c => ranked.slice(0, 5).some(s => s.entry.id === c.id))); // sans variété, les 5 caramels ouvriraient la liste
+  assert.ok(caramels.every(c => ranked.slice(0, 6).some(s => s.entry.id === c.id))); // sans variété, les 6 caramels ouvriraient la liste
   const isCaramel = (s: { entry: Entry }) => caramels.some(c => c.id === s.entry.id);
   for (let run = 0; run < 20; run++) {
     const batch = pickBatch(ranked, 20, Math.random);
     assert.ok(batch.every((s, i) => i === 0 || !(isCaramel(s) && isCaramel(batch[i - 1]))), 'deux caramels à la suite');
+    assert.ok(batch.filter(isCaramel).length <= 3, 'trop de caramels sur une page'); // les autres viendront avec « Charger plus »
     // Les dernières recettes déjà affichées comptent aussi : pas de caramel juste après un caramel de la page précédente.
     assert.ok(!isCaramel(pickBatch(ranked, 20, Math.random, { recent: [caramels[0]] })[0]));
   }

@@ -126,7 +126,7 @@ export function recommend(db: Db, req: { mode: Mode; filters: Filters; current: 
   const exclude = new Set([...ctx.excluded, ...req.current]);
   const ranked = rankCandidates(catalog.entries, { ...ctx, excluded: exclude }, req.mode, req.filters);
   const need = Math.max(0, req.want - kept.length);
-  const added = pickBatch(ranked, need, Math.random, { idf: catalog.idf, recent: kept.slice(-10).map(s => s.entry) });
+  const added = pickBatch(ranked, need, Math.random, { idf: catalog.idf, recent: kept.map(s => s.entry) });
 
   const mark = db.prepare(`INSERT INTO seen (recipe_id, mode, at) VALUES (?, ?, ?) ON CONFLICT(recipe_id, mode) DO UPDATE SET at = excluded.at`);
   const now = new Date().toISOString();

@@ -104,22 +104,26 @@ function nameWords(e: Entry): Set<string> {
   return words;
 }
 
-/** Mots du nom en commun (Jaccard) : « Caramel beurre salé » / « Beurre salé au caramel » → 1. */
-function sameName(a: Entry, b: Entry): number {
+/** Mots du nom en commun : leur nombre, et la part qu'ils font des deux noms (Jaccard, « Caramel beurre salé » / « Beurre salé au caramel » → 1). */
+function sameName(a: Entry, b: Entry): { shared: number; ratio: number } {
   const A = nameWords(a), B = nameWords(b);
-  let inter = 0;
-  for (const w of A) if (B.has(w)) inter++;
-  return A.size + B.size - inter ? inter / (A.size + B.size - inter) : 0;
+  let shared = 0;
+  for (const w of A) if (B.has(w)) shared++;
+  return { shared, ratio: A.size + B.size - shared ? shared / (A.size + B.size - shared) : 0 };
 }
 
 /** Deux recettes qui se ressemblent : mêmes ingrédients, ou mêmes mots dans le nom. */
 export function closeness(a: Entry, b: Entry, idf: Map<string, number>): number {
-  return Math.max(sharedBases(a, b, idf), sameName(a, b));
+  return Math.max(sharedBases(a, b, idf), sameName(a, b).ratio);
 }
 
-/** Sosies : même nom, ou presque exactement les mêmes ingrédients (deux pâtisseries farine-sucre-beurre n'en sont pas). */
+/**
+ * Sosies : même nom ; ou un mot du nom en commun et des ingrédients proches (« Caramel crémeux » / « Caramel beurre
+ * salé ») ; ou presque exactement les mêmes ingrédients. Deux pâtisseries farine-sucre-beurre aux noms différents n'en sont pas.
+ */
 export function twins(a: Entry, b: Entry, idf: Map<string, number>): boolean {
-  return sameName(a, b) > 0.5 || sharedBases(a, b, idf) > 0.85;
+  const name = sameName(a, b), bases = sharedBases(a, b, idf);
+  return name.ratio > 0.5 || (name.shared > 0 && bases >= 0.6) || bases > 0.85;
 }
 
 /** Vérifications rapides d'abord (elles écartent la plupart des recettes), recherches dans le texte en dernier. */
@@ -207,6 +211,9 @@ export function rankCandidates(entries: Entry[], ctx: Context, mode: Mode, filte
 // s'efface d'environ 15 % à chaque place, donc la recette revient une ou deux rangées plus loin.
 const DIVERSITY = 1.2;
 const DIVERSITY_DECAY = 0.85;
+// Et chaque sosie déjà affiché lui coûte CLUSTER points pour de bon : 8 caramels très bien notés parmi 27 recettes
+// faisables n'en mettent que 3 ou 4 sur la première page, les autres viennent avec « Charger plus ».
+const CLUSTER = 0.3;
 
 /**
  * Choisit `count` recettes : ~70 % parmi les mieux classées (avec un peu de hasard pour varier d'un lancement à l'autre),
@@ -226,16 +233,20 @@ export function pickBatch(ranked: Scored[], count: number, rand: () => number = 
   const explore: typeof jittered = [];
   while (explore.length < nExplore && far.length) explore.push(far.splice(Math.floor(rand() * far.length), 1)[0]);
 
-  const cands = [...top.map(x => ({ ...x, pen: 0, explore: false })), ...explore.map(x => ({ ...x, pen: 0, explore: true }))];
+  const cands = [...top.map(x => ({ ...x, pen: 0, twins: 0, explore: false })), ...explore.map(x => ({ ...x, pen: 0, twins: 0, explore: true }))];
   const place = (e: Entry) => {
-    for (const c of cands) c.pen = Math.max(c.pen * DIVERSITY_DECAY, DIVERSITY * Math.max(0, closeness(c.s.entry, e, idf) - 0.3) / 0.7);
+    for (const c of cands) {
+      c.pen = Math.max(c.pen * DIVERSITY_DECAY, DIVERSITY * Math.max(0, closeness(c.s.entry, e, idf) - 0.3) / 0.7);
+      if (twins(c.s.entry, e, idf)) c.twins++;
+    }
   };
   for (const e of opts.recent ?? []) place(e);
+  const value = (c: (typeof cands)[number]) => c.k - c.pen - CLUSTER * c.twins;
   const out: Scored[] = [];
   while (out.length < n && cands.length) {
     // Une place sur trois pour l'exploration ; pas assez de recettes d'un côté : on complète avec l'autre.
     const turn = cands.filter(c => c.explore === (out.length % 3 === 2));
-    const best = (turn.length ? turn : cands).reduce((a, b) => (b.k - b.pen > a.k - a.pen ? b : a));
+    const best = (turn.length ? turn : cands).reduce((a, b) => (value(b) > value(a) ? b : a));
     cands.splice(cands.indexOf(best), 1);
     out.push(best.s);
     place(best.s.entry);
