@@ -68,7 +68,7 @@ function ProfileCard({ version }: { version: number }) {
       <p className="small">Claude tient à jour un profil détaillé de tes goûts à partir de tes likes, rejets et questions. Il ne s'affiche pas, mais il oriente les recommandations.</p>
       <dl className="kv">
         <dt>Dernière mise à jour</dt><dd>{ago(p.updatedAt)}</dd>
-        <dt>Nouveaux signaux en attente</dt><dd>{p.pendingSignals} <span className="muted">(mise à jour automatique dès 10, au plus une fois par jour)</span></dd>
+        <dt>Nouveaux signaux en attente</dt><dd>{p.pendingSignals} <span className="muted">(mise à jour automatique dès 10, au plus une fois par heure)</span></dd>
         <dt>Exclu d'après tes notes</dt>
         <dd>{p.exclusions.length ? p.exclusions.join(', ') : <span className="muted">rien pour l'instant</span>}
           <span className="muted"> — pour changer, modifie « Autre chose à savoir » puis mets le profil à jour</span></dd>

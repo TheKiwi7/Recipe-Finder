@@ -19,7 +19,7 @@ migrateCatalog(db);
 ensureStaples(db);
 
 let importing = false;
-// Mise à jour du profil en tâche de fond : vérifiée après chaque signal et toutes les 30 min (≥ 10 signaux, ≤ 1 / jour).
+// Mise à jour du profil en tâche de fond : vérifiée après chaque signal et toutes les 30 min (≥ 10 signaux, ≤ 1 / heure).
 const checkProfile = () => { void maybeUpdateProfile(db); };
 const app = new Hono();
 // Identifiant de la version de l'interface construite : l'app compare et propose de recharger quand il change.

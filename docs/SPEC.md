@@ -60,13 +60,13 @@ App perso, locale, qui recommande des recettes **réelles** (trouvées en ligne)
   - Allergies et régime : exclusion stricte **par mot** avec familles d'allergènes (« arachide » exclut aussi huile d'arachide et cacahuète ; « fruits à coque », « gluten », « lactose »…).
   - Appareils optionnels (four, micro-ondes, robot, robot cuiseur type Thermomix, Airfryer, friteuse…) : une recette qui demande un appareil absent est exclue ; l'appareil est aussi détecté dans le titre (« … au Thermomix »).
 - **Classement local, sans Claude** : score = correspondance au stock + bonus « à finir vite » + similarité aux likes / dislikes (ingrédients principaux, catégorie, temps, vaisselle) + réglages du profil + malus temps au-delà du max habituel. ~**30 %** d'exploration par lot.
-- **Claude (Sonnet)** rédige un profil détaillé (non affiché) + des **réglages structurés** consommés par l'algorithme. Mise à jour en tâche de fond quand **≥ 10 nouveaux signaux** (likes, dislikes, questions du chat), **max 1 fois / jour**.
+- **Claude (Sonnet)** rédige un profil détaillé (non affiché) + des **réglages structurés** consommés par l'algorithme. Mise à jour en tâche de fond quand **≥ 10 nouveaux signaux** (likes, dislikes, questions du chat, modifications du questionnaire), **max 1 fois / heure** ; bouton « Mettre à jour maintenant » dès 1 signal. Le profil fournit aussi des **exclusions strictes** pour les aversions fermes déclarées dans les notes.
 - Claude indisponible (limite, CLI déconnecté) → l'app fonctionne normalement ; chat affiche « Claude indisponible pour le moment », mise à jour du profil reportée.
 
 ### Appels Claude (exhaustif)
 
 1. Chat sur une recette (à la demande).
-2. Mise à jour du profil (≤ 1 / jour).
+2. Mise à jour du profil (≤ 1 / heure en automatique, ou à la demande).
 3. Normalisation des ingrédients inconnus (rare, par lots).
 
 ## Interface

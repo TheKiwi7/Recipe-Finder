@@ -3,10 +3,10 @@ import { getMeta, setMeta, type Db } from './db.ts';
 import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, getWeights, type ProfileWeights } from './preferences.ts';
 
 // Profil détaillé (non affiché) + réglages structurés pour le classement local (Q18, Q19).
-// Mis à jour par Claude Sonnet quand ≥ 10 nouveaux signaux, au plus une fois par jour, en tâche de fond.
+// Mis à jour par Claude Sonnet quand ≥ 10 nouveaux signaux, au plus une fois par heure, en tâche de fond.
 
 export const MIN_SIGNALS = 10;
-const MIN_INTERVAL_MS = 24 * 3600 * 1000;
+const MIN_INTERVAL_MS = 3600 * 1000;
 
 const SYSTEM = `Tu tiens à jour le profil culinaire d'une personne pour une app perso qui lui recommande des recettes françaises réelles selon son stock.
 À partir du profil précédent, du questionnaire et des nouveaux signaux (likes, rejets de recettes ou d'ingrédients, questions posées sur des recettes), produis :
@@ -54,7 +54,7 @@ let running = false;
 export type ProfileUpdateResult = 'updated' | 'nothing-new' | 'busy' | 'not-yet' | 'unavailable';
 
 /**
- * Met le profil à jour si les conditions sont réunies (≥ 10 signaux, ≤ 1 / jour), ou dès qu'il y a du nouveau si `force`
+ * Met le profil à jour si les conditions sont réunies (≥ 10 signaux, ≤ 1 / heure), ou dès qu'il y a du nouveau si `force`
  * (bouton « Mettre à jour maintenant »). Sans signal nouveau, Claude n'est pas appelé.
  */
 export async function maybeUpdateProfile(db: Db, force = false): Promise<ProfileUpdateResult> {
