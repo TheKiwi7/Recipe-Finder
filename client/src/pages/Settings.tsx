@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Download, RefreshCw, Undo2 } from 'lucide-react';
-import { api, type ImportStatus, type ProfileStatus, type Rejections } from '../api.ts';
+import { api } from '../api.ts';
 import { QuestionnaireForm } from '../components/QuestionnaireForm.tsx';
 import { invalidateLists } from '../recipes-store.ts';
 import { toast } from '../toast.tsx';
+import { LoadState, useLoad } from '../use-load.tsx';
 
 function ago(iso: string | null): string {
   if (!iso) return 'jamais';
@@ -12,13 +13,14 @@ function ago(iso: string | null): string {
 }
 
 function RejectionsCard() {
-  const [r, setR] = useState<Rejections | null>(null);
-  const load = () => api.rejections().then(setR);
-  useEffect(() => { void load(); }, []);
-  if (!r) return null;
+  const { data: r, failed, reload } = useLoad(() => api.rejections());
+  if (!r) return <div className="card settings-card"><LoadState failed={failed} onRetry={reload} /></div>;
 
-  const undoRecipe = async (id: number) => { await api.react(id, null); invalidateLists(); await load(); toast('Rejet annulé'); };
-  const undoIngredient = async (base: string) => { await api.unban(base); invalidateLists(); await load(); toast(`« ${base} » à nouveau autorisé`); };
+  const undo = async (action: () => Promise<unknown>, message: string) => {
+    try { await action(); invalidateLists(); await reload(); toast(message); } catch (e) { toast((e as Error).message); }
+  };
+  const undoRecipe = (id: number) => undo(() => api.react(id, null), 'Rejet annulé');
+  const undoIngredient = (base: string) => undo(() => api.unban(base), `« ${base} » à nouveau autorisé`);
 
   return (
     <div className="card settings-card">
@@ -43,17 +45,17 @@ function RejectionsCard() {
 }
 
 function ProfileCard() {
-  const [p, setP] = useState<ProfileStatus | null>(null);
+  const { data: p, failed, reload, setData: setP } = useLoad(() => api.profile());
   const [busy, setBusy] = useState(false);
-  useEffect(() => { api.profile().then(setP); }, []);
-  if (!p) return null;
+  if (!p) return <div className="card settings-card"><LoadState failed={failed} onRetry={reload} /></div>;
   const update = async () => {
     setBusy(true);
     try {
       const r = await api.updateProfile();
       setP(r);
       toast(r.updated ? 'Profil mis à jour' : 'Claude indisponible pour le moment, réessaie plus tard');
-    } finally { setBusy(false); }
+    } catch (e) { toast((e as Error).message); }
+    finally { setBusy(false); }
   };
   return (
     <div className="card settings-card">
@@ -68,8 +70,7 @@ function ProfileCard() {
 }
 
 function DataCard() {
-  const [s, setS] = useState<ImportStatus | null>(null);
-  useEffect(() => { api.importStatus().then(setS); }, []);
+  const { data: s } = useLoad(() => api.importStatus());
   return (
     <div className="card settings-card">
       <p className="small">Stock, placard, favoris, rejets, préférences, profil et conversations, dans un fichier JSON.</p>

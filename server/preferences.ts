@@ -31,7 +31,6 @@ export type ProfileWeights = {
   keywords?: Record<string, number>;    // mot du nom ou des mots-clés (« curry », « gratin »)
   types?: Record<string, number>;       // Plat, Dessert…
   maxTotalMin?: number;
-  maxDishes?: number;
 };
 
 export function getQuestionnaire(db: Db): Questionnaire | null {

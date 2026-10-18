@@ -74,6 +74,7 @@ export function reresolveRecipes(db: Db, all = false): number {
 export function syncSeed(db: Db): void {
   const hash = createHash('sha1').update(JSON.stringify(seedAliases())).digest('hex');
   if (getMeta(db, 'seed_hash') === hash) return;
+  canonicalizeClaudeBases(db);
   reresolveRecipes(db, true);
   setMeta(db, 'seed_hash', hash);
 }
@@ -92,4 +93,20 @@ export function migrateCatalog(db: Db): void {
   }
   db.exec('COMMIT');
   setMeta(db, 'catalog_migration', CATALOG_MIGRATION);
+}
+
+/**
+ * Les bases créées par Claude qui existent déjà dans le dictionnaire sous une autre graphie ou comme variante
+ * (« bœuf haché », « rôti de boeuf ») reprennent la base du dictionnaire.
+ */
+function canonicalizeClaudeBases(db: Db): void {
+  const seed = new Map((db.prepare(`SELECT key, base FROM ingredient_aliases WHERE origin = 'seed'`).all() as Array<{ key: string; base: string | null }>).map(r => [r.key, r.base]));
+  const bases = (db.prepare(`SELECT DISTINCT base FROM ingredient_aliases WHERE origin = 'claude' AND base IS NOT NULL`).all() as Array<{ base: string }>).map(r => r.base);
+  const update = db.prepare(`UPDATE ingredient_aliases SET base = ? WHERE origin = 'claude' AND base = ?`);
+  db.exec('BEGIN');
+  for (const b of bases) {
+    const target = seed.get(normalizeKey(b));
+    if (target && target !== b) update.run(target, b);
+  }
+  db.exec('COMMIT');
 }

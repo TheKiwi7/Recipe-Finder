@@ -1,5 +1,5 @@
 import { askClaude, parseJsonReply } from '../claude.ts';
-import type { Db } from '../db.ts';
+import { loadAliases, type Db } from '../db.ts';
 import { reresolveRecipes } from './store.ts';
 import { normalizeKey } from './text.ts';
 import { isAmbiguousTail } from './ingredients.ts';
@@ -73,14 +73,18 @@ ${terms.map(t => `${t.key} — ${t.example}`).join('\n')}`;
   const reply = parseJsonReply<Record<string, string | null>>(await askClaude(prompt, { model: 'haiku', system: SYSTEM, timeoutMs: 300_000 }));
 
   const insert = db.prepare(`INSERT INTO ingredient_aliases (key, base, origin) VALUES (?, ?, 'claude') ON CONFLICT(key) DO NOTHING`);
+  const known = loadAliases(db);
   const drop = db.prepare('DELETE FROM unknown_terms WHERE key = ?');
   db.exec('BEGIN');
   for (const t of terms) {
     if (!(t.key in reply)) continue; // oublié par Claude : reste en file pour le prochain lot
     const base = reply[t.key];
-    insert.run(t.key, typeof base === 'string' && base.trim() ? base.trim().toLowerCase() : null);
+    // Une base déjà connue sous une autre graphie (« bœuf haché » / « boeuf haché ») reprend celle du dictionnaire.
+    const clean = typeof base === 'string' && base.trim() ? base.trim().toLowerCase() : null;
+    const canon = clean ? (known.get(normalizeKey(clean)) ?? clean) : null;
+    insert.run(t.key, canon);
     // La base elle-même devient un alias, pour que la saisie de l'utilisateur la reconnaisse.
-    if (typeof base === 'string' && base.trim()) insert.run(normalizeKey(base), base.trim().toLowerCase());
+    if (canon) insert.run(normalizeKey(canon), canon);
     drop.run(t.key);
   }
   db.exec('COMMIT');

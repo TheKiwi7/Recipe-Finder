@@ -98,7 +98,8 @@ export function scoreEntry(e: Entry, ctx: Context, missing: string[], mode: Mode
   // Préférences du questionnaire et réglages issus du profil.
   const maxTime = ctx.weights.maxTotalMin ?? ctx.questionnaire.maxTime;
   if (maxTime && e.totalMin > maxTime) score -= 0.5 * Math.min(1, (e.totalMin - maxTime) / maxTime);
-  const maxDishes = ctx.weights.maxDishes ?? DISH_LIMIT[ctx.questionnaire.dishTolerance];
+  // La tolérance à la vaisselle du questionnaire prime sur le profil : c'est un choix explicite de la personne.
+  const maxDishes = DISH_LIMIT[ctx.questionnaire.dishTolerance];
   if (e.dishes > maxDishes) score -= 0.2 * (e.dishes - maxDishes);
   score += profileBonus(e, ctx.weights);
 

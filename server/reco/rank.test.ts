@@ -79,6 +79,14 @@ test('peu d’avis : une note parfaite ne passe pas devant une recette éprouvé
   assert.ok(Math.abs(bayesianRating(5, 1) - 4.333) < 0.01);
 });
 
+test('vaisselle : la tolérance du questionnaire prime', () => {
+  const une = entry(['oeuf'], { dishes: 1 });
+  const trois = entry(['oeuf'], { dishes: 3, rating: 5, reviews: 500 });
+  const q = { ...DEFAULT_QUESTIONNAIRE, dishTolerance: 'low' as const };
+  const weights = { maxDishes: 5 } as Context['weights'];
+  assert.equal(rankCandidates([trois, une], ctx({ questionnaire: q, weights }), 'ready', {})[0].entry.id, une.id);
+});
+
 test('similarité : les ingrédients rares comptent plus que le sel', () => {
   const idf = new Map([['sel', 0.1], ['safran', 5], ['riz', 1]]);
   const a = entry(['sel', 'safran', 'riz']);

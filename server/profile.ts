@@ -12,7 +12,8 @@ const SYSTEM = `Tu tiens à jour le profil culinaire d'une personne pour une app
 À partir du profil précédent, du questionnaire et des nouveaux signaux (likes, rejets de recettes ou d'ingrédients, questions posées sur des recettes), produis :
 1. "profile" : un profil détaillé en français (goûts, cuisines préférées, ingrédients aimés ou évités, temps de préparation et vaisselle tolérés, niveau, habitudes, ce qui reste à découvrir). Garde ce qui reste vrai, corrige ce que les signaux contredisent. 250 mots maximum.
 2. "weights" : des réglages pour un algorithme de classement local, avec des poids entre -1 et 1, modérés (le système doit garder de la variété) :
-   { "ingredients": { "<ingrédient de base>": poids }, "keywords": { "<mot du titre, ex. curry, gratin, salade>": poids }, "types": { "Plat"|"Entrée"|"Dessert"|"Apéro"|"Petit-déj.": poids }, "maxTotalMin": nombre ou null, "maxDishes": nombre ou null }
+   { "ingredients": { "<ingrédient de base>": poids }, "keywords": { "<mot du titre, ex. curry, gratin, salade>": poids }, "types": { "Plat"|"Entrée"|"Dessert"|"Apéro"|"Petit-déj.": poids }, "maxTotalMin": nombre ou null }
+   (La tolérance à la vaisselle vient du questionnaire : ne la règle pas.)
    Au plus 25 entrées dans ingredients et 15 dans keywords. Ne mets pas de poids très négatif sur un ingrédient que la personne a seulement rejeté une fois dans une recette : c'est peut-être la recette qui ne plaisait pas.
 Réponds uniquement par un objet JSON {"profile": "...", "weights": {...}}.`;
 
@@ -40,7 +41,6 @@ function clampWeights(w: ProfileWeights): ProfileWeights {
     keywords: clampMap(w.keywords, 15),
     types,
     maxTotalMin: typeof w.maxTotalMin === 'number' && w.maxTotalMin > 0 ? w.maxTotalMin : undefined,
-    maxDishes: typeof w.maxDishes === 'number' && w.maxDishes > 0 ? w.maxDishes : undefined,
   };
 }
 

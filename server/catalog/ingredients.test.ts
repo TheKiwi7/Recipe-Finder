@@ -46,6 +46,11 @@ test('ingrédient de base', () => {
   assert.equal(base('1 moules à cake'), null);
   assert.equal(base('1 truc introuvable'), undefined);
   assert.equal(base('40 couteaux'), 'couteaux');
+  // Morceaux rouges regroupés sous « boeuf », la viande hachée reste à part.
+  assert.equal(base('800 g de gîte de boeuf'), 'boeuf');
+  assert.equal(base('1 rôti de boeuf'), 'boeuf');
+  assert.equal(base('500 g de viande hachée'), 'boeuf haché');
+  assert.equal(base('4 souris d’agneau'), 'agneau');
   assert.equal(base('10 feuilles de pâte filo'), 'pâte filo');
   assert.equal(base('1 paquet de pâte filo'), 'pâte filo');
   assert.equal(parseIngredientLine('1 pointe de couteau de cannelle').name, 'cannelle');

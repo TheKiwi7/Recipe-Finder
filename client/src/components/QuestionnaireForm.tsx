@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
 import { api, type Questionnaire } from '../api.ts';
 import { Autocomplete } from './Autocomplete.tsx';
+import { LoadState, useLoad } from '../use-load.tsx';
+import { toast } from '../toast.tsx';
 
 const TIMES = [20, 30, 45, 60, 90];
 const DISHES: Array<[Questionnaire['dishTolerance'], string, string]> = [
@@ -26,10 +28,13 @@ export function QuestionnaireForm({ submitLabel, onSaved }: { submitLabel: strin
   const [allergy, setAllergy] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    api.questionnaire().then(r => { setQ(r.questionnaire ?? r.defaults); setEquipment(r.equipment); });
-  }, []);
-  if (!q) return null;
+  const { failed, reload } = useLoad(async () => {
+    const r = await api.questionnaire();
+    setQ(r.questionnaire ?? r.defaults);
+    setEquipment(r.equipment);
+    return r;
+  });
+  if (!q) return <LoadState failed={failed} onRetry={reload} />;
   const up = (patch: Partial<Questionnaire>) => setQ({ ...q, ...patch });
   const addAllergy = (v = allergy) => {
     const a = v.trim().toLowerCase();
@@ -39,7 +44,9 @@ export function QuestionnaireForm({ submitLabel, onSaved }: { submitLabel: strin
 
   const save = async () => {
     setSaving(true);
-    try { onSaved((await api.saveQuestionnaire(q)).questionnaire); } finally { setSaving(false); }
+    try { onSaved((await api.saveQuestionnaire(q)).questionnaire); }
+    catch (e) { toast((e as Error).message); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -92,7 +99,7 @@ export function QuestionnaireForm({ submitLabel, onSaved }: { submitLabel: strin
 
       <section className="qrow">
         <div className="qlabel"><b>Autre chose à savoir ?</b><span>Tes goûts, ce que tu adores ou détestes, ton niveau… Claude s'en servira.</span></div>
-        <textarea className="field area" rows={3} value={q.notes} onChange={e => up({ notes: e.target.value })} placeholder="Ex. : j'adore la cuisine asiatique et les plats mijotés, pas fan des desserts trop sucrés…" />
+        <textarea className="field area" rows={6} value={q.notes} onChange={e => up({ notes: e.target.value })} placeholder="Ex. : j'adore la cuisine asiatique et les plats mijotés, pas fan des desserts trop sucrés…" />
       </section>
 
       <div className="qsave"><button className="btn btn-primary" onClick={save} disabled={saving}>{submitLabel}</button></div>

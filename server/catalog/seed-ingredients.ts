@@ -52,7 +52,7 @@ levure de boulanger: levure boulangère | levure fraîche
 bicarbonate:
 chapelure:
 eau: eau froide | eau chaude | eau tiède | eau bouillante
-bouillon: cube de bouillon | bouillon de volaille | bouillon de légumes | bouillon de boeuf | fond de veau | bouillon cube | bouillon de poule | fond de volaille
+bouillon: cube de bouillon | bouillon de volaille | bouillon de légumes | bouillon de boeuf | fond de veau | fond de boeuf | fond d agneau | jus de veau | bouillon cube | bouillon de poule | fond de volaille
 vin blanc:
 vin rouge:
 bière:
@@ -156,11 +156,11 @@ pâte à tartiner: nutella | pâtes à tartiner | chocolat à tartiner
 poulet: blanc de poulet | escalope de poulet | cuisse de poulet | filet de poulet | aile de poulet | pilon de poulet
 dinde: escalope de dinde | blanc de dinde
 canard: magret de canard | cuisse de canard
-boeuf: viande de boeuf | steak | bourguignon | rôti de boeuf | bavette | entrecôte | paleron
+boeuf: viande de boeuf | steak | bourguignon | rôti de boeuf | bavette | entrecôte | paleron | rosbif | gîte de boeuf | boeuf à braiser | boeuf à bourguignon | carpaccio de boeuf | côte de boeuf | filet de boeuf | faux filet | rumsteck | rumsteak | onglet | joue de boeuf | basse côte | macreuse | tournedos | plat de côtes | aiguillette de boeuf | morceau de boeuf
 boeuf haché: viande hachée | steak haché | haché de boeuf
-veau: escalope de veau | blanquette de veau | rôti de veau
+veau: escalope de veau | blanquette de veau | rôti de veau | jarret de veau | épaule de veau | carré de veau | rumsteak de veau | côte de veau | noix de veau | tendron de veau | osso buco
 porc: filet mignon | côte de porc | échine de porc | rôti de porc | sauté de porc
-agneau: gigot d agneau | épaule d agneau | côtelette d agneau
+agneau: gigot d agneau | gigot | épaule d agneau | côtelette d agneau | collier d agneau | souris d agneau | côte d agneau | selle d agneau | jarret d agneau | carré d agneau | navarin d agneau | mouton
 lardons: lardon | lardon fumé | poitrine fumée
 jambon: jambon blanc | tranche de jambon | jambon cuit
 jambon cru: jambon de bayonne | jambon de parme | prosciutto

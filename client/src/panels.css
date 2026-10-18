@@ -85,3 +85,9 @@ body.chat-open .content { padding-right: 424px; }
   .chat { width: 100%; }
   .fab { bottom: 84px; right: 16px; }
 }
+
+/* ---------- chargement d'une section ---------- */
+.load-state { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+.load-bar { display: block; height: 12px; width: 70%; border-radius: 6px; background: var(--surface-2); animation: pulse 1.2s ease-in-out infinite; }
+.load-bar.short { width: 40%; }
+.load-state.failed { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
