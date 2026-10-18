@@ -17,15 +17,30 @@ function useRecipeTranslation(id: number) {
   const [tx, setTx] = useState<RecipeTranslation | null>(null);
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState('');
-  const load = () => {
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
     if (lang === 'fr') return;
-    setState('loading');
-    api.recipeTranslation(id)
-      .then(t => { setTx(t); rememberName(id, t.name); setState('idle'); })
-      .catch(e => { setError((e as Error).message); setState('error'); });
-  };
-  useEffect(() => { setTx(null); load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-  return { tx, state, error, retry: load };
+    // Le serveur traduit en arrière-plan (≈ 30 s la première fois) : on revient voir régulièrement,
+    // sans garder de connexion ouverte, et on arrête en quittant la page.
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let failures = 0;
+    const poll = () => api.recipeTranslation(id)
+      .then(r => {
+        if (!alive) return;
+        if ('pending' in r) { timer = setTimeout(poll, 2500); return; }
+        setTx(r); rememberName(id, r.name); setState('idle');
+      })
+      .catch(e => {
+        if (!alive) return;
+        // Serveur injoignable un instant (redémarrage) : on réessaie ; erreur de traduction : on l'affiche.
+        if (e instanceof TypeError && ++failures < 5) { timer = setTimeout(poll, 3000); return; }
+        setError((e as Error).message); setState('error');
+      });
+    setTx(null); setState('loading'); void poll();
+    return () => { alive = false; clearTimeout(timer); };
+  }, [id, attempt]);
+  return { tx, state, error, retry: () => setAttempt(a => a + 1) };
 }
 
 export function RecipeDetailPage({ id, onChat }: { id: number; onChat?: (r: RecipeDetail) => React.ReactNode }) {
@@ -38,11 +53,22 @@ export function RecipeDetailPage({ id, onChat }: { id: number; onChat?: (r: Reci
 
   useEffect(() => {
     setR(null); setError(null); setPersons(null);
-    api.recipe(id).then(setR).catch(e => setError((e as Error).message));
+    // Serveur injoignable un instant (il redémarre) : quelques nouvelles tentatives avant d'afficher l'erreur.
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = (tries: number): void => void api.recipe(id)
+      .then(d => { if (alive) setR(d); })
+      .catch(e => {
+        if (!alive) return;
+        if (e instanceof TypeError && tries < 5) timer = setTimeout(() => load(tries + 1), 2000);
+        else setError((e as Error).message);
+      });
+    load(0);
+    return () => { alive = false; clearTimeout(timer); };
   }, [id]);
 
   if (error) return <div className="card empty"><b>{L('Recette introuvable', 'Recipe not found')}</b>{error}</div>;
-  if (!r) return <div className="detail-loading" />;
+  if (!r) return <div className="detail-loading"><Loader2 size={22} className="spin" />{L('Chargement de la recette…', 'Loading the recipe…')}</div>;
 
   const people = persons ?? r.persons;
   const factor = people / (r.servings || people);

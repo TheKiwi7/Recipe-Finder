@@ -23,6 +23,8 @@ export function loadLang(db: Db): void {
   current = getMeta(db, 'lang') === 'en' ? 'en' : 'fr';
   const ins = db.prepare(`INSERT OR REPLACE INTO translations (kind, src, lang, text) VALUES ('term', ?, 'en', ?)`);
   for (const [fr, en] of Object.entries(EQUIPMENT_EN)) ins.run(fr, en);
+  // Traductions rangées par erreur sous « fr » (langue changée pendant un appel à l'IA, avant correction).
+  db.exec(`DELETE FROM translations WHERE lang = 'fr'`);
 }
 
 export function setLang(db: Db, l: Lang): void {
@@ -47,10 +49,13 @@ function cached(db: Db, kind: Kind, srcs: string[]): Map<string, string> {
   return out;
 }
 
+/** Le catalogue est en français : on ne traduit que vers l'anglais. Une langue changée pendant l'appel à l'IA ne change rien. */
+const TARGET = 'en';
+
 function store(db: Db, kind: Kind, pairs: Iterable<[string, string]>): void {
   const ins = db.prepare('INSERT OR REPLACE INTO translations (kind, src, lang, text) VALUES (?, ?, ?, ?)');
   db.exec('BEGIN');
-  for (const [src, text] of pairs) ins.run(kind, src, current, text);
+  for (const [src, text] of pairs) ins.run(kind, src, TARGET, text);
   db.exec('COMMIT');
 }
 
@@ -92,8 +97,25 @@ export async function translateNames(db: Db, ids: number[], lane: Lane): Promise
   return cached(db, 'name', keys);
 }
 
-/** Traductions déjà connues (sans appel à l'IA) : pour l'export, les invites, etc. */
-export const knownTerms = (db: Db, terms: string[]) => (current === 'fr' ? new Map(terms.map(t => [t, t])) : cached(db, 'term', terms));
+// ---------- demandes de l'interface : réponse immédiate, traduction en arrière-plan ----------
+// L'interface ne garde jamais une connexion ouverte pendant un appel à l'IA (plusieurs secondes) : elle reçoit
+// ce qui est déjà traduit, et revient demander le reste tant que `pending` est vrai.
+
+const working: Record<'term' | 'name', Set<string>> = { term: new Set(), name: new Set() };
+
+export function requestTranslations(db: Db, kind: 'term' | 'name', keys: string[]): { done: Record<string, string>; pending: boolean } {
+  if (current === 'fr') return { done: {}, pending: false };
+  const done = cached(db, kind, keys);
+  const missing = [...new Set(keys)].filter(k => k.trim() && !done.has(k));
+  const fresh = missing.filter(k => !working[kind].has(k));
+  if (fresh.length) {
+    fresh.forEach(k => working[kind].add(k));
+    (kind === 'name' ? translateNames(db, fresh.map(Number), 'interactive') : translateTerms(db, fresh, 'interactive'))
+      .catch(e => console.error(`[traduction] ${kind} : ${(e as Error).message}`))
+      .finally(() => fresh.forEach(k => working[kind].delete(k)));
+  }
+  return { done: Object.fromEntries(done), pending: missing.some(k => working[kind].has(k)) };
+}
 
 // ---------- recette complète ----------
 
@@ -106,12 +128,30 @@ Reply only with JSON {"name": "...", "ingredients": ["..."], "steps": ["..."]}, 
 
 const inflight = new Map<number, Promise<RecipeTranslation | null>>();
 
+const failed = new Map<number, string>();
+
 /** Nom, lignes d'ingrédients et étapes en anglais ; null si la recette n'existe pas. Une seule traduction par recette. */
 export function translateRecipe(db: Db, id: number): Promise<RecipeTranslation | null> {
   const hit = cached(db, 'recipe', [String(id)]).get(String(id));
   if (hit) return Promise.resolve(JSON.parse(hit) as RecipeTranslation);
   if (!inflight.has(id)) inflight.set(id, doTranslateRecipe(db, id).finally(() => inflight.delete(id)));
   return inflight.get(id)!;
+}
+
+/**
+ * Pour l'interface : la traduction si elle est prête, sinon `pending` (et elle est lancée en arrière-plan),
+ * ou l'erreur de la dernière tentative (une fois ; la demande suivante relance la traduction).
+ */
+export function recipeTranslationStatus(db: Db, id: number): { translation?: RecipeTranslation; pending?: boolean; error?: string } {
+  const hit = cached(db, 'recipe', [String(id)]).get(String(id));
+  if (hit) return { translation: JSON.parse(hit) as RecipeTranslation };
+  if (inflight.has(id)) return { pending: true };
+  const error = failed.get(id);
+  if (error !== undefined) { failed.delete(id); return { error }; }
+  translateRecipe(db, id)
+    .then(t => { if (!t) failed.set(id, L('Recette introuvable', 'Recipe not found')); })
+    .catch(e => failed.set(id, (e as Error).message.slice(0, 200)));
+  return { pending: true };
 }
 
 async function doTranslateRecipe(db: Db, id: number): Promise<RecipeTranslation | null> {
@@ -148,7 +188,7 @@ export async function toFrench(db: Db, input: string): Promise<string> {
   try {
     const fr = clean(parseJsonReply<{ fr?: unknown }>(await askAI(text, { tier: 'light', lane: 'interactive', system: TO_FR_SYSTEM, json: true, timeoutMs: 90_000 })).fr).toLowerCase();
     if (!fr) return text;
-    db.prepare(`INSERT OR IGNORE INTO translations (kind, src, lang, text) VALUES ('term', ?, ?, ?)`).run(fr, current, text.toLowerCase());
+    db.prepare(`INSERT OR IGNORE INTO translations (kind, src, lang, text) VALUES ('term', ?, ?, ?)`).run(fr, TARGET, text.toLowerCase());
     return fr;
   } catch {
     return text;

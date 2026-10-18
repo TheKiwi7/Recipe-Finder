@@ -16,7 +16,7 @@ import { askProvider, claudeStatus, cooldownOf, invalidateLocalStatus, localStat
 import { connectClaude, setupLocal, setupTask } from './setup.ts';
 import { setMeta } from './db.ts';
 import { AIUnavailable } from './ai.ts';
-import { L, lang, setLang, suggestTranslated, toFrench, translateNames, translateRecipe, translateTerms } from './i18n.ts';
+import { L, lang, recipeTranslationStatus, requestTranslations, setLang, suggestTranslated, toFrench } from './i18n.ts';
 
 /** Modèles locaux proposés (Ollama) : le 12B par défaut, le 4B pour les PC sans grosse carte graphique. */
 const LOCAL_MODELS = () => [
@@ -66,26 +66,18 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     return c.json({ lang: lang() });
   });
   // Traductions de termes (ingrédients, ustensiles…) ou de noms de recettes, demandées par l'interface en anglais.
+  // Réponse immédiate (déjà traduit + `pending`) : l'interface revient demander le reste, sans connexion bloquée.
   api.post('/translate', async c => {
     const body = await c.req.json() as { kind?: string; keys?: unknown[] };
     const keys = (body.keys ?? []).map(String).slice(0, 300);
-    if (lang() === 'fr' || !keys.length) return c.json({});
-    try {
-      const map = body.kind === 'name' ? await translateNames(db, keys.map(Number), 'interactive') : await translateTerms(db, keys, 'interactive');
-      return c.json(Object.fromEntries(map));
-    } catch (e) {
-      if (e instanceof AIUnavailable) return c.json({});
-      throw e;
-    }
+    return c.json(requestTranslations(db, body.kind === 'name' ? 'name' : 'term', keys));
   });
-  api.get('/recipes/:id/translation', async c => {
+  api.get('/recipes/:id/translation', c => {
     if (lang() === 'fr') return c.json({ error: 'fr' }, 404);
-    try {
-      const t = await translateRecipe(db, Number(c.req.param('id')));
-      return t ? c.json(t) : c.json({ error: L('Recette introuvable', 'Recipe not found') }, 404);
-    } catch (e) {
-      return c.json({ error: (e as Error).message.slice(0, 200) }, 503);
-    }
+    const s = recipeTranslationStatus(db, Number(c.req.param('id')));
+    if (s.translation) return c.json(s.translation);
+    if (s.error) return c.json({ error: s.error }, 503);
+    return c.json({ pending: true }, 202);
   });
 
   api.post('/recommendations', async c => {

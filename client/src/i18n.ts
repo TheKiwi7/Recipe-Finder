@@ -62,6 +62,15 @@ const listeners = new Set<() => void>();
 let version = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
 
+function schedule(kind: Kind, keys: string[], delay: number) {
+  setTimeout(() => {
+    for (const k of keys) if (!cache[kind].has(k)) queue[kind].add(k);
+    timer ??= setTimeout(flush, 0);
+  }, delay);
+}
+
+// Le serveur répond tout de suite avec ce qui est déjà traduit et lance le reste : on revient le chercher
+// (vite si la traduction est en cours, plus tard si l'IA est indisponible ou le serveur injoignable).
 async function flush() {
   timer = undefined;
   for (const kind of ['term', 'name'] as Kind[]) {
@@ -70,13 +79,12 @@ async function flush() {
     for (let i = 0; i < keys.length; i += 300) {
       const batch = keys.slice(i, i + 300);
       fetch('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, keys: batch }) })
-        .then(r => r.json() as Promise<Record<string, string>>)
-        .catch(() => ({} as Record<string, string>))
-        .then(map => {
-          for (const [k, v] of Object.entries(map)) cache[kind].set(k, v);
-          // Pas encore traduit (IA occupée ou absente) : on redemandera plus tard.
+        .then(r => (r.ok ? r.json() as Promise<{ done?: Record<string, string>; pending?: boolean }> : { done: {}, pending: false, retry: true }))
+        .catch(() => ({ done: {}, pending: false, retry: true }))
+        .then((r: { done?: Record<string, string>; pending?: boolean; retry?: boolean }) => {
+          for (const [k, v] of Object.entries(r.done ?? {})) cache[kind].set(k, v);
           const left = batch.filter(k => !cache[kind].has(k));
-          if (left.length) setTimeout(() => left.forEach(k => asked[kind].delete(k)), 60_000);
+          if (left.length) schedule(kind, left, r.pending ? 2500 : r.retry ? 5000 : 60_000);
           version++;
           listeners.forEach(l => l());
         });

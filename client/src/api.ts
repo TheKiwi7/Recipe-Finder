@@ -92,7 +92,8 @@ export const api = {
   ask: (id: number, message: string) => call<ChatMessage[]>('POST', `/recipes/${id}/chat`, { message }),
   settings: () => call<{ lang: Lang }>('GET', '/settings'),
   setLang: (l: Lang) => call<{ lang: Lang }>('PUT', '/settings', { lang: l }),
-  recipeTranslation: (id: number) => call<RecipeTranslation>('GET', `/recipes/${id}/translation`),
+  /** La traduction si elle est prête, sinon `{ pending: true }` : redemander un peu plus tard. */
+  recipeTranslation: (id: number) => call<RecipeTranslation | { pending: true }>('GET', `/recipes/${id}/translation`),
 };
 
 export const UNITS = ['pièce(s)', 'g', 'kg', 'ml', 'cl', 'l', 'c. à soupe', 'c. à café', 'sachet(s)', 'boîte(s)', 'pot(s)', 'tranche(s)', 'botte(s)', 'gousse(s)'];
