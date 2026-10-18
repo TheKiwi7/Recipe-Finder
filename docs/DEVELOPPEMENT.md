@@ -45,7 +45,7 @@ server/            Serveur Node (Hono + node:sqlite), TypeScript exécuté direc
   i18n.ts          Langue de l'app, traductions par l'IA (termes, noms, recettes) gardées en base
 client/            Interface React (Vite) ; textes FR/EN dans le code via L('fr', 'en') (client/src/i18n.ts)
 scripts/           Installation, lanceur (navigateur par défaut, taille de la fenêtre retenue) et création du raccourci
-docs/SPEC.md       Spécification détaillée et décisions de conception
+docs/SPEC.md       Spécification détaillée et décisions de conception (français, puis anglais)
 data/              Base SQLite, images des favoris, journaux (hors git)
 ```
 
@@ -109,7 +109,7 @@ server/            Node server (Hono + node:sqlite), TypeScript run directly by 
   i18n.ts          App language, AI translations (terms, names, recipes) stored in the database
 client/            React interface (Vite); FR/EN texts in the code via L('fr', 'en') (client/src/i18n.ts)
 scripts/           Install, launcher (default browser, window size remembered) and shortcut creation
-docs/SPEC.md       Detailed specification and design decisions (in French)
+docs/SPEC.md       Detailed specification and design decisions (French, then English)
 data/              SQLite database, favourite images, logs (not in git)
 ```
 
