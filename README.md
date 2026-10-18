@@ -21,12 +21,12 @@ Prérequis : Node 24+, et le CLI `claude` connecté à l'abonnement (utilisé po
 | `npm run build` | Construit l'interface (`client/dist`) |
 | `npm test` | Tests (analyseur d'ingrédients, pages Marmiton, classement, mise en forme) |
 | `npm run typecheck` | Vérification TypeScript serveur + client |
-| `npm run import -- --target 3000` | Import du catalogue en ligne de commande (reprend où il s'était arrêté) |
+| `npm run import -- --target 8000` | Import du catalogue en ligne de commande (reprend où il s'était arrêté) |
 | `npm run import -- --normalize-only` | Envoie à Claude les ingrédients non reconnus en attente |
 | `npm run import -- --renormalize-ignored` | Refait examiner les termes ignorés et les correspondances « X de Y → X » douteuses |
 | `npm run audit` | Rapport de qualité du catalogue importé |
 
-L'app importe aussi en tâche de fond : jusqu'à 3 000 recettes, puis ~100 nouvelles par semaine. Un seul import tourne à la fois (verrou `data/import.lock`).
+L'app importe aussi en tâche de fond : jusqu'à 8 000 recettes, puis ~100 nouvelles par semaine. Un seul import tourne à la fois (verrou `data/import.lock`).
 
 ## Organisation
 
