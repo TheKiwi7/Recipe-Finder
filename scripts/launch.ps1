@@ -18,39 +18,8 @@ function Get-DefaultBrowser {
   return $null
 }
 
-# Fenetres de premier niveau visibles dont le titre commence par "Recipe Finder" (pas l'editeur de code, etc.).
-Add-Type @"
-using System; using System.Collections.Generic; using System.Runtime.InteropServices; using System.Text;
-public static class RfWindows {
-  delegate bool EnumProc(IntPtr h, IntPtr p);
-  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr p);
-  [DllImport("user32.dll")] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
-  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
-  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
-  public static List<IntPtr> Find() {
-    var found = new List<IntPtr>();
-    EnumWindows((h, p) => {
-      var sb = new StringBuilder(256); GetWindowText(h, sb, 256);
-      if (IsWindowVisible(h) && sb.ToString().StartsWith("Recipe Finder")) found.Add(h);
-      return true;
-    }, IntPtr.Zero);
-    return found;
-  }
-}
-"@
-
-# Le navigateur rouvre une fenetre d'app a une taille par defaut (et ignore --start-maximized s'il tourne deja) :
-# on agrandit nous-memes la nouvelle fenetre de l'app, des que son titre apparait.
-function Maximize-NewWindow($before) {
-  for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Milliseconds 250
-    $new = [RfWindows]::Find() | Where-Object { $before -notcontains $_ }
-    if ($new) { foreach ($h in $new) { [void][RfWindows]::ShowWindow($h, 3) }; return } # 3 = SW_MAXIMIZE
-  }
-}
-
+# La fenetre garde la taille que le navigateur a memorisee : chacun la regle comme il veut.
 function Open-App {
-  $before = @([RfWindows]::Find())
   $exe = Get-DefaultBrowser
   $name = if ($exe) { [IO.Path]::GetFileNameWithoutExtension($exe).ToLower() } else { '' }
   if ($exe -and (Test-Path $exe) -and @('chrome', 'msedge', 'brave', 'vivaldi', 'chromium') -contains $name) {
@@ -60,7 +29,6 @@ function Open-App {
   } else {
     Start-Process $url
   }
-  Maximize-NewWindow $before
 }
 
 function Test-Server {
