@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, SendHorizontal, Sparkles, X } from 'lucide-react';
 import { api, type ChatMessage, type RecipeDetail } from '../api.ts';
+import { L } from '../i18n.ts';
 
 /** Rendu minimal du Markdown des réponses : **gras** et puces « - ». */
 function Rich({ text }: { text: string }) {
@@ -13,7 +14,11 @@ function Rich({ text }: { text: string }) {
   );
 }
 
-const SUGGESTIONS = ['Par quoi remplacer un ingrédient qui me manque ?', 'Je peux la préparer à l’avance ?', 'Quel accompagnement avec ?'];
+const SUGGESTIONS = [
+  L('Par quoi remplacer un ingrédient qui me manque ?', 'What can I use instead of a missing ingredient?'),
+  L('Je peux la préparer à l’avance ?', 'Can I make it ahead?'),
+  L('Quel accompagnement avec ?', 'What should I serve with it?'),
+];
 
 /** Panneau latéral repliable « Demander à l'IA » (Q16, Q39), replié par défaut. */
 export function ChatPanel({ recipe }: { recipe: RecipeDetail }) {
@@ -44,21 +49,21 @@ export function ChatPanel({ recipe }: { recipe: RecipeDetail }) {
   if (!open) {
     return (
       <button className="fab" onClick={() => setOpen(true)}>
-        <MessageCircle size={18} />Demander à l'IA{messages.length > 0 && <span className="fab-count">{messages.length / 2}</span>}
+        <MessageCircle size={18} />{L('Demander à l’IA', 'Ask the AI')}{messages.length > 0 && <span className="fab-count">{messages.length / 2}</span>}
       </button>
     );
   }
 
   return (
-    <aside className="chat" aria-label="Discussion avec l'IA">
+    <aside className="chat" aria-label={L('Discussion avec l’IA', 'Chat with the AI')}>
       <header className="chat-h">
-        <Sparkles size={17} /><b>Demander à l'IA</b>
-        <button className="icon-btn" onClick={() => setOpen(false)} aria-label="Fermer"><X size={18} /></button>
+        <Sparkles size={17} /><b>{L('Demander à l’IA', 'Ask the AI')}</b>
+        <button className="icon-btn" onClick={() => setOpen(false)} aria-label={L('Fermer', 'Close')}><X size={18} /></button>
       </header>
       <div className="chat-b" ref={body}>
         {messages.length === 0 && !pending && (
           <>
-            <p className="chat-hint">L'IA connaît déjà cette recette, ton stock et tes goûts.</p>
+            <p className="chat-hint">{L('L’IA connaît déjà cette recette, ton stock et tes goûts.', 'The AI already knows this recipe, your pantry and your tastes.')}</p>
             <div className="sugg">{SUGGESTIONS.map(s => <button key={s} onClick={() => send(s)}>{s}</button>)}</div>
           </>
         )}
@@ -66,7 +71,7 @@ export function ChatPanel({ recipe }: { recipe: RecipeDetail }) {
         {pending && (
           <>
             <div className="msg me">{pending}</div>
-            <div className="msg ai typing" aria-label="L'IA réfléchit"><i /><i /><i /></div>
+            <div className="msg ai typing" aria-label={L('L’IA réfléchit', 'The AI is thinking')}><i /><i /><i /></div>
           </>
         )}
         {error && <div className="chat-error">{error}</div>}
@@ -76,11 +81,11 @@ export function ChatPanel({ recipe }: { recipe: RecipeDetail }) {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
-          placeholder="Pose ta question…"
+          placeholder={L('Pose ta question…', 'Ask your question…')}
           rows={1}
           disabled={!!pending}
         />
-        <button className="send" disabled={!input.trim() || !!pending} aria-label="Envoyer"><SendHorizontal size={17} /></button>
+        <button className="send" disabled={!input.trim() || !!pending} aria-label={L('Envoyer', 'Send')}><SendHorizontal size={17} /></button>
       </form>
     </aside>
   );

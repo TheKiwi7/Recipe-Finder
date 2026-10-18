@@ -19,6 +19,8 @@
 .rcard-missing { margin: -2px 0 9px; font-size: 13px; color: var(--danger); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .meta { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
 .meta span { display: inline-flex; align-items: center; gap: 5px; }
+.tx-note { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+.meta .meta-type { margin-left: auto; padding: 1px 8px; border-radius: 99px; background: var(--surface-2); font-size: 12px; }
 .tag-urgent { position: absolute; left: 10px; top: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; background: var(--warn-soft); color: var(--warn); font-size: 12px; font-weight: 650; }
 
 .react { display: flex; gap: 6px; }

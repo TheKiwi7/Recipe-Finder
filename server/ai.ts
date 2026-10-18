@@ -1,3 +1,4 @@
+import { L } from './i18n.ts';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -179,7 +180,7 @@ async function askRouted(prompt: string, opts: AskOptions): Promise<string> {
   const providers = await route(opts.lane);
   if (providers.length === 0) {
     const paused = (['claude', 'local'] as Provider[]).map(cooldownOf).find(Boolean);
-    throw new AIUnavailable(paused ? `IA en pause (${paused.reason})` : "Aucune IA n'est configurée (Réglages → Intelligence artificielle)");
+    throw new AIUnavailable(paused ? L(`IA en pause (${paused.reason})`, `AI paused (${paused.reason})`) : L("Aucune IA n'est configurée (Réglages → Intelligence artificielle)", 'No AI is set up (Settings → Artificial intelligence)'));
   }
   let lastError: unknown;
   for (const p of providers) {

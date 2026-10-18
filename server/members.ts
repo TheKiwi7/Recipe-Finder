@@ -1,3 +1,4 @@
+import { L } from './i18n.ts';
 import { getMeta, setMeta, type Db } from './db.ts';
 import { DEFAULT_QUESTIONNAIRE, exclusionWords, getQuestionnaire, getWeights, type Questionnaire } from './preferences.ts';
 
@@ -32,7 +33,7 @@ export function listMembers(db: Db): Member[] {
 
 export function addMember(db: Db, name: string): Member {
   const n = name.trim().slice(0, 40);
-  if (!n) throw new Error('Nom vide');
+  if (!n) throw new Error(L('Nom vide', 'Empty name'));
   const r = db.prepare(`INSERT INTO members (name, is_self, diet, allergies, aversions, notes) VALUES (?, 0, 'omnivore', '[]', '[]', '') RETURNING *`).get(n) as Row;
   // Un nouveau membre mange avec nous par défaut.
   setEaters(db, [...eaterIds(db), r.id]);
@@ -41,7 +42,7 @@ export function addMember(db: Db, name: string): Member {
 
 export function updateMember(db: Db, id: number, patch: Partial<Omit<Member, 'id' | 'isSelf'>>): void {
   const cur = listMembers(db).find(m => m.id === id);
-  if (!cur) throw new Error('Membre introuvable');
+  if (!cur) throw new Error(L('Membre introuvable', 'Member not found'));
   const m = { ...cur, ...patch };
   const clean = (xs: string[]) => [...new Set(xs.map(x => x.trim().toLowerCase()).filter(Boolean))].slice(0, 50);
   db.prepare('UPDATE members SET name = ?, diet = ?, allergies = ?, aversions = ?, notes = ? WHERE id = ?').run(
@@ -65,7 +66,7 @@ export function eaterIds(db: Db): number[] {
 export function setEaters(db: Db, ids: number[]): void {
   const all = new Set(listMembers(db).map(m => m.id));
   const valid = [...new Set(ids)].filter(id => all.has(id));
-  if (!valid.length) throw new Error('Choisis au moins une personne');
+  if (!valid.length) throw new Error(L('Choisis au moins une personne', 'Pick at least one person'));
   setMeta(db, 'eaters', JSON.stringify(valid));
 }
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { L } from './i18n.ts';
 
 /**
  * Charge une donnée au montage, en réessayant quelques fois (le serveur peut être en train de redémarrer).
@@ -29,8 +30,8 @@ export function LoadState({ failed, onRetry }: { failed: boolean; onRetry: () =>
   if (!failed) return <div className="load-state"><span className="load-bar" /><span className="load-bar short" /></div>;
   return (
     <div className="load-state failed">
-      <span className="muted">Impossible de charger cette section.</span>
-      <button className="btn btn-ghost small-btn" onClick={onRetry}><RefreshCw size={14} />Réessayer</button>
+      <span className="muted">{L('Impossible de charger cette section.', 'Could not load this section.')}</span>
+      <button className="btn btn-ghost small-btn" onClick={onRetry}><RefreshCw size={14} />{L('Réessayer', 'Retry')}</button>
     </div>
   );
 }

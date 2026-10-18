@@ -1,6 +1,7 @@
 import { getMeta, loadAliases, setMeta, type Db } from './db.ts';
 import { resolveBase } from './catalog/ingredients.ts';
 import { normalizeKey } from './catalog/text.ts';
+import { L } from './i18n.ts';
 
 export const DEFAULT_STAPLES = ['sel', 'poivre', 'huile', "huile d'olive", 'eau', 'sucre', 'farine'];
 /** Durée de validité de la confirmation « Mes ingrédients sont à jour » (Q10). */
@@ -35,23 +36,24 @@ function touch(db: Db) {
   setMeta(db, 'pantry_version', String(Number(getMeta(db, 'pantry_version') ?? 0) + 1));
 }
 
-export function addPantryItem(db: Db, input: { label: string; qty?: number | null; unit?: string | null; urgent?: boolean }): PantryItem {
+/** `term` : la saisie ramenée au vocabulaire français (app en anglais), pour trouver l'ingrédient de base. */
+export function addPantryItem(db: Db, input: { label: string; term?: string; qty?: number | null; unit?: string | null; urgent?: boolean }): PantryItem {
   const label = input.label.trim();
-  if (!label) throw new Error('Nom vide');
+  if (!label) throw new Error(L('Nom vide', 'Empty name'));
   const now = new Date().toISOString();
   const row = db.prepare(`INSERT INTO pantry (label, base, qty, unit, urgent, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`)
-    .get(label, baseFor(db, label), input.qty ?? null, input.unit ?? null, input.urgent ? 1 : 0, now, now) as { id: number };
+    .get(label, baseFor(db, input.term ?? label), input.qty ?? null, input.unit ?? null, input.urgent ? 1 : 0, now, now) as { id: number };
   touch(db);
   return listPantry(db).find(i => i.id === row.id)!;
 }
 
-export function updatePantryItem(db: Db, id: number, patch: Partial<Pick<PantryItem, 'qty' | 'unit' | 'urgent' | 'label'>>): void {
+export function updatePantryItem(db: Db, id: number, patch: Partial<Pick<PantryItem, 'qty' | 'unit' | 'urgent' | 'label'>> & { term?: string }): void {
   const cur = db.prepare('SELECT * FROM pantry WHERE id = ?').get(id) as Record<string, unknown> | undefined;
-  if (!cur) throw new Error('Introuvable');
+  if (!cur) throw new Error(L('Introuvable', 'Not found'));
   const label = patch.label?.trim() || (cur.label as string);
   db.prepare('UPDATE pantry SET label = ?, base = ?, qty = ?, unit = ?, urgent = ?, updated_at = ? WHERE id = ?').run(
     label,
-    patch.label ? baseFor(db, label) : (cur.base as string),
+    patch.label ? baseFor(db, patch.term ?? label) : (cur.base as string),
     patch.qty !== undefined ? patch.qty : (cur.qty as number | null),
     patch.unit !== undefined ? patch.unit : (cur.unit as string | null),
     patch.urgent !== undefined ? (patch.urgent ? 1 : 0) : (cur.urgent as number),

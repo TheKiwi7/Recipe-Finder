@@ -1,7 +1,7 @@
 import { parseIngredientLine, type IngredientLine } from './ingredients.ts';
 import { canonicalUtensils, countDishes, deduceUtensils, utensilsFor, withNameDevices } from './utensils.ts';
 
-export const RECIPE_TYPES = ['Plat', 'Entrée', 'Dessert', 'Apéro', 'Petit-déj.', 'Autre'] as const;
+export const RECIPE_TYPES = ['Plat', 'Entrée', 'Accompagnement', 'Dessert', 'Apéro', 'Petit-déj.', 'Boisson', 'Sauce', 'Autre'] as const;
 export type RecipeType = (typeof RECIPE_TYPES)[number];
 
 export type ParsedRecipe = {
@@ -86,9 +86,12 @@ const BREAKFAST = /cr[eê]pe|pancake|granola|porridge|muesli|brioche|pain perdu|
 export function recipeType(categoryRaw: string | null, name: string): RecipeType {
   if (BREAKFAST.test(name)) return 'Petit-déj.';
   const c = (categoryRaw ?? '').toLowerCase();
-  // Les accompagnements (confit d'oignons, pain…) ne répondent pas à « qu'est-ce qu'on mange » : visibles via « Tous ».
   if (c.includes('plat')) return 'Plat';
   if (c.includes('entrée') || c.includes('entree')) return 'Entrée';
+  // Purées, röstis, légumes sautés… : leur propre filtre, pour compléter un plat.
+  if (c.includes('accompagnement')) return 'Accompagnement';
+  if (c.includes('boisson')) return 'Boisson';
+  if (c.includes('sauce')) return 'Sauce';
   if (c.includes('dessert') || c.includes('confiserie')) return 'Dessert';
   if (c.includes('amuse') || c.includes('apéritif') || c.includes('aperitif')) return 'Apéro';
   return 'Autre';

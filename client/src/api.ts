@@ -1,3 +1,5 @@
+import { L, type Lang } from './i18n.ts';
+
 export type PantryItem = { id: number; label: string; base: string; qty: number | null; unit: string | null; urgent: boolean; showBase: boolean };
 export type PantryState = { confirmedAt: string | null; gateOpen: boolean; version: number };
 export type PantryResponse = PantryState & { items: PantryItem[]; staples: string[] };
@@ -11,6 +13,7 @@ export type RecipeDetail = RecipeCard & {
   url: string; prepMin: number; cookMin: number; servings: number; persons: number;
   ingredients: IngredientLine[]; steps: string[]; utensils: string[]; banned: string[]; available: string[]; archived: boolean;
 };
+export type RecipeTranslation = { name: string; ingredients: string[]; steps: string[] };
 export type Mode = 'ready' | 'almost';
 export type Filters = { type: string; maxTime: number | null };
 export type Recommendations = { items: RecipeCard[]; exhausted: boolean; catalogSize: number };
@@ -46,9 +49,9 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   });
   const json = (res.headers.get('Content-Type') ?? '').includes('application/json');
   const data = json ? await res.json().catch(() => ({})) : {};
-  if (!res.ok) throw new Error(data.error ?? `Erreur ${res.status}`);
+  if (!res.ok) throw new Error(data.error ?? L(`Erreur ${res.status}`, `Error ${res.status}`));
   // Réponse non JSON sur une route d'API : serveur d'une version plus ancienne que l'interface.
-  if (!json && res.status !== 204) throw new Error('Serveur pas à jour : ferme et relance l’app');
+  if (!json && res.status !== 204) throw new Error(L('Serveur pas à jour : ferme et relance l’app', 'Server out of date: close and relaunch the app'));
   return data as T;
 }
 
@@ -87,6 +90,9 @@ export const api = {
   updateProfile: () => call<ProfileStatus & { result: 'updated' | 'nothing-new' | 'busy' | 'not-yet' | 'unavailable' }>('POST', '/profile/update'),
   chat: (id: number) => call<ChatMessage[]>('GET', `/recipes/${id}/chat`),
   ask: (id: number, message: string) => call<ChatMessage[]>('POST', `/recipes/${id}/chat`, { message }),
+  settings: () => call<{ lang: Lang }>('GET', '/settings'),
+  setLang: (l: Lang) => call<{ lang: Lang }>('PUT', '/settings', { lang: l }),
+  recipeTranslation: (id: number) => call<RecipeTranslation>('GET', `/recipes/${id}/translation`),
 };
 
 export const UNITS = ['pièce(s)', 'g', 'kg', 'ml', 'cl', 'l', 'c. à soupe', 'c. à café', 'sachet(s)', 'boîte(s)', 'pot(s)', 'tranche(s)', 'botte(s)', 'gousse(s)'];

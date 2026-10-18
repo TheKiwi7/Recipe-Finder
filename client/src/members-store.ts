@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { api, type Members } from './api.ts';
 import { invalidateLists } from './recipes-store.ts';
+import { L } from './i18n.ts';
 
 // Les membres de la famille et « qui mange », partagés entre les Réglages et le filtre des recettes.
 let state: Members | null = null;
@@ -17,7 +18,7 @@ export async function refreshMembers(): Promise<Members> {
 export async function toggleEater(id: number): Promise<void> {
   if (!state) return;
   const eaters = state.eaters.includes(id) ? state.eaters.filter(e => e !== id) : [...state.eaters, id];
-  if (eaters.length === 0) throw new Error('Choisis au moins une personne');
+  if (eaters.length === 0) throw new Error(L('Choisis au moins une personne', 'Pick at least one person'));
   state = { ...state, eaters: (await api.setEaters(eaters)).eaters };
   emit();
   invalidateLists();

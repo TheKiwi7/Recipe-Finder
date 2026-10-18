@@ -11,11 +11,13 @@ import { ensureStaples } from './pantry.ts';
 import { ensureSelf } from './members.ts';
 import { maybeUpdateProfile } from './profile.ts';
 import { abortAllAI, ensureOllama, initAI, ollamaExe, releaseOllama } from './ai.ts';
+import { L, lang, loadLang, prefillTranslations } from './i18n.ts';
 
 export const PORT = Number(process.env.PORT ?? 5317);
 const CLIENT_DIST = join(DATA_DIR, '..', 'client', 'dist');
 
 const db = openDb();
+loadLang(db);
 initAI(db);
 syncSeed(db);
 migrateCatalog(db);
@@ -57,9 +59,9 @@ setInterval(() => {
 if (ollamaExe()) void ensureOllama();
 // Identifiant de la version de l'interface construite : l'app compare et propose de recharger quand il change.
 const clientBuild = () => { try { return String(statSync(join(CLIENT_DIST, 'index.html')).mtimeMs); } catch { return 'dev'; } };
-app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild, startImport: () => { void backgroundImport(); } }));
+app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild, startImport: () => { void backgroundImport(); }, languageChanged: () => { void backgroundTranslate(); } }));
 // Route d'API inconnue : JSON 404, jamais la page HTML (sinon le client croit recevoir des données vides).
-app.all('/api/*', c => c.json({ error: 'Route inconnue — relance l’app pour mettre le serveur à jour' }, 404));
+app.all('/api/*', c => c.json({ error: L('Route inconnue — relance l’app pour mettre le serveur à jour', 'Unknown route — restart the app to update the server') }, 404));
 setInterval(checkProfile, 30 * 60 * 1000);
 checkProfile();
 
@@ -90,3 +92,19 @@ async function backgroundImport() {
 }
 void backgroundImport();
 setInterval(backgroundImport, 3600 * 1000);
+
+// App en anglais : vocabulaire et noms de recettes traduits d'avance (nouvelles recettes comprises), en tâche de fond.
+let translating = false;
+async function backgroundTranslate() {
+  if (translating || lang() === 'fr') return;
+  translating = true;
+  try {
+    await prefillTranslations(db, m => console.log(`[traduction] ${m}`), () => stopping || lang() === 'fr');
+  } catch (e) {
+    console.error('[traduction]', (e as Error).message);
+  } finally {
+    translating = false;
+  }
+}
+setTimeout(backgroundTranslate, 20_000);
+setInterval(backgroundTranslate, 15 * 60 * 1000);

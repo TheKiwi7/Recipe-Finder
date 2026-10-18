@@ -79,7 +79,7 @@ export function syncSeed(db: Db): void {
   setMeta(db, 'seed_hash', hash);
 }
 
-const CATALOG_MIGRATION = '6';
+const CATALOG_MIGRATION = '7';
 
 /** Applique aux recettes déjà importées les corrections faites depuis (titres, types, appareils cités dans le titre, images génériques). */
 export function migrateCatalog(db: Db): void {

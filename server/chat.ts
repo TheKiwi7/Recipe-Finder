@@ -5,12 +5,13 @@ import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, recordSignal, type Questionnai
 import { profileText } from './profile.ts';
 import { mealContext } from './members.ts';
 import { recipeDetail } from './reco/service.ts';
+import { L, replyLanguage } from './i18n.ts';
 
 // Chat sur une recette (Q16) : Claude Haiku, contexte automatique (recette, stock, profil), conversation mémorisée.
 
 export type ChatMessage = { id: number; role: 'user' | 'assistant'; text: string; at: string };
 
-const SYSTEM = `Tu es l'assistant culinaire d'une app perso de recettes. Tu réponds en français, de façon concise et concrète (quelques phrases ou une courte liste), comme un ami qui cuisine bien.
+const SYSTEM = `Tu es l'assistant culinaire d'une app perso de recettes. Tu réponds de façon concise et concrète (quelques phrases ou une courte liste), comme un ami qui cuisine bien.
 Tu connais la recette affichée, le stock de la personne et son profil : sers-t'en (propose des substitutions avec ce qu'elle a, adapte au nombre de personnes, signale ce qui manque).
 Ne reformule pas toute la recette. Si on te demande quelque chose hors cuisine, ramène gentiment la conversation à la recette.`;
 
@@ -40,9 +41,9 @@ export class ChatError extends Error {}
 
 export async function askAboutRecipe(db: Db, recipeId: number, message: string): Promise<ChatMessage[]> {
   const text = message.trim().slice(0, 2000);
-  if (!text) throw new ChatError('Message vide');
+  if (!text) throw new ChatError(L('Message vide', 'Empty message'));
   const r = recipeDetail(db, recipeId);
-  if (!r) throw new ChatError('Recette introuvable');
+  if (!r) throw new ChatError(L('Recette introuvable', 'Recipe not found'));
 
   const q = getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE;
   const pantry = listPantry(db).map(i => `${i.label}${i.qty ? ` (${String(i.qty).replace('.', ',')} ${i.unit ?? ''})`.replace(' )', ')') : ''}${i.urgent ? ' [à finir vite]' : ''}`);
@@ -74,9 +75,9 @@ Réponds au dernier message.`;
   const insert = db.prepare('INSERT INTO chat_messages (recipe_id, role, text, at) VALUES (?, ?, ?, ?)');
   let answer: string;
   try {
-    answer = (await askAI(prompt, { tier: 'light', system: SYSTEM, timeoutMs: 180_000, lane: 'interactive' })).trim();
+    answer = (await askAI(prompt, { tier: 'light', system: `${SYSTEM}\n${replyLanguage()}`, timeoutMs: 180_000, lane: 'interactive' })).trim();
   } catch (e) {
-    if (e instanceof AIUnavailable) throw new ChatError(`IA indisponible pour le moment (${e.message.slice(0, 160)})`);
+    if (e instanceof AIUnavailable) throw new ChatError(L(`IA indisponible pour le moment (${e.message.slice(0, 160)})`, `AI unavailable right now (${e.message.slice(0, 160)})`));
     throw e;
   }
   // On n'enregistre la question qu'une fois la réponse obtenue : en cas d'échec, rien à nettoyer.

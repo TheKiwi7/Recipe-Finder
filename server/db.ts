@@ -123,6 +123,14 @@ CREATE TABLE IF NOT EXISTS members (
   aversions TEXT NOT NULL DEFAULT '[]',  -- JSON string[]
   notes TEXT NOT NULL DEFAULT ''
 );
+-- Traductions faites par l'IA (langue de l'app ≠ français) : termes, noms de recettes, recettes complètes.
+CREATE TABLE IF NOT EXISTS translations (
+  kind TEXT NOT NULL,          -- term | name | recipe
+  src TEXT NOT NULL,           -- terme français, ou id de recette
+  lang TEXT NOT NULL,
+  text TEXT NOT NULL,          -- recipe : JSON { name, ingredients, steps }
+  PRIMARY KEY (kind, src, lang)
+);
 CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

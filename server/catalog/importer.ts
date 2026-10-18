@@ -158,7 +158,7 @@ export function releaseImportLock(): void {
   try { if (readFileSync(LOCK_FILE, 'utf8') === String(process.pid)) unlinkSync(LOCK_FILE); } catch { /* déjà libéré */ }
 }
 
-export const DEFAULT_TARGET = 10_000;
+export const DEFAULT_TARGET = 5_000;
 const WEEKLY_GROWTH = 100;
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 

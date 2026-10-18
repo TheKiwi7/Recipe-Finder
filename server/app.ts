@@ -15,30 +15,78 @@ import { addMember, deleteMember, eaterIds, listMembers, setEaters, updateMember
 import { askProvider, claudeStatus, cooldownOf, invalidateLocalStatus, localStatus, route, type Provider } from './ai.ts';
 import { connectClaude, setupLocal, setupTask } from './setup.ts';
 import { setMeta } from './db.ts';
+import { AIUnavailable } from './ai.ts';
+import { L, lang, setLang, suggestTranslated, toFrench, translateNames, translateRecipe, translateTerms } from './i18n.ts';
 
 /** Modèles locaux proposés (Ollama) : le 12B par défaut, le 4B pour les PC sans grosse carte graphique. */
-const LOCAL_MODELS = [
-  { id: 'gemma3:12b', label: 'Gemma 3 12B', size: '8 Go', hint: 'recommandé avec une carte graphique de 12 Go ou plus' },
-  { id: 'gemma3:4b', label: 'Gemma 3 4B', size: '3 Go', hint: 'plus léger, pour une petite carte graphique ou sans carte graphique' },
+const LOCAL_MODELS = () => [
+  { id: 'gemma3:12b', label: 'Gemma 3 12B', size: L('8 Go', '8 GB'), hint: L('recommandé avec une carte graphique de 12 Go ou plus', 'recommended with a graphics card of 12 GB or more') },
+  { id: 'gemma3:4b', label: 'Gemma 3 4B', size: L('3 Go', '3 GB'), hint: L('plus léger, pour une petite carte graphique ou sans carte graphique', 'lighter, for a small graphics card or none') },
 ];
+const toFrenchAll = (db: Db, xs: unknown) => Promise.all((Array.isArray(xs) ? xs : []).map(x => toFrench(db, String(x))));
 
 const MIME: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
 
 /** Change à chaque démarrage du serveur : l'app recalcule alors ses listes (règles ou catalogue ont pu changer). */
 const SERVER_STARTED = new Date().toISOString();
 
-export function createApi(db: Db, status: { importing: () => boolean; preferencesChanged: () => void; build: () => string; startImport: () => void }) {
+export function createApi(db: Db, status: { importing: () => boolean; preferencesChanged: () => void; build: () => string; startImport: () => void; languageChanged: () => void }) {
   const api = new Hono();
 
   api.onError((err, c) => c.json({ error: err.message }, 400));
 
   api.get('/pantry', c => c.json({ items: listPantry(db), staples: listStaples(db), ...pantryState(db) }));
-  api.post('/pantry', async c => c.json(addPantryItem(db, await c.req.json())));
-  api.patch('/pantry/:id', async c => { updatePantryItem(db, Number(c.req.param('id')), await c.req.json()); return c.json({ ok: true }); });
+  // App en anglais : la saisie (« garlic ») est ramenée au vocabulaire français du catalogue pour trouver l'ingrédient.
+  api.post('/pantry', async c => {
+    const body = await c.req.json();
+    return c.json(addPantryItem(db, { ...body, term: await toFrench(db, String(body.label ?? '')) }));
+  });
+  api.patch('/pantry/:id', async c => {
+    const body = await c.req.json();
+    updatePantryItem(db, Number(c.req.param('id')), body.label ? { ...body, term: await toFrench(db, String(body.label)) } : body);
+    return c.json({ ok: true });
+  });
   api.delete('/pantry/:id', c => { deletePantryItem(db, Number(c.req.param('id'))); return c.json({ ok: true }); });
-  api.put('/staples', async c => { setStaples(db, (await c.req.json()).staples); return c.json({ staples: listStaples(db) }); });
+  api.put('/staples', async c => { setStaples(db, await toFrenchAll(db, (await c.req.json()).staples)); return c.json({ staples: listStaples(db) }); });
   api.post('/pantry/confirm', c => { confirmPantry(db); return c.json(pantryState(db)); });
-  api.get('/ingredients/suggest', c => c.json(suggestIngredients(db, c.req.query('q') ?? '')));
+  api.get('/ingredients/suggest', c => {
+    const q = c.req.query('q') ?? '';
+    if (lang() === 'fr') return c.json(suggestIngredients(db, q));
+    const en = suggestTranslated(db, q);
+    return c.json(en.length ? en : suggestIngredients(db, q));
+  });
+
+  // ---------- langue ----------
+  api.get('/settings', c => c.json({ lang: lang() }));
+  api.put('/settings', async c => {
+    const l = (await c.req.json()).lang;
+    if (l !== 'fr' && l !== 'en') throw new Error('lang: fr | en');
+    setLang(db, l);
+    status.languageChanged();
+    return c.json({ lang: lang() });
+  });
+  // Traductions de termes (ingrédients, ustensiles…) ou de noms de recettes, demandées par l'interface en anglais.
+  api.post('/translate', async c => {
+    const body = await c.req.json() as { kind?: string; keys?: unknown[] };
+    const keys = (body.keys ?? []).map(String).slice(0, 300);
+    if (lang() === 'fr' || !keys.length) return c.json({});
+    try {
+      const map = body.kind === 'name' ? await translateNames(db, keys.map(Number), 'interactive') : await translateTerms(db, keys, 'interactive');
+      return c.json(Object.fromEntries(map));
+    } catch (e) {
+      if (e instanceof AIUnavailable) return c.json({});
+      throw e;
+    }
+  });
+  api.get('/recipes/:id/translation', async c => {
+    if (lang() === 'fr') return c.json({ error: 'fr' }, 404);
+    try {
+      const t = await translateRecipe(db, Number(c.req.param('id')));
+      return t ? c.json(t) : c.json({ error: L('Recette introuvable', 'Recipe not found') }, 404);
+    } catch (e) {
+      return c.json({ error: (e as Error).message.slice(0, 200) }, 503);
+    }
+  });
 
   api.post('/recommendations', async c => {
     const body = await c.req.json() as { mode: Mode; filters?: { type?: string; maxTime?: number }; current?: number[]; want?: number };
@@ -47,7 +95,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
   });
   api.get('/recipes/:id', c => {
     const r = recipeDetail(db, Number(c.req.param('id')));
-    return r ? c.json(r) : c.json({ error: 'Recette introuvable' }, 404);
+    return r ? c.json(r) : c.json({ error: L('Recette introuvable', 'Recipe not found') }, 404);
   });
   api.post('/recipes/:id/reaction', async c => {
     await setReaction(db, Number(c.req.param('id')), (await c.req.json()).kind ?? null);
@@ -62,7 +110,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
   api.get('/images/:file', c => {
     const file = c.req.param('file');
     const p = imagePath(file);
-    if (!p) return c.json({ error: 'Image introuvable' }, 404);
+    if (!p) return c.json({ error: L('Image introuvable', 'Image not found') }, 404);
     return c.body(readFileSync(p), 200, { 'Content-Type': MIME[file.split('.').pop()!.toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'max-age=31536000' });
   });
 
@@ -79,6 +127,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
   api.get('/questionnaire', c => c.json({ questionnaire: getQuestionnaire(db), defaults: DEFAULT_QUESTIONNAIRE, equipment: OPTIONAL_EQUIPMENT }));
   api.put('/questionnaire', async c => {
     const q = { ...DEFAULT_QUESTIONNAIRE, ...(await c.req.json()) } as Questionnaire;
+    q.allergies = await toFrenchAll(db, q.allergies);
     q.persons = Math.max(1, Math.min(20, Math.round(Number(q.persons) || 2)));
     q.maxTime = Math.max(5, Math.min(600, Math.round(Number(q.maxTime) || 45)));
     const before = getQuestionnaire(db);
@@ -99,7 +148,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     try {
       return c.json(await askAboutRecipe(db, Number(c.req.param('id')), (await c.req.json()).message ?? ''));
     } catch (e) {
-      if (e instanceof ChatError) return c.json({ error: e.message }, e.message.startsWith('Claude') ? 503 : 400);
+      if (e instanceof ChatError) return c.json({ error: e.message }, 503);
       throw e;
     }
   });
@@ -107,13 +156,13 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
   // ---------- intelligence artificielle : état, installation, connexion, test ----------
   api.get('/ai/status', async c => {
     const [claude, local, interactive, background] = await Promise.all([claudeStatus(), localStatus(), route('interactive'), route('background')]);
-    return c.json({ claude, local, routing: { interactive: interactive[0] ?? null, background: background[0] ?? null }, task: setupTask(), localModels: LOCAL_MODELS, paused: { claude: cooldownOf('claude'), local: cooldownOf('local') } });
+    return c.json({ claude, local, routing: { interactive: interactive[0] ?? null, background: background[0] ?? null }, task: setupTask(), localModels: LOCAL_MODELS(), paused: { claude: cooldownOf('claude'), local: cooldownOf('local') } });
   });
   api.post('/ai/claude/connect', c => { void connectClaude(); return c.json({ task: setupTask() }); });
   api.post('/ai/local/setup', c => { void setupLocal(); return c.json({ task: setupTask() }); });
   api.put('/ai/local/model', async c => {
     const model = String((await c.req.json()).model ?? '');
-    if (!LOCAL_MODELS.some(m => m.id === model)) throw new Error('Modèle inconnu');
+    if (!LOCAL_MODELS().some(m => m.id === model)) throw new Error(L('Modèle inconnu', 'Unknown model'));
     setMeta(db, 'local_model', model);
     invalidateLocalStatus();
     return c.json({ local: await localStatus() });
@@ -132,7 +181,13 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
   // ---------- pour qui je cuisine ----------
   api.get('/members', c => c.json({ members: listMembers(db), eaters: eaterIds(db) }));
   api.post('/members', async c => c.json(addMember(db, String((await c.req.json()).name ?? ''))));
-  api.patch('/members/:id', async c => { updateMember(db, Number(c.req.param('id')), await c.req.json()); return c.json({ members: listMembers(db) }); });
+  api.patch('/members/:id', async c => {
+    const patch = await c.req.json();
+    if (patch.allergies) patch.allergies = await toFrenchAll(db, patch.allergies);
+    if (patch.aversions) patch.aversions = await toFrenchAll(db, patch.aversions);
+    updateMember(db, Number(c.req.param('id')), patch);
+    return c.json({ members: listMembers(db) });
+  });
   api.delete('/members/:id', c => { deleteMember(db, Number(c.req.param('id'))); return c.json({ members: listMembers(db), eaters: eaterIds(db) }); });
   api.put('/eaters', async c => { setEaters(db, (await c.req.json()).ids ?? []); return c.json({ eaters: eaterIds(db) }); });
 

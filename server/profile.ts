@@ -1,5 +1,6 @@
 import { AIUnavailable, askAI, parseJsonReply } from './ai.ts';
 import { getMeta, setMeta, type Db } from './db.ts';
+import { lang } from './i18n.ts';
 import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, getWeights, type ProfileWeights } from './preferences.ts';
 
 // Profil détaillé (non affiché) + réglages structurés pour le classement local (Q18, Q19).
@@ -10,9 +11,9 @@ const MIN_INTERVAL_MS = 3600 * 1000;
 
 const SYSTEM = `Tu tiens à jour le profil culinaire d'une personne pour une app perso qui lui recommande des recettes françaises réelles selon son stock.
 À partir du profil précédent, du questionnaire et des nouveaux signaux (likes, rejets de recettes ou d'ingrédients, questions posées sur des recettes), produis :
-1. "profile" : un profil détaillé en français (goûts, cuisines préférées, ingrédients aimés ou évités, temps de préparation et vaisselle tolérés, niveau, habitudes, ce qui reste à découvrir). Garde ce qui reste vrai, corrige ce que les signaux contredisent. 250 mots maximum.
+1. "profile" : un profil détaillé, dans la langue demandée (goûts, cuisines préférées, ingrédients aimés ou évités, temps de préparation et vaisselle tolérés, niveau, habitudes, ce qui reste à découvrir). Garde ce qui reste vrai, corrige ce que les signaux contredisent. 250 mots maximum.
 2. "weights" : des réglages pour un algorithme de classement local, avec des poids entre -1 et 1, modérés (le système doit garder de la variété) :
-   { "ingredients": { "<ingrédient de base>": poids }, "keywords": { "<mot du titre, ex. curry, gratin, salade>": poids }, "types": { "Plat"|"Entrée"|"Dessert"|"Apéro"|"Petit-déj.": poids }, "maxTotalMin": nombre ou null, "exclude": [ "mot" ] }
+   { "ingredients": { "<ingrédient de base>": poids }, "keywords": { "<mot du titre, ex. curry, gratin, salade>": poids }, "types": { "Plat"|"Entrée"|"Accompagnement"|"Dessert"|"Apéro"|"Petit-déj."|"Boisson"|"Sauce": poids }, "maxTotalMin": nombre ou null, "exclude": [ "mot" ] }
    (La tolérance à la vaisselle vient du questionnaire : ne la règle pas.)
    "exclude" : les aversions FERMES et explicites (dites dans les notes, ou rejets répétés d'une même famille), qui excluront strictement toute recette contenant un ingrédient où le mot apparaît.
    Utilise des noms d'ingrédients simples au singulier ou ces familles : "poisson", "fruit de mer", "crustace", "lait", "oeuf", "gluten", "fruit a coque" (chaque famille couvre ses membres, ex. "poisson" → saumon, cabillaud, thon…).
@@ -84,7 +85,9 @@ Ingrédients de base du catalogue (utilise exactement ces noms dans "ingredients
 ${(db.prepare('SELECT base FROM recipe_ingredients GROUP BY base ORDER BY COUNT(*) DESC LIMIT 250').all() as Array<{ base: string }>).map(r => r.base).join(', ')}
 
 Nouveaux signaux (du plus ancien au plus récent) :
-${signals.map(s => `- ${label[s.kind] ?? s.kind} : ${s.detail}`).join('\n') || '(aucun)'}`;
+${signals.map(s => `- ${label[s.kind] ?? s.kind} : ${s.detail}`).join('\n') || '(aucun)'}
+
+Langue du texte "profile" : ${lang() === 'en' ? 'anglais (English) ; les clés de "weights" restent les noms français du catalogue' : 'français'}.`;
 
     const reply = parseJsonReply<{ profile: string; weights: ProfileWeights }>(await askAI(prompt, { tier: 'strong', system: SYSTEM, timeoutMs: 300_000, lane: 'interactive', json: true }));
     if (typeof reply.profile !== 'string' || !reply.weights) throw new Error('Réponse incomplète');

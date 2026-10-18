@@ -5,8 +5,9 @@ import { refreshMembers, useMembers } from '../members-store.ts';
 import { invalidateLists } from '../recipes-store.ts';
 import { toast } from '../toast.tsx';
 import { Autocomplete } from './Autocomplete.tsx';
+import { DIET_LABELS, L, memberName, tTerm, useTranslations } from '../i18n.ts';
 
-const DIETS: Array<[Member['diet'], string]> = [['omnivore', 'Mange de tout'], ['pescetarian', 'Pas de viande'], ['vegetarian', 'Végétarien'], ['vegan', 'Végan']];
+const DIETS = (['omnivore', 'pescetarian', 'vegetarian', 'vegan'] as const).map(d => [d, d === 'omnivore' ? L('Mange de tout', 'Eats everything') : L(...DIET_LABELS[d])] as [Member['diet'], string]);
 
 async function save(id: number, patch: Partial<Omit<Member, 'id' | 'isSelf'>>) {
   try { await api.updateMember(id, patch); await refreshMembers(); invalidateLists(); }
@@ -14,6 +15,7 @@ async function save(id: number, patch: Partial<Omit<Member, 'id' | 'isSelf'>>) {
 }
 
 function ChipList({ label, hint, values, placeholder, onChange }: { label: string; hint: string; values: string[]; placeholder: string; onChange: (v: string[]) => void }) {
+  useTranslations();
   const [input, setInput] = useState('');
   const add = (v = input) => {
     const x = v.trim().toLowerCase();
@@ -24,7 +26,7 @@ function ChipList({ label, hint, values, placeholder, onChange }: { label: strin
     <div className="member-field">
       <span className="member-label">{label}<small>{hint}</small></span>
       <div className="qchips">
-        {values.map(v => <span className="chip" key={v}>{v}<button onClick={() => onChange(values.filter(x => x !== v))} aria-label={`Retirer ${v}`}><X size={13} /></button></span>)}
+        {values.map(v => <span className="chip" key={v}>{tTerm(v)}<button onClick={() => onChange(values.filter(x => x !== v))} aria-label={L(`Retirer ${v}`, `Remove ${tTerm(v)}`)}><X size={13} /></button></span>)}
         <div className="qchip-input"><Autocomplete value={input} onChange={setInput} onSubmit={add} placeholder={placeholder} /></div>
       </div>
     </div>
@@ -32,34 +34,34 @@ function ChipList({ label, hint, values, placeholder, onChange }: { label: strin
 }
 
 function MemberRow({ m }: { m: Member }) {
-  const [name, setName] = useState(m.name);
+  const [name, setName] = useState(memberName(m));
   const [notes, setNotes] = useState(m.notes);
-  useEffect(() => { setName(m.name); setNotes(m.notes); }, [m.name, m.notes]);
+  useEffect(() => { setName(memberName(m)); setNotes(m.notes); }, [m.name, m.notes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="member">
       <div className="member-head">
-        <input className="field member-name" value={name} onChange={e => setName(e.target.value)} onBlur={() => name.trim() && name !== m.name && save(m.id, { name })}
-          onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label="Prénom" />
-        {m.isSelf && <span className="ai-pill ok">Moi</span>}
+        <input className="field member-name" value={name} onChange={e => setName(e.target.value)} onBlur={() => name.trim() && name !== memberName(m) && save(m.id, { name })}
+          onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label={L('Prénom', 'First name')} />
+        {m.isSelf && <span className="ai-pill ok">{L('Moi', 'Me')}</span>}
         {!m.isSelf && (
-          <button className="icon-btn danger" title={`Retirer ${m.name}`} aria-label={`Retirer ${m.name}`}
-            onClick={async () => { await api.deleteMember(m.id); await refreshMembers(); invalidateLists(); toast(`${m.name} retiré·e`); }}><Trash2 size={17} /></button>
+          <button className="icon-btn danger" title={L(`Retirer ${m.name}`, `Remove ${m.name}`)} aria-label={L(`Retirer ${m.name}`, `Remove ${m.name}`)}
+            onClick={async () => { await api.deleteMember(m.id); await refreshMembers(); invalidateLists(); toast(L(`${m.name} retiré·e`, `${m.name} removed`)); }}><Trash2 size={17} /></button>
         )}
       </div>
       {m.isSelf ? (
-        <p className="muted small member-self">Tes goûts, allergies et rejets sont dans « Mes préférences », « Mes rejets » et ton profil.</p>
+        <p className="muted small member-self">{L('Tes goûts, allergies et rejets sont dans « Mes préférences », « Mes rejets » et ton profil.', 'Your tastes, allergies and rejections are in “My preferences”, “My rejections” and your profile.')}</p>
       ) : (
         <div className="member-body">
           <div className="member-field">
-            <span className="member-label">Régime</span>
+            <span className="member-label">{L('Régime', 'Diet')}</span>
             <div className="seg">{DIETS.map(([v, l]) => <button key={v} className={m.diet === v ? 'on' : ''} onClick={() => save(m.id, { diet: v })}>{l}</button>)}</div>
           </div>
-          <ChipList label="Allergies" hint="exclues strictement, par famille (« gluten », « lactose », « fruits à coque »…)" values={m.allergies} placeholder="+ allergie" onChange={allergies => save(m.id, { allergies })} />
-          <ChipList label="N'aime pas" hint="aucune recette qui en contient (« poisson » écarte tous les poissons)" values={m.aversions} placeholder="+ ingrédient" onChange={aversions => save(m.id, { aversions })} />
+          <ChipList label={L('Allergies', 'Allergies')} hint={L('exclues strictement, par famille (« gluten », « lactose », « fruits à coque »…)', 'strictly excluded, by family (“gluten”, “lactose”, “nuts”…)')} values={m.allergies} placeholder={L('+ allergie', '+ allergy')} onChange={allergies => save(m.id, { allergies })} />
+          <ChipList label={L('N’aime pas', 'Dislikes')} hint={L('aucune recette qui en contient (« poisson » écarte tous les poissons)', 'no recipe containing it (“fish” rules out every fish)')} values={m.aversions} placeholder={L('+ ingrédient', '+ ingredient')} onChange={aversions => save(m.id, { aversions })} />
           <div className="member-field">
-            <span className="member-label">Notes<small>pour l'IA (goûts, âge…)</small></span>
-            <textarea className="field area" rows={2} value={notes} onChange={e => setNotes(e.target.value)} onBlur={() => notes !== m.notes && save(m.id, { notes })} placeholder="Ex. : 6 ans, adore les pâtes, pas fan des plats épicés" />
+            <span className="member-label">{L('Notes', 'Notes')}<small>{L('pour l’IA (goûts, âge…)', 'for the AI (tastes, age…)')}</small></span>
+            <textarea className="field area" rows={2} value={notes} onChange={e => setNotes(e.target.value)} onBlur={() => notes !== m.notes && save(m.id, { notes })} placeholder={L('Ex. : 6 ans, adore les pâtes, pas fan des plats épicés', 'E.g. 6 years old, loves pasta, not keen on spicy food')} />
           </div>
         </div>
       )}
@@ -76,17 +78,17 @@ export function MembersCard() {
 
   const add = async () => {
     if (!name.trim()) return;
-    try { const m = await api.addMember(name); setName(''); await refreshMembers(); invalidateLists(); toast(`${m.name} ajouté·e`); }
+    try { const m = await api.addMember(name); setName(''); await refreshMembers(); invalidateLists(); toast(L(`${m.name} ajouté·e`, `${m.name} added`)); }
     catch (e) { toast((e as Error).message); }
   };
 
   return (
     <div className="members">
-      <p className="small">Ajoute les personnes pour qui tu cuisines. Dans Recettes et Presque, tu choisis ensuite qui mange : leurs exclusions s'appliquent et les portions s'adaptent.</p>
+      <p className="small">{L('Ajoute les personnes pour qui tu cuisines. Dans Recettes et Presque, tu choisis ensuite qui mange : leurs exclusions s’appliquent et les portions s’adaptent.', 'Add the people you cook for. In Recipes and Almost you then pick who is eating: their exclusions apply and portions adjust.')}</p>
       {data.members.map(m => <MemberRow key={m.id} m={m} />)}
       <div className="member-add">
-        <input className="field" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Prénom (ex. Julie)" aria-label="Prénom du nouveau membre" />
-        <button className="btn btn-ghost small-btn" onClick={add} disabled={!name.trim()}><UserPlus size={15} />Ajouter</button>
+        <input className="field" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder={L('Prénom (ex. Julie)', 'First name (e.g. Julie)')} aria-label={L('Prénom du nouveau membre', 'New member’s first name')} />
+        <button className="btn btn-ghost small-btn" onClick={add} disabled={!name.trim()}><UserPlus size={15} />{L('Ajouter', 'Add')}</button>
       </div>
     </div>
   );

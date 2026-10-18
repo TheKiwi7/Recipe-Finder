@@ -4,6 +4,7 @@ import { api, type ImportStatus } from '../api.ts';
 import { navigate, type Route } from '../router.ts';
 import { usePantry } from '../pantry-store.ts';
 import { invalidateLists } from '../recipes-store.ts';
+import { L, num } from '../i18n.ts';
 
 function useTheme() {
   const systemDark = () => matchMedia('(prefers-color-scheme: dark)').matches;
@@ -59,33 +60,33 @@ export function Sidebar({ route }: { route: Route }) {
     <nav className="side">
       {outdated && (
         <div className="update-banner" role="status">
-          Une nouvelle version de l'app est disponible.
-          <button className="btn btn-primary small-btn" onClick={() => location.reload()}><RefreshCw size={14} />Recharger</button>
+          {L('Une nouvelle version de l’app est disponible.', 'A new version of the app is available.')}
+          <button className="btn btn-primary small-btn" onClick={() => location.reload()}><RefreshCw size={14} />{L('Recharger', 'Reload')}</button>
         </div>
       )}
       <div className="brand"><span className="brand-mark"><Soup size={17} /></span>Recipe Finder</div>
-      {item('ingredients', ShoppingBasket, 'Ingrédients')}
-      {item('recettes', BookOpen, 'Recettes', { gated: true })}
-      {item('presque', CircleDashed, 'Presque', { gated: true })}
-      {item('favoris', Heart, 'Favoris')}
+      {item('ingredients', ShoppingBasket, L('Ingrédients', 'Ingredients'))}
+      {item('recettes', BookOpen, L('Recettes', 'Recipes'), { gated: true })}
+      {item('presque', CircleDashed, L('Presque', 'Almost'), { gated: true })}
+      {item('favoris', Heart, L('Favoris', 'Favourites'))}
       <div className="spacer" />
       {status && status.imported < status.target && (
-        <div className="side-foot" title={`${status.rejected} recettes écartées (note insuffisante)`}>
-          Catalogue : {status.imported.toLocaleString('fr-FR')} / {status.target.toLocaleString('fr-FR')} recettes
+        <div className="side-foot" title={L(`${status.rejected} recettes écartées (note insuffisante)`, `${status.rejected} recipes skipped (rating too low)`)}>
+          {L('Catalogue : ', 'Catalogue: ')}{num(status.imported)} / {num(status.target)} {L('recettes', 'recipes')}
           <div className="progress"><i style={{ width: `${Math.min(100, (100 * status.imported) / status.target)}%` }} /></div>
         </div>
       )}
       {status && status.imported >= status.target && status.pending > 0 && (
         <div className="side-foot">
-          Catalogue complet : {status.imported.toLocaleString('fr-FR')} recettes ·{' '}
-          <a href="/reglages" onClick={e => { e.preventDefault(); navigate('/reglages'); }}>en ajouter</a>
+          {L('Catalogue complet : ', 'Catalogue complete: ')}{num(status.imported)} {L('recettes', 'recipes')} ·{' '}
+          <a href="/reglages" onClick={e => { e.preventDefault(); navigate('/reglages'); }}>{L('en ajouter', 'add more')}</a>
         </div>
       )}
       <button className="nav" onClick={toggle}>
         {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-        <span className="txt">{theme === 'dark' ? 'Thème clair' : 'Thème sombre'}</span>
+        <span className="txt">{theme === 'dark' ? L('Thème clair', 'Light theme') : L('Thème sombre', 'Dark theme')}</span>
       </button>
-      {item('reglages', Settings, 'Réglages')}
+      {item('reglages', Settings, L('Réglages', 'Settings'))}
     </nav>
   );
 }

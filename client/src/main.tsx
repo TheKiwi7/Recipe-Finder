@@ -16,6 +16,7 @@ import { WelcomePage } from './pages/Welcome.tsx';
 import { refreshPantry, usePantry } from './pantry-store.ts';
 import { navigate, useRoute } from './router.ts';
 import { Toast } from './toast.tsx';
+import { applyLang, L, lang } from './i18n.ts';
 
 function App() {
   const route = useRoute();
@@ -27,8 +28,10 @@ function App() {
   useEffect(() => {
     let tries = 0;
     let timer: ReturnType<typeof setTimeout>;
-    const boot = () => Promise.all([refreshPantry(), api.questionnaire()])
-      .then(([, r]) => { setOffline(false); setOnboarded(!!r.questionnaire); })
+    // Langue : un serveur d'une version plus ancienne ne la connaît pas, ce n'est pas bloquant.
+    const boot = () => Promise.all([refreshPantry(), api.questionnaire(), api.settings().catch(() => ({ lang }))])
+      // Langue changée ailleurs (ou première visite) : la page se recharge dans la bonne langue.
+      .then(([, r, s]) => { if (applyLang(s.lang)) return; setOffline(false); setOnboarded(!!r.questionnaire); })
       .catch(() => { if (++tries < 30) timer = setTimeout(boot, 2000); else setOffline(true); });
     void boot();
     return () => clearTimeout(timer);
@@ -39,8 +42,9 @@ function App() {
     if (pantry && onboarded && route.page === 'home') navigate(pantry.gateOpen ? '/recettes' : '/ingredients', true);
   }, [pantry, onboarded, route.page]);
 
-  if (offline) return <div className="lock-screen"><h1 className="h1" style={{ fontSize: 22 }}>Le serveur de Recipe Finder ne répond pas</h1><p className="sub">Relance l'app depuis le raccourci du bureau.</p></div>;
-  if (!pantry || onboarded === null) return null;
+  if (offline) return <div className="lock-screen"><h1 className="h1" style={{ fontSize: 22 }}>{L('Le serveur de Recipe Finder ne répond pas', 'The Recipe Finder server is not responding')}</h1><p className="sub">{L('Relance l’app depuis le raccourci du bureau.', 'Relaunch the app from the desktop shortcut.')}</p></div>;
+  // Démarrage (le serveur peut mettre quelques secondes à répondre) : un message plutôt qu'un écran vide.
+  if (!pantry || onboarded === null) return <div className="lock-screen"><p className="sub">{L('Démarrage de Recipe Finder…', 'Starting Recipe Finder…')}</p></div>;
   if (!onboarded) return <WelcomePage onDone={() => { setOnboarded(true); navigate('/ingredients', true); }} />;
   const gated = (el: React.ReactNode) => (pantry.gateOpen ? el : <LockedPage />);
 
@@ -73,9 +77,9 @@ class Crash extends Component<{ children: ReactNode }, { error: Error | null }> 
     if (!this.state.error) return this.props.children;
     return (
       <div className="lock-screen">
-        <h1 className="h1" style={{ fontSize: 22 }}>Oups, l'affichage a planté</h1>
-        <p className="sub">Si ça persiste, ferme l'app puis relance-la (le serveur se met alors à jour).<br /><small className="muted">{this.state.error.message}</small></p>
-        <button className="btn btn-primary" onClick={() => location.reload()}>Recharger</button>
+        <h1 className="h1" style={{ fontSize: 22 }}>{L('Oups, l’affichage a planté', 'Oops, the display crashed')}</h1>
+        <p className="sub">{L('Si ça persiste, ferme l’app puis relance-la (le serveur se met alors à jour).', 'If it keeps happening, close the app and relaunch it (this updates the server).')}<br /><small className="muted">{this.state.error.message}</small></p>
+        <button className="btn btn-primary" onClick={() => location.reload()}>{L('Recharger', 'Reload')}</button>
       </div>
     );
   }
