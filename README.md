@@ -62,6 +62,10 @@ Tout reste sur ton PC, dans le dossier de l'app. Réglages → « Exporter mes d
 
 Les recettes, photos et textes appartiennent à [Marmiton](https://www.marmiton.org) et à leurs auteurs ; chaque fiche renvoie vers la page d'origine. Ce projet est un outil **personnel** : il ne lit que les pages autorisées par le `robots.txt` du site, à raison d'une page toutes les 2,5 secondes, s'identifie honnêtement, et ne redistribue aucun contenu (la base reste locale). Merci de respecter ces conditions si tu le réutilises.
 
+## Licence
+
+Le code est sous licence [MIT](LICENSE) : tu peux le réutiliser, le modifier et le redistribuer librement, en gardant la mention de copyright. Cette licence couvre uniquement le code de l'app, pas les recettes ni les photos, qui restent la propriété de Marmiton et de leurs auteurs.
+
 ---
 
 Pour contribuer ou modifier l'app : [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.md).
@@ -131,6 +135,10 @@ Everything stays on your PC, in the app folder. Settings → “Export my data�
 ## Sources
 
 Recipes, photos and texts belong to [Marmiton](https://www.marmiton.org) and their authors; every recipe page links back to the original. This project is a **personal** tool: it only reads pages allowed by the site's `robots.txt`, one page every 2.5 seconds, identifies itself honestly, and redistributes no content (the database stays local). Please respect these conditions if you reuse it.
+
+## License
+
+The code is released under the [MIT License](LICENSE): you may reuse, modify and redistribute it freely, keeping the copyright notice. This license covers the app's code only, not the recipes or photos, which remain the property of Marmiton and their authors.
 
 ---
 
