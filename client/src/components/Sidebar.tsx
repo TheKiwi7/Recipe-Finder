@@ -63,43 +63,45 @@ export function Sidebar({ route }: { route: Route }) {
   const outdated = !!status && !!LOADED_BUILD.value && status.build !== LOADED_BUILD.value;
 
   return (
-    <nav className="side">
+    <>
       {outdated && (
         <div className="update-banner" role="status">
           {L('L’app a été mise à jour.', 'The app has been updated.')}
           <button className="btn btn-primary small-btn" onClick={() => location.reload()}><RefreshCw size={14} />{L('Recharger', 'Reload')}</button>
         </div>
       )}
-      <div className="brand"><span className="brand-mark"><Soup size={17} /></span>Recipe Finder</div>
-      {item('ingredients', ShoppingBasket, L('Ingrédients', 'Ingredients'))}
-      {item('recettes', BookOpen, L('Recettes', 'Recipes'), { gated: true })}
-      {item('presque', CircleDashed, L('Presque', 'Almost'), { gated: true })}
-      {item('decouvrir', Compass, L('Découvrir', 'Discover'))}
-      {item('favoris', Heart, L('Favoris', 'Favourites'))}
-      {item('courses', ShoppingCart, L('Courses', 'Shopping'), { count: shopping?.length })}
-      <div className="spacer" />
-      {status && status.imported < status.target && (
-        <div className="side-foot" title={L(`${status.rejected} recettes écartées (note insuffisante)`, `${status.rejected} recipes skipped (rating too low)`)}>
-          {L('Catalogue : ', 'Catalogue: ')}{num(status.imported)} / {num(status.target)} {L('recettes', 'recipes')}
-          <div className="progress"><i style={{ width: `${Math.min(100, (100 * status.imported) / status.target)}%` }} /></div>
-        </div>
-      )}
-      {status && status.imported >= status.target && status.pending > 0 && (
-        <div className="side-foot">
-          {L('Catalogue complet : ', 'Catalogue complete: ')}{num(status.imported)} {L('recettes', 'recipes')} ·{' '}
-          <a href="/reglages" onClick={e => { e.preventDefault(); navigate('/reglages'); }}>{L('en ajouter', 'add more')}</a>
-        </div>
-      )}
-      {!!update?.behind && (
-        <div className="side-foot">
-          <a href="/reglages" onClick={e => { e.preventDefault(); navigate('/reglages'); }}>{L('Nouvelle version disponible', 'New version available')}</a>
-        </div>
-      )}
-      <button className="nav" onClick={toggle}>
-        {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-        <span className="txt">{theme === 'dark' ? L('Thème clair', 'Light theme') : L('Thème sombre', 'Dark theme')}</span>
-      </button>
-      {item('reglages', Settings, L('Réglages', 'Settings'))}
-    </nav>
+      <nav className="side">
+        <div className="brand"><span className="brand-mark"><Soup size={17} /></span>Recipe Finder</div>
+        {item('ingredients', ShoppingBasket, L('Ingrédients', 'Ingredients'))}
+        {item('recettes', BookOpen, L('Recettes', 'Recipes'), { gated: true })}
+        {item('presque', CircleDashed, L('Presque', 'Almost'), { gated: true })}
+        {item('decouvrir', Compass, L('Découvrir', 'Discover'))}
+        {item('favoris', Heart, L('Favoris', 'Favourites'))}
+        {item('courses', ShoppingCart, L('Courses', 'Shopping'), { count: shopping?.length })}
+        <div className="spacer" />
+        {status && status.imported < status.target && (
+          <div className="side-foot" title={L(`${status.rejected} recettes écartées (note insuffisante)`, `${status.rejected} recipes skipped (rating too low)`)}>
+            {L('Catalogue : ', 'Catalogue: ')}{num(status.imported)} / {num(status.target)} {L('recettes', 'recipes')}
+            <div className="progress"><i style={{ width: `${Math.min(100, (100 * status.imported) / status.target)}%` }} /></div>
+          </div>
+        )}
+        {status && status.imported >= status.target && status.pending > 0 && (
+          <div className="side-foot">
+            {L('Catalogue complet : ', 'Catalogue complete: ')}{num(status.imported)} {L('recettes', 'recipes')} ·{' '}
+            <a href="/reglages" onClick={e => { e.preventDefault(); navigate('/reglages'); }}>{L('en ajouter', 'add more')}</a>
+          </div>
+        )}
+        {!!update?.behind && (
+          <div className="side-foot">
+            <a href="/reglages" onClick={e => { e.preventDefault(); navigate('/reglages'); }}>{L('Nouvelle version disponible', 'New version available')}</a>
+          </div>
+        )}
+        <button className="nav" onClick={toggle}>
+          {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
+          <span className="txt">{theme === 'dark' ? L('Thème clair', 'Light theme') : L('Thème sombre', 'Dark theme')}</span>
+        </button>
+        {item('reglages', Settings, L('Réglages', 'Settings'))}
+      </nav>
+    </>
   );
 }

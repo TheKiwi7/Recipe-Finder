@@ -26,11 +26,14 @@ Add-Type @"
 using System; using System.Collections.Generic; using System.Runtime.InteropServices; using System.Text;
 public static class RfWindows {
   delegate bool EnumProc(IntPtr h, IntPtr p);
+  static IntPtr appIcon;
   [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr p);
   [DllImport("user32.dll")] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
   [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern IntPtr LoadImage(IntPtr instance, string name, uint type, int width, int height, uint flags);
+  [DllImport("user32.dll", EntryPoint = "SendMessageW")] static extern IntPtr SendMessage(IntPtr h, uint message, IntPtr wParam, IntPtr lParam);
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
   [StructLayout(LayoutKind.Sequential)] public struct PLACEMENT { public int length, flags, showCmd; public POINT min, max; public RECT normal; }
@@ -44,6 +47,17 @@ public static class RfWindows {
       return true;
     }, IntPtr.Zero);
     return found;
+  }
+  public static int SetIcon(IntPtr h, string path) {
+    if (appIcon == IntPtr.Zero) appIcon = LoadImage(IntPtr.Zero, path, 1, 32, 32, 0x10);
+    if (appIcon == IntPtr.Zero) return Marshal.GetLastWin32Error();
+    if (SendMessage(h, 0x7F, new IntPtr(2), IntPtr.Zero) != appIcon) {
+      SendMessage(h, 0x80, new IntPtr(0), appIcon);
+      SendMessage(h, 0x80, new IntPtr(2), appIcon);
+    }
+    if (SendMessage(h, 0x7F, new IntPtr(1), IntPtr.Zero) != appIcon)
+      SendMessage(h, 0x80, new IntPtr(1), appIcon);
+    return 0;
   }
   // "agrandie,gauche,haut,droite,bas" : taille normale (hors agrandissement) et etat agrandi ; reduite = son etat d'avant.
   public static string Get(IntPtr h) {
@@ -87,7 +101,15 @@ function Restore-Window($h) {
 # Releve l'emplacement de la fenetre chaque seconde tant qu'elle est ouverte (le lanceur reste cache en arriere-plan).
 function Watch-Window($h) {
   $last = $null
+  $iconPath = "$root\scripts\recipe-finder.ico"
+  $iconError = [RfWindows]::SetIcon($h, $iconPath)
+  if ($iconError) { Write-Warning "Impossible d'appliquer l'icône à la fenêtre ($iconError) : $([ComponentModel.Win32Exception]::new($iconError).Message)" }
   while ([RfWindows]::IsWindow($h)) {
+    $iconError = [RfWindows]::SetIcon($h, $iconPath)
+    if ($iconError) {
+      Write-Warning "Impossible d'appliquer l'icône à la fenêtre ($iconError) : $([ComponentModel.Win32Exception]::new($iconError).Message)"
+      break
+    }
     $now = [RfWindows]::Get($h)
     if ($now -and $now -ne $last) { Set-Content $windowFile $now -Encoding ascii; $last = $now }
     Start-Sleep -Seconds 1
