@@ -34,7 +34,7 @@ Recipe Finder est une app perso, 100 % locale, qui propose de **vraies recettes*
 - **Classement local, sans IA** : charger ou recalculer une liste ne coûte aucun appel. Le score combine ton stock, ce qui est « à finir vite », la note de la recette (pondérée par le nombre d'avis), la ressemblance avec ce que tu aimes ou rejettes, tes préférences, et ~30 % d'exploration pour ne pas tourner en rond.
 - **L'IA, avec parcimonie et sans clé API** : uniquement pour le chat, la mise à jour du profil (dès 10 nouveaux signaux, au plus une fois par heure, ou à la demande), la reconnaissance des nouveaux ingrédients et la traduction. Deux fournisseurs, utilisables ensemble :
   - **ton abonnement Claude** (Pro, Max…), via Claude Code : meilleure qualité, utilisé en priorité pour le chat et le profil ;
-  - **un modèle local gratuit** (Gemma 3 via [Ollama](https://ollama.com)) : privé, hors ligne, utilisé en priorité pour les tâches de fond. Il demande une carte graphique correcte ; une version légère existe pour les PC plus modestes.
+  - **un modèle local gratuit** (Gemma 3 via [Ollama](https://ollama.com)) : privé, hors ligne, utilisé en priorité pour les tâches de fond. Il demande une carte graphique correcte ; une version légère existe pour les PC plus modestes. Gemma est fourni par Google selon ses [conditions d'utilisation](https://ai.google.dev/gemma/terms), et Claude Code par Anthropic selon les siennes : tu les acceptes en les installant.
 
   Si l'un manque ou échoue, l'autre prend le relais. Les appels sont mis en file pour ne jamais partir en rafale.
 
@@ -116,7 +116,7 @@ Recipe Finder is a personal, 100% local app that suggests **real recipes** (from
 - **Local ranking, no AI**: loading or recomputing a list costs no AI call. The score combines your pantry, what needs using soon, the recipe rating (weighted by number of reviews), similarity to what you like or reject, your preferences, and ~30% exploration so suggestions don't go round in circles.
 - **AI, sparingly and without an API key**: only for chat, profile updates (from 10 new signals, at most once an hour, or on demand), recognising new ingredients and translation. Two providers, usable together:
   - **your Claude subscription** (Pro, Max…), via Claude Code: best quality, used first for chat and profile;
-  - **a free local model** (Gemma 3 via [Ollama](https://ollama.com)): private, offline, used first for background tasks. It needs a decent graphics card; a lighter version exists for more modest PCs.
+  - **a free local model** (Gemma 3 via [Ollama](https://ollama.com)): private, offline, used first for background tasks. It needs a decent graphics card; a lighter version exists for more modest PCs. Gemma is provided by Google under its [terms of use](https://ai.google.dev/gemma/terms), and Claude Code by Anthropic under its own: you accept them when installing them.
 
   If one is missing or fails, the other takes over. Calls are queued so they never go out in bursts.
 
