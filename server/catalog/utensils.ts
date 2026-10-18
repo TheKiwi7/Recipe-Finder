@@ -1,0 +1,86 @@
+import { normalizeKey } from './text.ts';
+
+// big = compte dans la vaisselle ; small = petit outil (affiché, pas compté) ; device = appareil ; consumable = jetable.
+type Kind = 'big' | 'small' | 'device' | 'consumable';
+
+// Vocabulaire canonique. Sert à la fois à nettoyer la liste du site (qui mélange de la pub :
+// « Table induction SaphirMatt Electrolux ») et à déduire les ustensiles depuis les étapes.
+// Les mots-clés sont comparés mot à mot après normalisation (« four » ne matche pas « fourchette »).
+const CANON: Array<[name: string, kind: Kind, keywords: string[]]> = [
+  ['Four', 'device', ['four', 'enfourner']],
+  ['Micro-ondes', 'device', ['micro onde', 'micro-ondes']],
+  ['Plaque de cuisson', 'device', ['plaque de cuisson', 'plaque induction', 'table induction', 'plaque vitroceramique', 'gaziniere', 'cuisiniere']],
+  ['Réfrigérateur', 'device', ['refrigerateur', 'frigo']],
+  ['Congélateur', 'device', ['congelateur']],
+  ['Balance', 'device', ['balance']],
+  ['Robot / mixeur', 'big', ['mixeur', 'mixer', 'blender', 'robot', 'hachoir']],
+  ['Batteur électrique', 'small', ['batteur']],
+  ['Autocuiseur', 'big', ['autocuiseur', 'cocotte minute']],
+  ['Cocotte', 'big', ['cocotte', 'faitout', 'marmite']],
+  ['Casserole', 'big', ['casserole']],
+  ['Poêle', 'big', ['poele', 'sauteuse']],
+  ['Wok', 'big', ['wok']],
+  ['Plat à gratin', 'big', ['plat a gratin', 'plat allant au four', 'plat a four', 'plat de cuisson']],
+  ['Moule', 'big', ['moule', 'cercle a patisserie', 'ramequin']],
+  ['Plaque du four', 'big', ['plaque du four', 'plaque de four', 'plaque a patisserie', 'lechefrite']],
+  ['Saladier', 'big', ['saladier', 'jatte', 'cul de poule']],
+  ['Bol', 'big', ['bol']],
+  ['Cuit-vapeur', 'big', ['cuit vapeur', 'panier vapeur']],
+  ['Friteuse', 'big', ['friteuse']],
+  ['Crêpière', 'big', ['crepiere']],
+  ['Gaufrier', 'big', ['gaufrier']],
+  ['Couteau', 'small', ['couteau']],
+  ['Planche à découper', 'small', ['planche a decouper', 'couper', 'emincer', 'decouper', 'hacher', 'ciseler', 'trancher']],
+  ['Fouet', 'small', ['fouet', 'fouetter']],
+  ['Spatule', 'small', ['spatule', 'maryse']],
+  ['Cuillère en bois', 'small', ['cuillere en bois']],
+  ['Louche', 'small', ['louche']],
+  ['Écumoire', 'small', ['ecumoire']],
+  ['Râpe', 'small', ['rape', 'raper']],
+  ['Passoire', 'small', ['passoire', 'egoutter', 'chinois']],
+  ['Économe', 'small', ['econome', 'eplucheur', 'eplucher']],
+  ['Rouleau à pâtisserie', 'small', ['rouleau a patisserie', 'etaler la pate', 'abaisser']],
+  ['Emporte-pièce', 'small', ['emporte piece']],
+  ['Grille', 'small', ['grille']],
+  ['Pinceau', 'small', ['pinceau']],
+  ['Presse-agrumes', 'small', ['presse agrume']],
+  ['Poche à douille', 'small', ['poche a douille', 'douille']],
+  ['Mandoline', 'small', ['mandoline']],
+  ['Ciseaux', 'small', ['ciseaux']],
+  ['Couvercle', 'small', ['couvercle']],
+  ['Papier cuisson', 'consumable', ['papier sulfurise', 'papier cuisson']],
+  ['Papier aluminium', 'consumable', ['papier aluminium', 'papier alu']],
+  ['Film alimentaire', 'consumable', ['film alimentaire']],
+];
+
+const CANON_KEYS = CANON.map(([name, kind, words]) => ({ name, kind, keys: words.map(w => ` ${normalizeKey(w)} `) }));
+
+function match(text: string): typeof CANON_KEYS {
+  const t = ` ${normalizeKey(text)} `;
+  return CANON_KEYS.filter(c => c.keys.some(k => t.includes(k)));
+}
+
+/** Ramène la liste du site au vocabulaire canonique ; les entrées inconnues (pub, marques) sont ignorées. */
+export function canonicalUtensils(titles: string[]): string[] {
+  const names = new Set<string>();
+  for (const title of titles) {
+    const first = match(title)[0];
+    if (first) names.add(first.name);
+  }
+  return order([...names]);
+}
+
+/** Déduction par mots-clés dans les étapes, quand le site ne liste pas ses ustensiles. */
+export function deduceUtensils(steps: string[]): string[] {
+  return order(match(steps.join(' ')).map(c => c.name));
+}
+
+function order(names: string[]): string[] {
+  const rank = (n: string) => CANON.findIndex(([c]) => c === n);
+  return names.sort((a, b) => rank(a) - rank(b));
+}
+
+/** Nombre de grosses pièces à laver, au moins 1. */
+export function countDishes(utensils: string[]): number {
+  return Math.max(1, utensils.filter(u => CANON.find(([n]) => n === u)?.[1] === 'big').length);
+}

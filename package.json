@@ -1,0 +1,15 @@
+{
+  "name": "recipe-finder",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "import": "node --disable-warning=ExperimentalWarning server/scripts/import.ts",
+    "test": "node --disable-warning=ExperimentalWarning --test \"server/**/*.test.ts\"",
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.0"
+  }
+}
