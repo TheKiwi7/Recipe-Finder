@@ -13,7 +13,7 @@ export type Questionnaire = {
 };
 
 /** Appareils qu'on peut ne pas avoir : une recette qui en demande un absent est exclue. */
-export const OPTIONAL_EQUIPMENT = ['Four', 'Micro-ondes', 'Robot / mixeur', 'Batteur électrique', 'Robot cuiseur', 'Airfryer', 'Autocuiseur', 'Friteuse', 'Cuit-vapeur', 'Crêpière', 'Gaufrier', 'Wok'];
+export const OPTIONAL_EQUIPMENT = ['Four', 'Micro-ondes', 'Robot / mixeur', 'Batteur électrique', 'Robot cuiseur', 'Airfryer', 'Machine à pain', 'Autocuiseur', 'Friteuse', 'Cuit-vapeur', 'Crêpière', 'Gaufrier', 'Wok'];
 
 export const DEFAULT_QUESTIONNAIRE: Questionnaire = {
   persons: 2,

@@ -171,6 +171,7 @@ cabillaud: dos de cabillaud | filet de cabillaud | colin | lieu | merlu | églef
 dorade: daurade | dorade grise | dorade royale
 crevette: crevette décortiquée | gambas
 moule:
+couteaux: couteau | couteau de mer
 saint-jacques: noix de saint jacques | coquille saint jacques | saint jacques
 sardine:
 surimi:

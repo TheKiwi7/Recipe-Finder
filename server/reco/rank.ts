@@ -60,6 +60,8 @@ export function similarity(a: Entry, b: Entry, idf: Map<string, number>): number
 
 function isEligible(e: Entry, ctx: Context, mode: Mode, filters: Filters, missing: string[]): boolean {
   if (ctx.excluded.has(e.id)) return false;
+  // Au moins un vrai ingrédient hors placard : sinon une recette dont rien n'est reconnu serait toujours « faisable ».
+  if (!e.bases.some(b => !ctx.staples.has(b))) return false;
   if (e.bases.some(b => ctx.banned.has(b))) return false;
   if (ctx.exclusionWords.length && keysOf(e).some(k => containsWord(k, ctx.exclusionWords))) return false;
   const owned = new Set(ctx.questionnaire.equipment);

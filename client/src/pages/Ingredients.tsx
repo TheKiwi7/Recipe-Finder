@@ -81,7 +81,10 @@ function Row({ item }: { item: PantryItem }) {
   );
 }
 
-function Staples({ staples }: { staples: string[] }) {
+// Basiques qui bloquent souvent une recette à un seul ingrédient près : ajout en un clic.
+const STAPLE_SUGGESTIONS = ['levure chimique', 'vanille', 'bouillon', 'maïzena', 'vinaigre', 'moutarde', 'miel', 'cannelle', 'cumin', 'curry', 'paprika', 'muscade', 'thym', 'laurier', 'herbes de Provence', 'sauce soja', 'concentré de tomate', 'chapelure', 'sucre glace', 'bicarbonate'];
+
+function Staples({ staples, pantryBases }: { staples: string[]; pantryBases: string[] }) {
   const [value, setValue] = useState('');
   const save = async (next: string[]) => { await api.setStaples(next); await refreshPantry(); };
   const add = async (v = value) => {
@@ -89,12 +92,22 @@ function Staples({ staples }: { staples: string[] }) {
     await save([...staples, v.trim()]);
     setValue('');
   };
+  const have = new Set([...staples, ...pantryBases].map(s => s.toLowerCase()));
+  const suggestions = STAPLE_SUGGESTIONS.filter(s => !have.has(s.toLowerCase()));
   return (
     <div className="card staples">
-      {staples.map(s => (
-        <span className="chip" key={s}>{s}<button onClick={() => save(staples.filter(x => x !== s))} aria-label={`Retirer ${s} du placard`}><X size={13} /></button></span>
-      ))}
-      <Autocomplete value={value} onChange={setValue} onSubmit={add} placeholder="+ ajouter au placard" />
+      <div className="staples-row">
+        {staples.map(s => (
+          <span className="chip" key={s}>{s}<button onClick={() => save(staples.filter(x => x !== s))} aria-label={`Retirer ${s} du placard`}><X size={13} /></button></span>
+        ))}
+        <Autocomplete value={value} onChange={setValue} onSubmit={add} placeholder="+ ajouter au placard" />
+      </div>
+      {suggestions.length > 0 && (
+        <div className="staples-sugg">
+          <span className="muted">Tu en as sûrement :</span>
+          {suggestions.map(s => <button key={s} className="sugg-chip" onClick={() => add(s)}><Plus size={13} />{s}</button>)}
+        </div>
+      )}
     </div>
   );
 }
@@ -138,7 +151,7 @@ export function IngredientsPage() {
       </div>
 
       <div className="section-title"><h2 className="h2">Placard de base</h2><span className="muted">· toujours considéré comme disponible</span></div>
-      <Staples staples={pantry.staples} />
+      <Staples staples={pantry.staples} pantryBases={pantry.items.map(i => i.base)} />
     </>
   );
 }

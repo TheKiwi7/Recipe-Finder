@@ -21,7 +21,7 @@ const WORD_UNITS = [
   'verres?', 'tasses?', 'bols?', 'feuilles?', 'filets?', 'noix', 'morceaux?', 'poignées?', 'cubes?', 'barquettes?',
   'paquets?', 'rouleaux?', 'carrés?', 'bouquets?', 'tiges?', 'quartiers?', 'rondelles?', 'doses?', 'louches?',
   'tablettes?', 'plaquettes?', 'bocaux?', 'bocal', 'briques?', 'litres?', 'grammes?', 'kilos?', 'zestes?',
-  'boules?', 'pavés?', 'dés',
+  'boules?', 'pavés?', 'dés', 'pointes? de couteau',
 ];
 const WORD_UNIT_RE = new RegExp(`^(${WORD_UNITS.join('|')})\\s+(?:de\\s+|d['’]\\s*)`, 'i');
 const LEADING_FILLERS = /^(quelques\s+|un peu d(?:e\s+|['’])|une? pincée d(?:e\s+|['’])|un filet d(?:e\s+|['’])|du\s+|de la\s+|des\s+|de l['’]\s*|d['’]\s*|de\s+)/i;

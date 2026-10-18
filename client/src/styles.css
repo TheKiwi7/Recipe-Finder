@@ -123,7 +123,12 @@ select.field { padding-right: 30px; appearance: none; background-image: url("dat
 .urgent-btn:hover { color: var(--warn); border-color: var(--warn); }
 .urgent-btn.on { background: var(--warn-soft); color: var(--warn); border: 1px solid transparent; }
 
-.staples { padding: 16px 18px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.staples { padding: 16px 18px; }
+.staples-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.staples-sugg { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 13px; }
+.staples-sugg .muted { margin-right: 4px; }
+.sugg-chip { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 11px 0 9px; border-radius: 99px; border: 1px dashed var(--line); color: var(--muted); font-size: 13px; transition: all 0.12s; }
+.sugg-chip:hover { border: 1px solid var(--accent); color: var(--accent); background: var(--accent-soft); }
 .staples .field { height: 32px; width: 170px; border-radius: 99px; font-size: 14px; }
 
 .confirm-bar { display: flex; align-items: center; gap: 14px; }

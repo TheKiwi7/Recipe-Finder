@@ -10,6 +10,7 @@ const CANON: Array<[name: string, kind: Kind, keywords: string[]]> = [
   ['Four', 'device', ['four', 'enfourner']],
   ['Robot cuiseur', 'device', ['thermomix', 'cookeo', 'companion', 'monsieur cuisine', 'robot cuiseur', 'multicuiseur', 'magimix cook']],
   ['Airfryer', 'device', ['airfryer', 'air fryer', 'actifry', 'friteuse sans huile']],
+  ['Machine à pain', 'device', ['machine a pain', 'map']],
   ['Micro-ondes', 'device', ['micro onde', 'micro-ondes']],
   ['Plaque de cuisson', 'device', ['plaque de cuisson', 'plaque induction', 'table induction', 'plaque vitroceramique', 'gaziniere', 'cuisiniere']],
   ['Réfrigérateur', 'device', ['refrigerateur', 'frigo']],
@@ -83,7 +84,7 @@ function order(names: string[]): string[] {
 }
 
 // Appareils spéciaux souvent cités seulement dans le titre (« Saumon au Thermomix »).
-const NAME_DEVICES = new Set(['Robot cuiseur', 'Airfryer', 'Autocuiseur', 'Friteuse', 'Wok', 'Micro-ondes', 'Crêpière', 'Gaufrier', 'Cuit-vapeur']);
+const NAME_DEVICES = new Set(['Robot cuiseur', 'Airfryer', 'Machine à pain', 'Autocuiseur', 'Friteuse', 'Wok', 'Micro-ondes', 'Crêpière', 'Gaufrier', 'Cuit-vapeur']);
 
 export function devicesInName(name: string): string[] {
   return match(name).filter(c => NAME_DEVICES.has(c.name)).map(c => c.name);

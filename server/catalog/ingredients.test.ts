@@ -45,6 +45,8 @@ test('ingrédient de base', () => {
   assert.equal(base('65 g de cerneaux de noix'), 'noix');
   assert.equal(base('1 moules à cake'), null);
   assert.equal(base('1 truc introuvable'), undefined);
+  assert.equal(base('40 couteaux'), 'couteaux');
+  assert.equal(parseIngredientLine('1 pointe de couteau de cannelle').name, 'cannelle');
   // « X de Y » ambigu : laissé à Claude ; compléments sûrs acceptés.
   assert.equal(base("1 c. à café d'eau de fleur d'oranger"), "fleur d'oranger");
   assert.equal(base("2 cl d'eau de vie"), undefined);

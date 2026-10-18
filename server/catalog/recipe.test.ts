@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isoMinutes, parseRecipePage, passesQuality, recipeType } from './recipe.ts';
-import { canonicalUtensils, countDishes, deduceUtensils } from './utensils.ts';
+import { cleanName, isoMinutes, parseRecipePage, passesQuality, recipeType } from './recipe.ts';
+import { canonicalUtensils, countDishes, deduceUtensils, withNameDevices } from './utensils.ts';
 
 const page = (ld: object, extra = '') =>
   `<html><head><script type="application/ld+json">${JSON.stringify(ld)}</script></head><body>${extra}</body></html>`;
@@ -52,6 +52,10 @@ test('durées, types, vaisselle, qualité', () => {
   assert.equal(isoMinutes('PT45M'), 45);
   assert.equal(recipeType('Dessert', 'Crêpes faciles'), 'Petit-déj.');
   assert.equal(recipeType('Amuse-gueule', 'Cake salé'), 'Apéro');
+  assert.equal(recipeType('Accompagnement', 'Confit d’oignons'), 'Autre');
+  assert.equal(cleanName('ORONGES ou amanite des césars'), 'Oronges ou amanite des césars');
+  assert.equal(cleanName('Pain aux olives en MAP'), 'Pain aux olives en MAP');
+  assert.deepEqual(withNameDevices([], 'Pain aux olives en MAP'), ['Machine à pain']);
   assert.deepEqual(deduceUtensils(['Prendre une fourchette.']), []);
   assert.deepEqual(canonicalUtensils(['1 Moule à cake', '1 Fouet cuisine', '1 saladier']), ['Moule', 'Saladier', 'Fouet']);
   assert.equal(countDishes(['Four', 'Casserole', 'Saladier', 'Couteau']), 2);

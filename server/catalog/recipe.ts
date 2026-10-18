@@ -86,7 +86,8 @@ const BREAKFAST = /cr[eê]pe|pancake|granola|porridge|muesli|brioche|pain perdu|
 export function recipeType(categoryRaw: string | null, name: string): RecipeType {
   if (BREAKFAST.test(name)) return 'Petit-déj.';
   const c = (categoryRaw ?? '').toLowerCase();
-  if (c.includes('plat') || c.includes('accompagnement')) return 'Plat';
+  // Les accompagnements (confit d'oignons, pain…) ne répondent pas à « qu'est-ce qu'on mange » : visibles via « Tous ».
+  if (c.includes('plat')) return 'Plat';
   if (c.includes('entrée') || c.includes('entree')) return 'Entrée';
   if (c.includes('dessert') || c.includes('confiserie')) return 'Dessert';
   if (c.includes('amuse') || c.includes('apéritif') || c.includes('aperitif')) return 'Apéro';
@@ -96,7 +97,9 @@ export function recipeType(categoryRaw: string | null, name: string): RecipeType
 /** « rouelle de porc : la meilleure recette » → « Rouelle de porc ». */
 export function cleanName(name: string): string {
   const n = name.replace(/\s*:\s*[^:]*\brecette\b[^:]*$/i, '').trim();
-  return n.charAt(0).toUpperCase() + n.slice(1);
+  // Mots en majuscules (« ORONGES ou amanite des césars ») → casse normale ; les sigles courts (« MAP ») restent.
+  const t = n.replace(/(?<!\p{L})\p{Lu}{4,}(?!\p{L})/gu, w => w.toLowerCase());
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 /** Ustensiles listés dans la page Marmiton, ramenés au vocabulaire canonique. */

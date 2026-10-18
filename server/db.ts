@@ -128,7 +128,7 @@ export function openDb(file = join(DATA_DIR, 'recipe-finder.db')): Db {
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 10000;');
   db.exec(SCHEMA);
   const upsert = db.prepare(`INSERT INTO ingredient_aliases (key, base, origin) VALUES (?, ?, 'seed')
-    ON CONFLICT(key) DO UPDATE SET base = excluded.base WHERE origin = 'seed'`);
+    ON CONFLICT(key) DO UPDATE SET base = excluded.base, origin = 'seed'`); // le dictionnaire de départ prime sur Claude
   db.exec('BEGIN');
   for (const [alias, base] of seedAliases()) upsert.run(normalizeKey(alias), base);
   db.exec('COMMIT');
