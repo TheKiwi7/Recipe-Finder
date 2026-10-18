@@ -80,6 +80,9 @@ pâte feuilletée: rouleau de pâte feuilletée | pâtes feuilletées
 pâte brisée: rouleau de pâte brisée | pâtes brisées
 pâte sablée: pâtes sablées
 pâte à pizza:
+pâte filo: pâte phyllo | feuille de pâte filo | feuille de filo
+feuille de brick: brick | pâte brick
+pâte sucrée:
 riz: riz basmati | riz rond | riz long | riz thaï | riz arborio | riz à risotto
 pâtes: spaghetti | tagliatelle | penne | coquillette | fusilli | farfalle | linguine | conchiglie | macaroni | lasagne | feuille de lasagne
 semoule: couscous

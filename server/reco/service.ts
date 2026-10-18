@@ -4,6 +4,7 @@ import { DATA_DIR, type Db } from '../db.ts';
 import type { IngredientLine } from '../catalog/ingredients.ts';
 import { containsWord, DEFAULT_QUESTIONNAIRE, exclusionWords, getQuestionnaire, getWeights, recordSignal } from '../preferences.ts';
 import { normalizeKey } from '../catalog/text.ts';
+import { withGenerics } from './generic.ts';
 import { pickBatch, rankCandidates, type Context, type Entry, type Filters, type Mode } from './rank.ts';
 
 export const IMAGES_DIR = join(DATA_DIR, 'images');
@@ -61,7 +62,7 @@ export function bannedBases(db: Db): Set<string> {
 function availableBases(db: Db) {
   const pantry = db.prepare('SELECT base, urgent FROM pantry').all() as Array<{ base: string; urgent: number }>;
   const staples = new Set((db.prepare('SELECT base FROM staples').all() as Array<{ base: string }>).map(r => r.base));
-  return { available: new Set([...pantry.map(p => p.base), ...staples]), urgent: new Set(pantry.filter(p => p.urgent).map(p => p.base)), staples };
+  return { available: withGenerics(new Set([...pantry.map(p => p.base), ...staples])), urgent: new Set(pantry.filter(p => p.urgent).map(p => p.base)), staples };
 }
 
 function buildContext(db: Db, catalog: Catalog, mode: Mode): Context {
