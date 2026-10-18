@@ -21,7 +21,7 @@ Recipe Finder est une app perso, 100 % locale, qui propose de **vraies recettes*
 - **Profil** : un questionnaire de départ (personnes, temps, vaisselle, régime, allergies, appareils, goûts), puis un profil que l'IA affine à partir de tes likes, rejets et questions. Tes aversions fermes (« rien qui vienne de la mer ») deviennent des exclusions strictes.
 - **Pour qui je cuisine** : ajoute les membres de ta famille, chacun avec son régime, ses allergies et ce qu'il n'aime pas. Au moment de choisir, tu coches qui mange : les exclusions de chacun s'appliquent et les portions s'adaptent.
 - **Allergies et régimes** : exclusions strictes par famille (gluten, lactose, fruits à coque, poisson…), vérifiées sur les ingrédients mais aussi sur le texte complet des recettes.
-- **Français ou anglais** : toute l'interface existe dans les deux langues. En anglais, les recettes (en français sur le site) sont traduites par l'IA la première fois qu'elles s'affichent, unités comprises (c. à soupe → tbsp), puis gardées sur ton PC ; tu peux taper tes ingrédients en anglais.
+- **Français ou anglais** : l'app est pensée pour le français, puisque les recettes viennent de Marmiton, en français. Elle fonctionne aussi en anglais (interface entière, saisie des ingrédients en anglais), mais les recettes doivent d'abord être traduites par l'IA, unités comprises (c. à soupe → tbsp) : quelques secondes pour les noms, 15 à 30 s pour une recette la première fois qu'elle s'ouvre, puis c'est instantané (la traduction est gardée sur ton PC). Sans IA, les recettes restent en français.
 - **Catalogue** : 5 000 recettes bien notées au premier lancement (environ 5 h d'import, l'app est utilisable dès les premières centaines), extensibles depuis les Réglages.
 
 > **Claude, modèle local ou les deux ?** Toutes les fonctionnalités marchent avec l'un ou l'autre. La différence est la qualité : avec le **modèle local seul**, les réponses du chat sont plus simples et parfois moins sûres (substitutions, conseils de cuisson), et le profil saisit moins finement les nuances de tes notes. Avec **ton abonnement Claude**, le chat et le profil sont nettement meilleurs ; le modèle local, s'il est installé, se charge alors des tâches de fond pour ménager ton abonnement. Sans aucune IA, tout fonctionne sauf le chat, la mise à jour du profil, la reconnaissance des nouveaux ingrédients et la traduction en anglais.
@@ -76,6 +76,8 @@ Pour contribuer ou modifier l'app : [docs/DEVELOPPEMENT.md](docs/DEVELOPPEMENT.m
 
 # Recipe Finder (English)
 
+> **Good to know:** Recipe Finder is designed for French. Recipes come from Marmiton, a French site, so in English they must first be translated by the AI, which takes a little time the first time each recipe is shown (see below).
+
 **What's for dinner tonight, with what's in the fridge?**
 
 Recipe Finder is a personal, 100% local app that suggests **real recipes** (from Marmiton, the French recipe site, not invented by an AI) that you can cook with the ingredients you already have, ranked by your tastes. An AI acts as an assistant (your Claude subscription, or a free model running on your PC): it keeps your profile up to date and answers your questions about a recipe, without being called on every click.
@@ -95,7 +97,7 @@ Recipe Finder is a personal, 100% local app that suggests **real recipes** (from
 - **Profile**: a short welcome questionnaire (people, time, washing up, diet, allergies, appliances, tastes), then a profile the AI refines from your likes, rejections and questions. Firm dislikes (“nothing from the sea”) become strict exclusions.
 - **Who I cook for**: add your family members, each with their own diet, allergies and dislikes. When choosing, you tick who is eating: everyone's exclusions apply and portions adjust.
 - **Allergies and diets**: strict exclusions by family (gluten, lactose, nuts, fish…), checked against the ingredients and the full recipe text.
-- **French or English**: the whole interface exists in both languages. In English, recipes (in French on the site) are translated by the AI the first time they are shown, units included (c. à soupe → tbsp), then kept on your PC; you can type your ingredients in English.
+- **French or English**: the app is designed for French, since recipes come from Marmiton, in French. It also works in English (full interface, ingredients typed in English), but recipes must first be translated by the AI, units included (c. à soupe → tbsp): a few seconds for names, 15 to 30 s for a recipe the first time it opens, then it's instant (the translation is kept on your PC). Without an AI, recipes stay in French.
 - **Catalogue**: 5,000 well-rated recipes on first launch (about 5 hours of import; the app is usable after the first few hundred), expandable from Settings.
 
 > **Claude, local model or both?** Every feature works with either. The difference is quality: with the **local model alone**, chat answers are simpler and sometimes less reliable (substitutions, cooking advice), and the profile captures the nuances of your notes less finely. With **your Claude subscription**, chat and profile are clearly better; the local model, if installed, then handles background tasks to spare your subscription. Without any AI, everything works except chat, profile updates, recognising new ingredients and English translation.

@@ -181,7 +181,7 @@ export function SettingsPage() {
       <h2 className="h2 settings-title">{L('Langue', 'Language')}</h2>
       <div className="card settings-card">
         <LangSwitch />
-        <p className="muted small" style={{ margin: '12px 0 0' }}>{L('Les recettes viennent de Marmiton, en français. En anglais, l’IA les traduit la première fois qu’elles s’affichent (en tâche de fond pour les noms), puis les garde sur ce PC.', 'Recipes come from Marmiton, in French. In English the AI translates them the first time they are shown (names in the background), then keeps them on this PC.')}</p>
+        <p className="muted small" style={{ margin: '12px 0 0' }}>{L('L’app est pensée pour le français : les recettes viennent de Marmiton, en français. Elle fonctionne aussi en anglais, mais tout doit d’abord être traduit par l’IA : quelques secondes pour les noms, 15 à 30 s pour une recette la première fois qu’elle s’ouvre (ensuite c’est instantané, la traduction est gardée sur ce PC). Sans IA, les recettes restent en français.', 'The app is designed for French: recipes come from Marmiton, in French. It also works in English, but everything must first be translated by the AI: a few seconds for names, 15 to 30 s for a recipe the first time it opens (then it’s instant, the translation is kept on this PC). Without an AI, recipes stay in French.')}</p>
       </div>
       <h2 className="h2 settings-title">{L('Mes préférences', 'My preferences')}</h2>
       <div className="card settings-card"><QuestionnaireForm submitLabel={L('Enregistrer', 'Save')} onSaved={() => { invalidateLists(); setVersion(v => v + 1); toast(L('Préférences enregistrées', 'Preferences saved')); }} /></div>

@@ -4,7 +4,7 @@ import type { Questionnaire } from '../api.ts';
 import { AiCard } from '../components/AiCard.tsx';
 import { QuestionnaireForm } from '../components/QuestionnaireForm.tsx';
 import { LangSwitch } from '../components/LangSwitch.tsx';
-import { L } from '../i18n.ts';
+import { L, lang } from '../i18n.ts';
 
 /** Premier lancement : questionnaire rapide (Q8), puis connexion de l'IA (facultative). */
 export function WelcomePage({ onDone }: { onDone: (q: Questionnaire) => void }) {
@@ -34,6 +34,8 @@ export function WelcomePage({ onDone }: { onDone: (q: Questionnaire) => void }) 
         <h1 className="h1">{L('Bienvenue dans Recipe Finder', 'Welcome to Recipe Finder')}</h1>
         <p className="sub">{L('Une minute pour faire connaissance : on s’en sert pour te proposer des recettes qui te ressemblent dès le départ. Tout reste modifiable dans les Réglages.', 'A minute to get to know you, so the recipes suit you from the start. Everything can be changed later in Settings.')}</p>
         <div style={{ marginTop: 18 }}><LangSwitch /></div>
+        {/* En anglais : prévenir tout de suite que les recettes, en français, doivent être traduites. */}
+        {lang === 'en' && <p className="muted small" style={{ maxWidth: 560, margin: '12px auto 0' }}>The app is designed for French: recipes come from Marmiton, in French. It also works in English, but everything must first be translated by the AI: a few seconds for names, 15 to 30 s for a recipe the first time it opens (then it’s instant, the translation is kept on this PC). Without an AI, recipes stay in French.</p>}
       </div>
       <div className="card settings-card"><QuestionnaireForm submitLabel={L('Continuer', 'Continue')} onSaved={setSaved} /></div>
     </div>
