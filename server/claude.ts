@@ -8,8 +8,25 @@ export type Model = 'haiku' | 'sonnet';
 
 export class ClaudeUnavailable extends Error {}
 
-export function askClaude(prompt: string, opts: { model: Model; system?: string; timeoutMs?: number }): Promise<string> {
-  const args = ['-p', '--model', opts.model, '--output-format', 'json', '--tools', '', '--no-session-persistence'];
+/**
+ * Deux files : « background » (normalisation, fusion des doublons) et « interactive » (chat, profil).
+ * Dans chaque file, un seul appel à la fois : pas de rafale d'appels simultanés sur l'abonnement,
+ * et le chat n'attend jamais derrière un lot de normalisation.
+ */
+export type Lane = 'background' | 'interactive';
+const lanes: Record<Lane, Promise<unknown>> = { background: Promise.resolve(), interactive: Promise.resolve() };
+
+export function askClaude(prompt: string, opts: { model: Model; system?: string; timeoutMs?: number; lane: Lane }): Promise<string> {
+  const run = lanes[opts.lane].catch(() => {}).then(() => callClaude(prompt, opts));
+  lanes[opts.lane] = run;
+  return run.catch(e => {
+    console.error(`[claude] ${new Date().toISOString()} ${opts.lane}/${opts.model} : ${e instanceof Error ? e.message : String(e)}`);
+    throw e;
+  });
+}
+
+function callClaude(prompt: string, opts: { model: Model; system?: string; timeoutMs?: number }): Promise<string> {
+  const args =['-p', '--model', opts.model, '--output-format', 'json', '--tools', '', '--no-session-persistence'];
   if (opts.system) args.push('--system-prompt', opts.system);
 
   return new Promise((resolve, reject) => {

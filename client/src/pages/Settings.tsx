@@ -58,7 +58,7 @@ function ProfileCard({ version }: { version: number }) {
         'nothing-new': 'Rien de nouveau depuis la dernière mise à jour : le profil est déjà à jour',
         busy: 'Une mise à jour est déjà en cours',
         'not-yet': 'Pas encore assez de nouveaux signaux',
-        unavailable: 'Claude indisponible pour le moment, réessaie plus tard',
+        unavailable: `Claude n'a pas pu mettre à jour le profil : ${(r.lastError ?? '').replace(/^\S+\s/, '').slice(0, 160) || 'raison inconnue'}. Réessaie plus tard.`,
       }[r.result]);
     } catch (e) { toast((e as Error).message); }
     finally { setBusy(false); }
@@ -75,7 +75,7 @@ function ProfileCard({ version }: { version: number }) {
       </dl>
       <button className="btn btn-ghost" onClick={update} disabled={busy || p.pendingSignals === 0} title={p.pendingSignals === 0 ? 'Rien de nouveau depuis la dernière mise à jour' : undefined}>{p.pendingSignals === 0 && !busy
         ? <><Check size={16} />Profil à jour</>
-        : <><RefreshCw size={16} className={busy ? 'spin' : ''} />{busy ? 'Claude réfléchit…' : `Mettre à jour maintenant (${p.pendingSignals} nouveau${p.pendingSignals > 1 ? 'x' : ''})`}</>}</button>
+        : <><RefreshCw size={16} className={busy ? 'spin' : ''} />{busy ? 'Claude réfléchit… (1 à 2 min)' : `Mettre à jour maintenant (${p.pendingSignals} nouveau${p.pendingSignals > 1 ? 'x' : ''})`}</>}</button>
     </div>
   );
 }

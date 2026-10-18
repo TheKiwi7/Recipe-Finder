@@ -27,7 +27,7 @@ export async function consolidateBases(db: Db): Promise<Array<[dup: string, cano
   const seedBases = new Set((db.prepare(`SELECT DISTINCT base FROM ingredient_aliases WHERE origin = 'seed' AND base IS NOT NULL`).all() as Array<{ base: string }>).map(r => r.base));
   const all = new Set(rows.map(r => r.base));
   const prompt = `Ingrédients de base (nombre de recettes) :\n${rows.map(r => `${r.base} (${r.n})`).join('\n')}`;
-  const reply = parseJsonReply<Record<string, string>>(await askClaude(prompt, { model: 'sonnet', system: CONSOLIDATE_SYSTEM, timeoutMs: 300_000 }));
+  const reply = parseJsonReply<Record<string, string>>(await askClaude(prompt, { model: 'sonnet', system: CONSOLIDATE_SYSTEM, timeoutMs: 300_000, lane: 'background' }));
 
   const merged: Array<[string, string]> = [];
   db.exec('BEGIN');
@@ -70,7 +70,7 @@ export async function resolveUnknownTerms(db: Db): Promise<number> {
 Termes à normaliser (terme — exemple de ligne de recette) :
 ${terms.map(t => `${t.key} — ${t.example}`).join('\n')}`;
 
-  const reply = parseJsonReply<Record<string, string | null>>(await askClaude(prompt, { model: 'haiku', system: SYSTEM, timeoutMs: 300_000 }));
+  const reply = parseJsonReply<Record<string, string | null>>(await askClaude(prompt, { model: 'haiku', system: SYSTEM, timeoutMs: 300_000, lane: 'background' }));
 
   const insert = db.prepare(`INSERT INTO ingredient_aliases (key, base, origin) VALUES (?, ?, 'claude') ON CONFLICT(key) DO NOTHING`);
   const known = loadAliases(db);

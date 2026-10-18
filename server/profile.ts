@@ -86,7 +86,7 @@ ${(db.prepare('SELECT base FROM recipe_ingredients GROUP BY base ORDER BY COUNT(
 Nouveaux signaux (du plus ancien au plus récent) :
 ${signals.map(s => `- ${label[s.kind] ?? s.kind} : ${s.detail}`).join('\n') || '(aucun)'}`;
 
-    const reply = parseJsonReply<{ profile: string; weights: ProfileWeights }>(await askClaude(prompt, { model: 'sonnet', system: SYSTEM, timeoutMs: 300_000 }));
+    const reply = parseJsonReply<{ profile: string; weights: ProfileWeights }>(await askClaude(prompt, { model: 'sonnet', system: SYSTEM, timeoutMs: 300_000, lane: 'interactive' }));
     if (typeof reply.profile !== 'string' || !reply.weights) throw new Error('Réponse incomplète');
 
     setMeta(db, 'profile_text', reply.profile.trim());
