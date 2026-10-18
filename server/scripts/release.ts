@@ -25,16 +25,8 @@ git('push', 'origin', `v${version}`);
 console.log(`Version ${version} publiée : les installations la proposeront dans Réglages → Mises à jour.`);
 
 // Page « Release » sur GitHub (notes FR / EN), si l'outil gh est installé et connecté.
-const notes = `## Français
-
-${top.fr.map(l => `- ${l}`).join('
-')}
-
-## English
-
-${top.en.map(l => `- ${l}`).join('
-')}
-`;
+const list = (lines: string[]) => lines.map(l => `- ${l}`).join('\n');
+const notes = `## Français\n\n${list(top.fr)}\n\n## English\n\n${list(top.en)}\n`;
 try {
   execFileSync('gh', ['release', 'create', `v${version}`, '--title', `Recipe Finder ${version}`, '--notes', notes, '--verify-tag'], { cwd: root, stdio: 'ignore' });
   console.log('Release GitHub créée.');
