@@ -1,5 +1,5 @@
 import { parseIngredientLine, type IngredientLine } from './ingredients.ts';
-import { canonicalUtensils, countDishes, deduceUtensils } from './utensils.ts';
+import { canonicalUtensils, countDishes, deduceUtensils, withNameDevices } from './utensils.ts';
 
 export const RECIPE_TYPES = ['Plat', 'Entrée', 'Dessert', 'Apéro', 'Petit-déj.', 'Autre'] as const;
 export type RecipeType = (typeof RECIPE_TYPES)[number];
@@ -93,6 +93,12 @@ export function recipeType(categoryRaw: string | null, name: string): RecipeType
   return 'Autre';
 }
 
+/** « rouelle de porc : la meilleure recette » → « Rouelle de porc ». */
+export function cleanName(name: string): string {
+  const n = name.replace(/\s*:\s*[^:]*\brecette\b[^:]*$/i, '').trim();
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+
 /** Ustensiles listés dans la page Marmiton, ramenés au vocabulaire canonique. */
 export function marmitonUtensils(html: string): string[] {
   const titles = [...html.matchAll(/class="card-recipe-utensil__title"[^>]*>([\s\S]*?)<\/div>/g)].map(m => clean(m[1]));
@@ -105,10 +111,10 @@ export function parseRecipePage(html: string, url: string, source: string): Pars
 
   const steps = flattenSteps(ld.recipeInstructions).map(clean).filter(Boolean);
   const siteUtensils = source === 'marmiton' ? marmitonUtensils(html) : [];
-  const utensils = siteUtensils.length ? siteUtensils : deduceUtensils(steps);
+  const name = cleanName(clean(String(ld.name)));
+  const utensils = withNameDevices(siteUtensils.length ? siteUtensils : deduceUtensils(steps), name);
   const rating = ld.aggregateRating ? parseFloat(ld.aggregateRating.ratingValue) : NaN;
   const categoryRaw = Array.isArray(ld.recipeCategory) ? ld.recipeCategory[0] : ld.recipeCategory ?? null;
-  const name = clean(String(ld.name)).replace(/\s*:\s*[^:]*\brecette\b[^:]*$/i, ''); // « : la meilleure recette », « : recette facile »
   const keywords = typeof ld.keywords === 'string' ? ld.keywords.split(',').map((k: string) => k.trim()).filter(Boolean)
     : Array.isArray(ld.keywords) ? ld.keywords : [];
 

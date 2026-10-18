@@ -6,7 +6,8 @@
     <title>Recipe Finder</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%232f7d5b'/><path d='M7 15h18a9 9 0 0 1-18 0zM16 7v4M12 8v3M20 8v3' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round'/></svg>" />
     <script>
-      try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+      // ?theme=light|dark force le thème sans le mémoriser (captures d'écran de contrôle).
+      try { const t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
     </script>
   </head>
   <body>

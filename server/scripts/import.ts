@@ -4,11 +4,12 @@ import { parseArgs } from 'node:util';
 import { openDb } from '../db.ts';
 import { acquireImportLock, importProgress, runImport } from '../catalog/importer.ts';
 import { resolveUnknownTerms } from '../catalog/normalize-unknown.ts';
-import { syncSeed } from '../catalog/store.ts';
+import { migrateCatalog, syncSeed } from '../catalog/store.ts';
 
 const { values } = parseArgs({ options: { target: { type: 'string', default: '3000' }, 'normalize-only': { type: 'boolean', default: false } } });
 const db = openDb();
 syncSeed(db);
+migrateCatalog(db);
 const target = Number(values.target);
 
 if (values['normalize-only']) {

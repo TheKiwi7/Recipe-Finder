@@ -6,7 +6,7 @@ import { join, relative } from 'node:path';
 import { DATA_DIR, openDb } from './db.ts';
 import { createApi } from './app.ts';
 import { acquireImportLock, currentTarget, runImport } from './catalog/importer.ts';
-import { syncSeed } from './catalog/store.ts';
+import { migrateCatalog, syncSeed } from './catalog/store.ts';
 import { ensureStaples } from './pantry.ts';
 
 export const PORT = Number(process.env.PORT ?? 5317);
@@ -14,6 +14,7 @@ const CLIENT_DIST = join(DATA_DIR, '..', 'client', 'dist');
 
 const db = openDb();
 syncSeed(db);
+migrateCatalog(db);
 ensureStaples(db);
 
 let importing = false;

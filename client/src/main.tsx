@@ -1,9 +1,13 @@
 import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
+import './recipes.css';
 import { Sidebar } from './components/Sidebar.tsx';
 import { IngredientsPage } from './pages/Ingredients.tsx';
 import { ComingSoon, LockedPage } from './pages/Placeholders.tsx';
+import { FavoritesPage } from './pages/Favorites.tsx';
+import { RecipeDetailPage } from './pages/RecipeDetail.tsx';
+import { RecipesPage } from './pages/Recipes.tsx';
 import { refreshPantry, usePantry } from './pantry-store.ts';
 import { navigate, useRoute } from './router.ts';
 import { Toast } from './toast.tsx';
@@ -27,9 +31,10 @@ function App() {
       <Sidebar route={route} />
       <main className="content">
         {route.page === 'ingredients' && <IngredientsPage />}
-        {route.page === 'recettes' && gated(<ComingSoon title="Recettes" />)}
-        {route.page === 'presque' && gated(<ComingSoon title="Presque" />)}
-        {route.page === 'favoris' && <ComingSoon title="Favoris" />}
+        {route.page === 'recettes' && gated(<RecipesPage mode="ready" />)}
+        {route.page === 'presque' && gated(<RecipesPage mode="almost" />)}
+        {route.page === 'favoris' && <FavoritesPage />}
+        {route.page === 'recette' && <RecipeDetailPage key={route.id} id={route.id} />}
         {route.page === 'reglages' && <ComingSoon title="Réglages" />}
       </main>
       <Toast />

@@ -32,6 +32,9 @@ test('page Marmiton → recette', () => {
   assert.deepEqual(r.utensils, ['Four', 'Plaque de cuisson', 'Plat à gratin', 'Couteau', 'Papier cuisson']);
   assert.equal(r.utensilsFromSite, true);
   assert.equal(r.dishes, 1);
+  const thermo = parseRecipePage(page({ ...LD, name: 'saumon au Thermomix' }), 'u', 'marmiton')!;
+  assert.equal(thermo.name, 'Saumon au Thermomix');
+  assert.ok(thermo.utensils.includes('Robot cuiseur'));
 });
 
 test('sans liste du site, les ustensiles sont déduits des étapes', () => {

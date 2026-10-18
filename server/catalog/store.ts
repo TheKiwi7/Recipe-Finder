@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { getMeta, loadAliases, setMeta, type Db } from '../db.ts';
 import { seedAliases } from './seed-ingredients.ts';
+import { cleanName } from './recipe.ts';
+import { withNameDevices } from './utensils.ts';
 import { resolveBase, type IngredientLine } from './ingredients.ts';
 import type { ParsedRecipe } from './recipe.ts';
 import { normalizeKey } from './text.ts';
@@ -74,4 +76,20 @@ export function syncSeed(db: Db): void {
   if (getMeta(db, 'seed_hash') === hash) return;
   reresolveRecipes(db, true);
   setMeta(db, 'seed_hash', hash);
+}
+
+const CATALOG_MIGRATION = '1';
+
+/** Applique aux recettes déjà importées les corrections faites depuis (titres, appareils cités dans le titre). */
+export function migrateCatalog(db: Db): void {
+  if (getMeta(db, 'catalog_migration') === CATALOG_MIGRATION) return;
+  const rows = db.prepare('SELECT id, name, utensils FROM recipes').all() as Array<{ id: number; name: string; utensils: string }>;
+  const update = db.prepare('UPDATE recipes SET name = ?, utensils = ? WHERE id = ?');
+  db.exec('BEGIN');
+  for (const r of rows) {
+    const name = cleanName(r.name);
+    update.run(name, JSON.stringify(withNameDevices(JSON.parse(r.utensils), name)), r.id);
+  }
+  db.exec('COMMIT');
+  setMeta(db, 'catalog_migration', CATALOG_MIGRATION);
 }

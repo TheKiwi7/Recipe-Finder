@@ -1,6 +1,20 @@
 export type PantryItem = { id: number; label: string; base: string; qty: number | null; unit: string | null; urgent: boolean; showBase: boolean };
 export type PantryState = { confirmedAt: string | null; gateOpen: boolean; version: number };
 export type PantryResponse = PantryState & { items: PantryItem[]; staples: string[] };
+export type Reaction = 'like' | 'dislike' | null;
+export type RecipeCard = {
+  id: number; name: string; image: string | null; type: string; totalMin: number; dishes: number;
+  rating: number | null; reviews: number; missing: string[]; usesUrgent: boolean; reaction: Reaction;
+};
+export type IngredientLine = { raw: string; qty: number | null; unit: string | null; name: string; base: string | null };
+export type RecipeDetail = RecipeCard & {
+  url: string; prepMin: number; cookMin: number; servings: number; persons: number;
+  ingredients: IngredientLine[]; steps: string[]; utensils: string[]; banned: string[]; available: string[]; archived: boolean;
+};
+export type Mode = 'ready' | 'almost';
+export type Filters = { type: string; maxTime: number | null };
+export type Recommendations = { items: RecipeCard[]; exhausted: boolean; catalogSize: number };
+export type Rejections = { recipes: Array<{ id: number; name: string; image: string | null; at: string }>; ingredients: Array<{ base: string; at: string }> };
 export type ImportStatus = { imported: number; target: number; rejected: number; pending: number; unresolvedRecipes: number; running: boolean };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -23,6 +37,14 @@ export const api = {
   confirm: () => call<PantryState>('POST', '/pantry/confirm'),
   suggest: (q: string) => call<string[]>('GET', `/ingredients/suggest?q=${encodeURIComponent(q)}`),
   importStatus: () => call<ImportStatus>('GET', '/import/status'),
+  recommend: (mode: Mode, filters: Filters, current: number[], want: number) =>
+    call<Recommendations>('POST', '/recommendations', { mode, filters: { type: filters.type, maxTime: filters.maxTime ?? undefined }, current, want }),
+  recipe: (id: number) => call<RecipeDetail>('GET', `/recipes/${id}`),
+  react: (id: number, kind: Reaction) => call('POST', `/recipes/${id}/reaction`, { kind }),
+  favorites: () => call<RecipeCard[]>('GET', '/favorites'),
+  ban: (base: string) => call('POST', '/banned', { base }),
+  unban: (base: string) => call('DELETE', `/banned/${encodeURIComponent(base)}`),
+  rejections: () => call<Rejections>('GET', '/rejections'),
 };
 
 export const UNITS = ['pièce(s)', 'g', 'kg', 'ml', 'cl', 'l', 'c. à soupe', 'c. à café', 'sachet(s)', 'boîte(s)', 'pot(s)', 'tranche(s)', 'botte(s)', 'gousse(s)'];

@@ -72,6 +72,47 @@ CREATE TABLE IF NOT EXISTS pantry (
 CREATE TABLE IF NOT EXISTS staples (
   base TEXT PRIMARY KEY
 );
+-- Like / dislike d'une recette. Pas de ligne = neutre.
+CREATE TABLE IF NOT EXISTS reactions (
+  recipe_id INTEGER PRIMARY KEY,
+  kind TEXT NOT NULL,          -- like | dislike
+  at TEXT NOT NULL
+);
+-- Copie locale complète des favoris (Q17) : survit à la disparition de la page.
+CREATE TABLE IF NOT EXISTS favorites (
+  recipe_id INTEGER PRIMARY KEY,
+  snapshot TEXT NOT NULL,      -- JSON RecipeDetail
+  image_file TEXT,             -- fichier dans data/images
+  at TEXT NOT NULL
+);
+-- Ingrédients rejetés : exclusion stricte (Q7).
+CREATE TABLE IF NOT EXISTS banned_ingredients (
+  base TEXT PRIMARY KEY,
+  at TEXT NOT NULL
+);
+-- Recettes déjà montrées : ne reviennent qu'après ~2 semaines (Q9).
+CREATE TABLE IF NOT EXISTS seen (
+  recipe_id INTEGER NOT NULL,
+  mode TEXT NOT NULL,          -- ready | almost : une recette vue dans Presque peut encore apparaître dans Recettes
+  at TEXT NOT NULL,
+  PRIMARY KEY (recipe_id, mode)
+);
+-- Signaux pour la mise à jour du profil par Claude (likes, rejets, questions du chat).
+CREATE TABLE IF NOT EXISTS signals (
+  id INTEGER PRIMARY KEY,
+  kind TEXT NOT NULL,
+  detail TEXT NOT NULL,
+  at TEXT NOT NULL,
+  consumed INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id INTEGER PRIMARY KEY,
+  recipe_id INTEGER NOT NULL,
+  role TEXT NOT NULL,          -- user | assistant
+  text TEXT NOT NULL,
+  at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS chat_messages_recipe ON chat_messages(recipe_id, id);
 CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -83,7 +124,8 @@ export type Db = DatabaseSync;
 export function openDb(file = join(DATA_DIR, 'recipe-finder.db')): Db {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+  // busy_timeout : l'app et le script d'import peuvent écrire en même temps.
+  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 10000;');
   db.exec(SCHEMA);
   const upsert = db.prepare(`INSERT INTO ingredient_aliases (key, base, origin) VALUES (?, ?, 'seed')
     ON CONFLICT(key) DO UPDATE SET base = excluded.base WHERE origin = 'seed'`);

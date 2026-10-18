@@ -8,6 +8,8 @@ type Kind = 'big' | 'small' | 'device' | 'consumable';
 // Les mots-clés sont comparés mot à mot après normalisation (« four » ne matche pas « fourchette »).
 const CANON: Array<[name: string, kind: Kind, keywords: string[]]> = [
   ['Four', 'device', ['four', 'enfourner']],
+  ['Robot cuiseur', 'device', ['thermomix', 'cookeo', 'companion', 'monsieur cuisine', 'robot cuiseur', 'multicuiseur', 'magimix cook']],
+  ['Airfryer', 'device', ['airfryer', 'air fryer', 'actifry', 'friteuse sans huile']],
   ['Micro-ondes', 'device', ['micro onde', 'micro-ondes']],
   ['Plaque de cuisson', 'device', ['plaque de cuisson', 'plaque induction', 'table induction', 'plaque vitroceramique', 'gaziniere', 'cuisiniere']],
   ['Réfrigérateur', 'device', ['refrigerateur', 'frigo']],
@@ -78,6 +80,18 @@ export function deduceUtensils(steps: string[]): string[] {
 function order(names: string[]): string[] {
   const rank = (n: string) => CANON.findIndex(([c]) => c === n);
   return names.sort((a, b) => rank(a) - rank(b));
+}
+
+// Appareils spéciaux souvent cités seulement dans le titre (« Saumon au Thermomix »).
+const NAME_DEVICES = new Set(['Robot cuiseur', 'Airfryer', 'Autocuiseur', 'Friteuse', 'Wok', 'Micro-ondes', 'Crêpière', 'Gaufrier', 'Cuit-vapeur']);
+
+export function devicesInName(name: string): string[] {
+  return match(name).filter(c => NAME_DEVICES.has(c.name)).map(c => c.name);
+}
+
+/** Ajoute les appareils cités dans le titre à la liste d'ustensiles. */
+export function withNameDevices(utensils: string[], name: string): string[] {
+  return order([...new Set([...utensils, ...devicesInName(name)])]);
 }
 
 /** Nombre de grosses pièces à laver, au moins 1. */
