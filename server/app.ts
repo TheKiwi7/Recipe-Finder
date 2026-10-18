@@ -111,7 +111,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     const file = c.req.param('file');
     const p = imagePath(file);
     if (!p) return c.json({ error: L('Image introuvable', 'Image not found') }, 404);
-    return c.body(readFileSync(p), 200, { 'Content-Type': MIME[file.split('.').pop()!.toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'max-age=31536000' });
+    return c.body(readFileSync(p), 200, { 'Content-Type': MIME[file.split('.').pop()!.toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'max-age=31536000', 'X-Content-Type-Options': 'nosniff' });
   });
 
   api.get('/import/status', c => c.json({ ...importProgress(db, getCatalogTarget(db)), running: status.importing(), build: status.build(), server: SERVER_STARTED }));

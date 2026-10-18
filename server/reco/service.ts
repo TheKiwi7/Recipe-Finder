@@ -170,14 +170,21 @@ function bannedIn(lines: IngredientLine[], userBanned: Set<string>, words: strin
 
 // ---------- réactions, favoris, rejets ----------
 
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+
+/** Copie locale de la photo d'un favori. L'adresse vient de la page de la recette : HTTPS et vraie image seulement. */
 async function downloadImage(url: string, id: number): Promise<string | null> {
   try {
+    if (new URL(url).protocol !== 'https:') return null;
     const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
-    if (!res.ok) return null;
+    if (!res.ok || !(res.headers.get('content-type') ?? '').startsWith('image/')) return null;
+    if (Number(res.headers.get('content-length') ?? 0) > MAX_IMAGE_BYTES) return null;
     const ext = (res.headers.get('content-type') ?? '').includes('png') ? 'png' : url.match(/\.(webp|jpe?g|png)(\?|$)/i)?.[1] ?? 'webp';
     mkdirSync(IMAGES_DIR, { recursive: true });
     const file = `${id}.${ext}`;
-    writeFileSync(join(IMAGES_DIR, file), Buffer.from(await res.arrayBuffer()));
+    const data = Buffer.from(await res.arrayBuffer());
+    if (data.length > MAX_IMAGE_BYTES) return null;
+    writeFileSync(join(IMAGES_DIR, file), data);
     return file;
   } catch {
     return null;
