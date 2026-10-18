@@ -27,7 +27,7 @@ if (-not (Test-Server)) {
   New-Item -ItemType Directory -Force "$root\data" | Out-Null
   Start-Process node -ArgumentList '--disable-warning=ExperimentalWarning', 'server/index.ts' -WorkingDirectory $root -WindowStyle Hidden `
     -RedirectStandardOutput "$root\data\server.log" -RedirectStandardError "$root\data\server-errors.log"
-  for ($i = 0; $i -lt 60 -and -not (Test-Server); $i++) { Start-Sleep -Milliseconds 250 }
+  for ($i = 0; $i -lt 160 -and -not (Test-Server); $i++) { Start-Sleep -Milliseconds 250 }
 }
 
 if ($NoBrowser) { if (Test-Server) { 'server ok' } else { 'server KO' }; return }
