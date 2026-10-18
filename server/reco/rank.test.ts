@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_QUESTIONNAIRE, exclusionWords } from '../preferences.ts';
-import { pickBatch, rankCandidates, similarity, type Context, type Entry } from './rank.ts';
+import { bayesianRating, pickBatch, rankCandidates, similarity, type Context, type Entry } from './rank.ts';
 
 let nextId = 1;
 const entry = (bases: string[], over: Partial<Entry> = {}): Entry => ({
@@ -70,6 +70,13 @@ test('réglages du profil (Claude)', () => {
   const omelette = entry(['oeuf', 'tomate'], { name: 'Omelette' });
   const r = rankCandidates([curry, omelette], ctx({ weights: { keywords: { curry: -1 } } }), 'ready', {});
   assert.equal(r[0].entry.id, omelette.id);
+});
+
+test('peu d’avis : une note parfaite ne passe pas devant une recette éprouvée', () => {
+  const unAvis = entry(['oeuf'], { rating: 5, reviews: 1 });
+  const eprouvee = entry(['oeuf'], { rating: 4.6, reviews: 120 });
+  assert.equal(rankCandidates([unAvis, eprouvee], ctx(), 'ready', {})[0].entry.id, eprouvee.id);
+  assert.ok(Math.abs(bayesianRating(5, 1) - 4.333) < 0.01);
 });
 
 test('similarité : les ingrédients rares comptent plus que le sel', () => {

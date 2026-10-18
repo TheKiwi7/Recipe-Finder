@@ -1,4 +1,4 @@
-// Import du catalogue en ligne de commande : npm run import -- [--target 3000] [--normalize-only] [--renormalize-ignored] [--consolidate]
+// Import du catalogue en ligne de commande : npm run import -- [--target 3000] [--normalize-only] [--renormalize-ignored] [--consolidate] [--requeue-rated]
 // Reprend là où il s'était arrêté. Ctrl+C pour arrêter proprement.
 import { parseArgs } from 'node:util';
 import { openDb } from '../db.ts';
@@ -6,11 +6,27 @@ import { acquireImportLock, importProgress, runImport } from '../catalog/importe
 import { consolidateBases, requeueSuspiciousAliases, resolveUnknownTerms } from '../catalog/normalize-unknown.ts';
 import { migrateCatalog, reresolveRecipes, syncSeed } from '../catalog/store.ts';
 
-const { values } = parseArgs({ options: { target: { type: 'string', default: '3000' }, 'normalize-only': { type: 'boolean', default: false }, 'renormalize-ignored': { type: 'boolean', default: false }, consolidate: { type: 'boolean', default: false } } });
+const { values } = parseArgs({ options: { target: { type: 'string', default: '3000' }, 'normalize-only': { type: 'boolean', default: false }, 'renormalize-ignored': { type: 'boolean', default: false }, consolidate: { type: 'boolean', default: false }, 'requeue-rated': { type: 'boolean', default: false } } });
 const db = openDb();
 syncSeed(db);
 migrateCatalog(db);
-const target = Number(values.target);
+let target = Number(values.target);
+
+if (values['requeue-rated']) {
+  // Remet en tête de file les pages écartées pour « trop peu d'avis » mais notées ≥ 4/5 (règle Q34 révisée)
+  // et vise autant de recettes en plus.
+  const rows = db.prepare(`SELECT url, reason FROM crawl_queue WHERE status = 'rejected'`).all() as Array<{ url: string; reason: string | null }>;
+  const requeue = db.prepare(`UPDATE crawl_queue SET status = 'pending', reason = NULL, position = ? WHERE url = ?`);
+  let n = 0;
+  db.exec('BEGIN');
+  for (const r of rows) {
+    const m = r.reason?.match(/^note ([\d.]+) /);
+    if (m && parseFloat(m[1]) >= 4) requeue.run(-1 - n++, r.url);
+  }
+  db.exec('COMMIT');
+  target = importProgress(db, 0).imported + n;
+  console.log(`${n} pages remises en file, objectif ${target} recettes`);
+}
 
 if (values.consolidate) {
   // Fusionne les ingrédients de base en double (« blanc de poulet » / « poulet »).

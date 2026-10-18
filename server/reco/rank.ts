@@ -73,6 +73,12 @@ function isEligible(e: Entry, ctx: Context, mode: Mode, filters: Filters, missin
 
 const DISH_LIMIT = { low: 1, medium: 2, high: 4 } as const;
 
+/** Moyenne bayésienne : comme si chaque recette avait déjà 5 avis à 4,2/5. 5/5 avec 1 avis ≈ 4,33 ; 4,6/5 avec 120 avis ≈ 4,58. */
+export function bayesianRating(rating: number, reviews: number): number {
+  const PRIOR = 4.2, WEIGHT = 5;
+  return (rating * reviews + PRIOR * WEIGHT) / (reviews + WEIGHT);
+}
+
 export function scoreEntry(e: Entry, ctx: Context, missing: string[], mode: Mode): Scored {
   let score = 0;
   const own = e.bases.filter(b => ctx.available.has(b) && !ctx.staples.has(b));
@@ -81,8 +87,8 @@ export function scoreEntry(e: Entry, ctx: Context, missing: string[], mode: Mode
   score += Math.min(0.6, 0.12 * own.length);
   score += Math.min(1.2, 0.6 * own.filter(b => ctx.urgent.has(b)).length);
 
-  // Recettes éprouvées ; malus léger sans note (Q34).
-  score += e.rating === null || e.reviews === 0 ? -0.15 : (e.rating - 4.2) * 0.4 + Math.min(0.15, Math.log10(1 + e.reviews) * 0.05);
+  // Recettes éprouvées ; malus léger sans note (Q34). Peu d'avis : la note est ramenée vers la moyenne.
+  score += e.rating === null || e.reviews === 0 ? -0.15 : (bayesianRating(e.rating, e.reviews) - 4.2) * 0.4 + Math.min(0.15, Math.log10(1 + e.reviews) * 0.05);
 
   // Goûts : léger bonus vers les likes, pénalité vers les dislikes.
   const likeSim = ctx.liked.reduce((m, l) => Math.max(m, similarity(e, l, ctx.idf)), 0);

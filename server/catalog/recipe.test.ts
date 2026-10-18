@@ -61,6 +61,7 @@ test('durées, types, vaisselle, qualité', () => {
   assert.equal(countDishes(['Four', 'Casserole', 'Saladier', 'Couteau']), 2);
   const base = parseRecipePage(page(LD), 'u', 'marmiton')!;
   assert.equal(passesQuality({ ...base, rating: 3.9, reviews: 50 }), false);
-  assert.equal(passesQuality({ ...base, rating: 4.8, reviews: 3 }), false);
+  assert.equal(passesQuality({ ...base, rating: 4.8, reviews: 3 }), true);
+  assert.equal(passesQuality({ ...base, rating: 3.5, reviews: 1 }), false);
   assert.equal(passesQuality({ ...base, rating: null, reviews: 0 }), true);
 });

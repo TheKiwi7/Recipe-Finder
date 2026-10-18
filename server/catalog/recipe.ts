@@ -143,8 +143,11 @@ export function parseRecipePage(html: string, url: string, source: string): Pars
   };
 }
 
-/** Règle Q34 : on écarte les recettes mal notées ou trop peu notées ; les recettes sans note passent. */
+/**
+ * Règle Q34 (révisée) : on écarte seulement les recettes mal notées (< 4/5). Peu ou pas d'avis : acceptée,
+ * c'est le classement qui en tient compte (note ramenée vers la moyenne quand il y a peu d'avis).
+ */
 export function passesQuality(r: ParsedRecipe): boolean {
   if (r.rating === null || r.reviews === 0) return true;
-  return r.rating >= 4 && r.reviews >= 5;
+  return r.rating >= 4;
 }
