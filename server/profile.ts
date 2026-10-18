@@ -46,19 +46,24 @@ function clampWeights(w: ProfileWeights): ProfileWeights {
 
 let running = false;
 
-/** Met le profil à jour si les conditions sont réunies (ou toujours si `force`). Renvoie true si une mise à jour a eu lieu. */
-export async function maybeUpdateProfile(db: Db, force = false): Promise<boolean> {
-  if (running) return false;
+export type ProfileUpdateResult = 'updated' | 'nothing-new' | 'busy' | 'not-yet' | 'unavailable';
+
+/**
+ * Met le profil à jour si les conditions sont réunies (≥ 10 signaux, ≤ 1 / jour), ou dès qu'il y a du nouveau si `force`
+ * (bouton « Mettre à jour maintenant »). Sans signal nouveau, Claude n'est pas appelé.
+ */
+export async function maybeUpdateProfile(db: Db, force = false): Promise<ProfileUpdateResult> {
+  if (running) return 'busy';
   const status = profileStatus(db);
   const last = status.updatedAt ? Date.parse(status.updatedAt) : 0;
-  if (!force && (status.pendingSignals < MIN_SIGNALS || Date.now() - last < MIN_INTERVAL_MS)) return false;
-  if (status.pendingSignals === 0 && status.hasProfile) return false;
+  if (status.pendingSignals === 0 && status.hasProfile) return 'nothing-new';
+  if (!force && (status.pendingSignals < MIN_SIGNALS || Date.now() - last < MIN_INTERVAL_MS)) return 'not-yet';
 
   running = true;
   try {
     const signals = db.prepare('SELECT id, kind, detail, at FROM signals WHERE consumed = 0 ORDER BY id LIMIT 200').all() as Array<{ id: number; kind: string; detail: string; at: string }>;
     const q = getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE;
-    const label: Record<string, string> = { like: 'A aimé', dislike: 'A rejeté la recette', ban_ingredient: "N'aime pas l'ingrédient", unban_ingredient: "Ne rejette plus l'ingrédient", chat: 'A demandé' };
+    const label: Record<string, string> = { questionnaire: 'A modifié son questionnaire', like: 'A aimé', dislike: 'A rejeté la recette', ban_ingredient: "N'aime pas l'ingrédient", unban_ingredient: "Ne rejette plus l'ingrédient", chat: 'A demandé' };
     const prompt = `Questionnaire :
 - ${q.persons} personne(s), temps habituel max ${q.maxTime} min, tolérance à la vaisselle : ${q.dishTolerance}, régime : ${q.diet}
 - Allergies / exclusions : ${q.allergies.join(', ') || 'aucune'}
@@ -85,11 +90,11 @@ ${signals.map(s => `- ${label[s.kind] ?? s.kind} : ${s.detail}`).join('\n') || '
     setMeta(db, 'profile_last_error', '');
     const done = db.prepare('UPDATE signals SET consumed = 1 WHERE id = ?');
     for (const s of signals) done.run(s.id);
-    return true;
+    return 'updated';
   } catch (e) {
     // Claude indisponible ou réponse invalide : on réessaiera plus tard, rien n'est perdu (Q31).
     setMeta(db, 'profile_last_error', `${new Date().toISOString()} ${e instanceof ClaudeUnavailable ? e.message : String(e)}`.slice(0, 300));
-    return false;
+    return 'unavailable';
   } finally {
     running = false;
   }

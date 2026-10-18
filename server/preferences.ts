@@ -104,3 +104,13 @@ export function containsWord(baseKey: string, words: string[]): boolean {
   const padded = ` ${baseKey} `;
   return words.some(w => padded.includes(` ${w} `));
 }
+
+/** Résumé lisible de ce qui a changé dans le questionnaire, pour le signal envoyé au profil. */
+export function questionnaireDiff(before: Questionnaire, after: Questionnaire): string {
+  const changes: string[] = [];
+  for (const k of Object.keys(after) as Array<keyof Questionnaire>) {
+    const a = JSON.stringify(before[k]), b = JSON.stringify(after[k]);
+    if (a !== b) changes.push(`${k} : ${a} → ${b}`);
+  }
+  return changes.join(' ; ').slice(0, 1500);
+}

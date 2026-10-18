@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, RefreshCw, Undo2 } from 'lucide-react';
+import { Check, Download, RefreshCw, Undo2 } from 'lucide-react';
 import { api } from '../api.ts';
 import { QuestionnaireForm } from '../components/QuestionnaireForm.tsx';
 import { invalidateLists } from '../recipes-store.ts';
@@ -44,8 +44,8 @@ function RejectionsCard() {
   );
 }
 
-function ProfileCard() {
-  const { data: p, failed, reload, setData: setP } = useLoad(() => api.profile());
+function ProfileCard({ version }: { version: number }) {
+  const { data: p, failed, reload, setData: setP } = useLoad(() => api.profile(), [version]);
   const [busy, setBusy] = useState(false);
   if (!p) return <div className="card settings-card"><LoadState failed={failed} onRetry={reload} /></div>;
   const update = async () => {
@@ -53,7 +53,13 @@ function ProfileCard() {
     try {
       const r = await api.updateProfile();
       setP(r);
-      toast(r.updated ? 'Profil mis à jour' : 'Claude indisponible pour le moment, réessaie plus tard');
+      toast({
+        updated: 'Profil mis à jour',
+        'nothing-new': 'Rien de nouveau depuis la dernière mise à jour : le profil est déjà à jour',
+        busy: 'Une mise à jour est déjà en cours',
+        'not-yet': 'Pas encore assez de nouveaux signaux',
+        unavailable: 'Claude indisponible pour le moment, réessaie plus tard',
+      }[r.result]);
     } catch (e) { toast((e as Error).message); }
     finally { setBusy(false); }
   };
@@ -64,7 +70,9 @@ function ProfileCard() {
         <dt>Dernière mise à jour</dt><dd>{ago(p.updatedAt)}</dd>
         <dt>Nouveaux signaux en attente</dt><dd>{p.pendingSignals} <span className="muted">(mise à jour automatique dès 10, au plus une fois par jour)</span></dd>
       </dl>
-      <button className="btn btn-ghost" onClick={update} disabled={busy}><RefreshCw size={16} className={busy ? 'spin' : ''} />{busy ? 'Claude réfléchit…' : 'Mettre à jour maintenant'}</button>
+      <button className="btn btn-ghost" onClick={update} disabled={busy || p.pendingSignals === 0} title={p.pendingSignals === 0 ? 'Rien de nouveau depuis la dernière mise à jour' : undefined}>{p.pendingSignals === 0 && !busy
+        ? <><Check size={16} />Profil à jour</>
+        : <><RefreshCw size={16} className={busy ? 'spin' : ''} />{busy ? 'Claude réfléchit…' : `Mettre à jour maintenant (${p.pendingSignals} nouveau${p.pendingSignals > 1 ? 'x' : ''})`}</>}</button>
     </div>
   );
 }
@@ -81,15 +89,17 @@ function DataCard() {
 }
 
 export function SettingsPage() {
+  // Incrémenté à chaque enregistrement du questionnaire : le profil recompte ses signaux en attente.
+  const [version, setVersion] = useState(0);
   return (
     <>
       <header className="page-head"><div><h1 className="h1">Réglages</h1></div></header>
       <h2 className="h2 settings-title">Mes préférences</h2>
-      <div className="card settings-card"><QuestionnaireForm submitLabel="Enregistrer" onSaved={() => { invalidateLists(); toast('Préférences enregistrées'); }} /></div>
+      <div className="card settings-card"><QuestionnaireForm submitLabel="Enregistrer" onSaved={() => { invalidateLists(); setVersion(v => v + 1); toast('Préférences enregistrées'); }} /></div>
       <h2 className="h2 settings-title">Mes rejets</h2>
       <RejectionsCard />
       <h2 className="h2 settings-title">Profil</h2>
-      <ProfileCard />
+      <ProfileCard version={version} />
       <h2 className="h2 settings-title">Mes données</h2>
       <DataCard />
     </>

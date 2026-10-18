@@ -7,7 +7,7 @@ import {
 } from './pantry.ts';
 import { banIngredient, favorites, imagePath, recipeDetail, recommend, rejections, setReaction } from './reco/service.ts';
 import type { Mode } from './reco/rank.ts';
-import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, OPTIONAL_EQUIPMENT, setQuestionnaire, type Questionnaire } from './preferences.ts';
+import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, OPTIONAL_EQUIPMENT, questionnaireDiff, recordSignal, setQuestionnaire, type Questionnaire } from './preferences.ts';
 import { maybeUpdateProfile, profileStatus } from './profile.ts';
 import { askAboutRecipe, ChatError, chatHistory } from './chat.ts';
 import { exportData } from './export.ts';
@@ -60,13 +60,16 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     const q = { ...DEFAULT_QUESTIONNAIRE, ...(await c.req.json()) } as Questionnaire;
     q.persons = Math.max(1, Math.min(20, Math.round(Number(q.persons) || 2)));
     q.maxTime = Math.max(5, Math.min(600, Math.round(Number(q.maxTime) || 45)));
+    const before = getQuestionnaire(db);
     setQuestionnaire(db, q);
+    // Une modification du questionnaire est un signal pour le profil (ex. nouvelles notes sur les goûts).
+    if (before && JSON.stringify(before) !== JSON.stringify(q)) recordSignal(db, 'questionnaire', questionnaireDiff(before, q));
     status.preferencesChanged();
     return c.json({ questionnaire: getQuestionnaire(db) });
   });
 
   api.get('/profile', c => c.json(profileStatus(db)));
-  api.post('/profile/update', async c => c.json({ updated: await maybeUpdateProfile(db, true), ...profileStatus(db) }));
+  api.post('/profile/update', async c => c.json({ result: await maybeUpdateProfile(db, true), ...profileStatus(db) }));
 
   api.get('/recipes/:id/chat', c => c.json(chatHistory(db, Number(c.req.param('id')))));
   api.post('/recipes/:id/chat', async c => {
