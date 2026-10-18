@@ -32,7 +32,7 @@ if (existsSync(CLIENT_DIST)) {
   app.get('*', serveStatic({ root, path: 'index.html' })); // routes côté client
 }
 
-serve({ fetch: app.fetch, port: PORT, hostname: '127.0.0.1' }, info => console.log(`Recipe Finder sur http://localhost:${info.port}`));
+serve({ fetch: app.fetch, port: PORT, hostname: '127.0.0.1' }, info => console.log(`Recipe Finder sur http://127.0.0.1:${info.port}`));
 
 // Import en tâche de fond : compléter le catalogue initial, puis ~100 recettes par semaine.
 async function backgroundImport() {

@@ -3,7 +3,7 @@
 param([switch]$NoBrowser)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$url = 'http://localhost:5317'
+$url = 'http://127.0.0.1:5317' # pas localhost : sous Windows il se resout d'abord en IPv6 (::1), ou le serveur n'ecoute pas
 $brave = @(
   "$env:ProgramFiles\BraveSoftware\Brave-Browser\Application\brave.exe",
   "${env:ProgramFiles(x86)}\BraveSoftware\Brave-Browser\Application\brave.exe",

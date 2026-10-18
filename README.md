@@ -16,7 +16,7 @@ Prérequis : Node 24+, et le CLI `claude` connecté à l'abonnement (utilisé po
 
 | Commande | Rôle |
 |---|---|
-| `npm start` | Serveur sur http://localhost:5317 (sert l'interface construite) |
+| `npm start` | Serveur sur http://127.0.0.1:5317 (sert l'interface construite) |
 | `npm run dev` | Développement : serveur + Vite avec rechargement (http://localhost:5318) |
 | `npm run build` | Construit l'interface (`client/dist`) |
 | `npm test` | Tests (analyseur d'ingrédients, pages Marmiton, classement, mise en forme) |
