@@ -3,6 +3,7 @@ import { BookOpen, CircleDashed, Heart, Lock, Moon, RefreshCw, Settings, Shoppin
 import { api, type ImportStatus } from '../api.ts';
 import { navigate, type Route } from '../router.ts';
 import { usePantry } from '../pantry-store.ts';
+import { invalidateLists } from '../recipes-store.ts';
 
 function useTheme() {
   const systemDark = () => matchMedia('(prefers-color-scheme: dark)').matches;
@@ -18,6 +19,8 @@ function useTheme() {
 
 // Version de l'interface au chargement de la page : si le serveur en annonce une autre, on propose de recharger.
 const LOADED_BUILD: { value: string | null } = { value: null };
+// Démarrage du serveur vu en dernier : s'il change, les règles ont pu changer → listes recalculées sans bruit.
+const SEEN_SERVER: { value: string | null } = { value: null };
 
 function useImportStatus() {
   const [status, setStatus] = useState<ImportStatus | null>(null);
@@ -25,6 +28,8 @@ function useImportStatus() {
     let alive = true;
     const tick = () => api.importStatus().then(s => {
       LOADED_BUILD.value ??= s.build;
+      if (SEEN_SERVER.value && SEEN_SERVER.value !== s.server) invalidateLists();
+      SEEN_SERVER.value = s.server;
       if (alive) setStatus(s);
     }).catch(() => {});
     tick();

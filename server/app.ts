@@ -14,6 +14,9 @@ import { exportData } from './export.ts';
 
 const MIME: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
 
+/** Change à chaque démarrage du serveur : l'app recalcule alors ses listes (règles ou catalogue ont pu changer). */
+const SERVER_STARTED = new Date().toISOString();
+
 export function createApi(db: Db, status: { importing: () => boolean; preferencesChanged: () => void; build: () => string }) {
   const api = new Hono();
 
@@ -53,7 +56,7 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     return c.body(readFileSync(p), 200, { 'Content-Type': MIME[file.split('.').pop()!.toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'max-age=31536000' });
   });
 
-  api.get('/import/status', c => c.json({ ...importProgress(db, INITIAL_TARGET), running: status.importing(), build: status.build() }));
+  api.get('/import/status', c => c.json({ ...importProgress(db, INITIAL_TARGET), running: status.importing(), build: status.build(), server: SERVER_STARTED }));
 
   api.get('/questionnaire', c => c.json({ questionnaire: getQuestionnaire(db), defaults: DEFAULT_QUESTIONNAIRE, equipment: OPTIONAL_EQUIPMENT }));
   api.put('/questionnaire', async c => {
