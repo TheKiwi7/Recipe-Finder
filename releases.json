@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.5",
+    "date": "2026-10-19",
+    "fr": [
+      "Réglages → Mes rejets : un champ « + ajouter un rejet » pour écarter un ingrédient sans passer par une recette.",
+      "Placard, rejets, allergies et aversions : cliquer une suggestion l'ajoute directement.",
+      "IA locale (Ollama) : son moteur de modèle est arrêté dans tous les cas, y compris après une mise à jour de l'app ou un plantage d'Ollama."
+    ],
+    "en": [
+      "Settings → My rejections: a “+ add a rejection” field to rule out an ingredient without going through a recipe.",
+      "Cupboard, rejections, allergies and aversions: clicking a suggestion adds it straight away.",
+      "Local AI (Ollama): its model engine is stopped in every case, including after an app update or an Ollama crash."
+    ]
+  },
+  {
     "version": "1.0.4",
     "date": "2026-10-19",
     "fr": [
