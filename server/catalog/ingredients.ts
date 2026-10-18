@@ -50,7 +50,8 @@ export function parseIngredientLine(raw: string): Omit<IngredientLine, 'base'> {
 
   const name = s
     .replace(/\([^)]*\)/g, ' ')
-    .split(/,| ou | pour | \+ /i)[0]
+    // « pour » ne coupe que devant un usage (« pour le moule », « pour servir »), pas devant un nom (« pour tartiflette »).
+    .split(/,| ou | pour (?=(?:le|la|les|l['’]|un|une|des|du|servir|décorer|dorer|graisser|beurrer|fariner|badigeonner|napper|parsemer|la cuisson|accompagner)\b)| \+ /i)[0]
     .replace(/\s+/g, ' ')
     .trim();
 

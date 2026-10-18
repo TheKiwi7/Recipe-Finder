@@ -3,7 +3,7 @@ import { getMeta, loadAliases, setMeta, type Db } from '../db.ts';
 import { seedAliases } from './seed-ingredients.ts';
 import { cleanName, realImage, recipeType } from './recipe.ts';
 import { withNameDevices } from './utensils.ts';
-import { resolveBase, type IngredientLine } from './ingredients.ts';
+import { parseIngredientLine, resolveBase, type IngredientLine } from './ingredients.ts';
 import type { ParsedRecipe } from './recipe.ts';
 import { normalizeKey } from './text.ts';
 
@@ -79,19 +79,22 @@ export function syncSeed(db: Db): void {
   setMeta(db, 'seed_hash', hash);
 }
 
-const CATALOG_MIGRATION = '4';
+const CATALOG_MIGRATION = '5';
 
 /** Applique aux recettes déjà importées les corrections faites depuis (titres, types, appareils cités dans le titre, images génériques). */
 export function migrateCatalog(db: Db): void {
   if (getMeta(db, 'catalog_migration') === CATALOG_MIGRATION) return;
-  const rows = db.prepare('SELECT id, name, category_raw, utensils, image FROM recipes').all() as Array<{ id: number; name: string; category_raw: string | null; utensils: string; image: string | null }>;
-  const update = db.prepare('UPDATE recipes SET name = ?, type = ?, utensils = ?, image = ? WHERE id = ?');
+  const rows = db.prepare('SELECT id, name, category_raw, utensils, image, ingredients FROM recipes').all() as Array<{ id: number; name: string; category_raw: string | null; utensils: string; image: string | null; ingredients: string }>;
+  const update = db.prepare('UPDATE recipes SET name = ?, type = ?, utensils = ?, image = ?, ingredients = ? WHERE id = ?');
   db.exec('BEGIN');
   for (const r of rows) {
     const name = cleanName(r.name);
-    update.run(name, recipeType(r.category_raw, name), JSON.stringify(withNameDevices(JSON.parse(r.utensils), name)), realImage(r.image), r.id);
+    // Les lignes d'ingrédients sont ré-analysées depuis le texte d'origine (l'analyseur a pu évoluer).
+    const lines = (JSON.parse(r.ingredients) as IngredientLine[]).map(l => ({ ...parseIngredientLine(l.raw), base: l.base }));
+    update.run(name, recipeType(r.category_raw, name), JSON.stringify(withNameDevices(JSON.parse(r.utensils), name)), realImage(r.image), JSON.stringify(lines), r.id);
   }
   db.exec('COMMIT');
+  reresolveRecipes(db, true);
   setMeta(db, 'catalog_migration', CATALOG_MIGRATION);
 }
 

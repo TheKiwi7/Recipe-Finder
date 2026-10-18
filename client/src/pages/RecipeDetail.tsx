@@ -91,7 +91,7 @@ export function RecipeDetailPage({ id, onChat }: { id: number; onChat?: (r: Reci
                     <span className="ing-text">{scaleLine(l.raw, l.qty, l.unit, factor)}</span>
                     {l.base && (
                       <button className="ban" disabled={pendingBans.has(l.base)} onClick={() => toggleBan(l.base!)} title={isBanned ? 'Annuler' : `Ne plus me proposer de recettes avec « ${l.base} »`}>
-                        {isBanned ? <><Undo2 size={13} />Annuler</> : <><ThumbsDown size={13} />Je n'aime pas</>}
+                        {isBanned ? <><Undo2 size={13} />Annuler</> : <><ThumbsDown size={13} />Je n'aime pas : {l.base}</>}
                       </button>
                     )}
                   </li>

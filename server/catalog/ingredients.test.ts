@@ -23,6 +23,7 @@ test('sans quantité, fractions, parenthèses, alternatives', () => {
   assert.equal(parseIngredientLine('½ citron').qty, 0.5);
   assert.equal(parseIngredientLine('1/2 l de lait (entier de préférence)').name, 'lait');
   assert.equal(parseIngredientLine('50 g de beurre pour le moule').name, 'beurre');
+  assert.equal(parseIngredientLine('1 Fromage pour Tartiflette Nature RICHESMONTS®').name, 'fromage pour Tartiflette Nature RICHESMONTS®');
   assert.equal(parseIngredientLine('quelques feuilles de basilic').name, 'feuilles de basilic');
 });
 
@@ -46,6 +47,7 @@ test('ingrédient de base', () => {
   assert.equal(base('1 moules à cake'), null);
   assert.equal(base('1 truc introuvable'), undefined);
   assert.equal(base('40 couteaux'), 'couteaux');
+  assert.equal(base('1 Fromage pour Tartiflette Nature RICHESMONTS®'), 'reblochon');
   // Morceaux rouges regroupés sous « boeuf », la viande hachée reste à part.
   assert.equal(base('800 g de gîte de boeuf'), 'boeuf');
   assert.equal(base('1 rôti de boeuf'), 'boeuf');

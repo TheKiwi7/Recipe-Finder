@@ -46,7 +46,15 @@ if (values['renormalize-ignored']) {
 }
 
 if (values['normalize-only'] || values['renormalize-ignored']) {
-  while ((await resolveUnknownTerms(db)) > 0) console.log('lot normalisé…');
+  // S'arrête dès qu'un lot ne fait plus baisser la file (termes que Claude omet, ou import en cours qui en ajoute).
+  const pending = () => (db.prepare('SELECT COUNT(*) n FROM unknown_terms').get() as { n: number }).n;
+  for (let before = pending(); before > 0; ) {
+    await resolveUnknownTerms(db);
+    const after = pending();
+    console.log(`lot normalisé… (${after} termes en attente)`);
+    if (after >= before) break;
+    before = after;
+  }
   console.log(importProgress(db, target));
   process.exit(0);
 }

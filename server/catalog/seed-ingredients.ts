@@ -72,7 +72,7 @@ gruyère: gruyère râpé | emmental | emmental râpé | fromage râpé | comté
 chèvre: fromage de chèvre | bûche de chèvre | buche de chevre | chèvre frais
 roquefort: bleu | gorgonzola
 feta:
-reblochon:
+reblochon: fromage pour tartiflette | fromage à tartiflette
 camembert:
 raclette: fromage à raclette
 cheddar:
