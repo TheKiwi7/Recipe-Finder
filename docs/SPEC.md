@@ -34,7 +34,7 @@ App perso, locale, qui recommande des recettes **réelles** (trouvées en ligne)
 - Filtres stricts : type (Plat par défaut, Entrée, Dessert, Apéro, Petit-déj.) et temps (≤ 20 min, ≤ 45 min, tous).
 - Moins de 10 faisables → afficher ce qui existe + message renvoyant vers Presque.
 - **Changement du stock** → recalcul immédiat : les recettes devenues infaisables disparaissent, la liste est complétée au même nombre, les recettes encore faisables restent à leur place.
-- Une recette vue sans réaction ne réapparaît qu'après ~**2 semaines**.
+- Une recette vue sans réaction ne réapparaît qu'après ~**2 semaines** (sauf dans la même session : vue il y a moins de 6 h, elle peut revenir, par ex. en revenant sur un filtre).
 
 ## Onglet Presque
 
@@ -57,6 +57,8 @@ App perso, locale, qui recommande des recettes **réelles** (trouvées en ligne)
 ## Profil et classement
 
 - **Questionnaire au premier lancement** (modifiable dans les réglages) : allergies/régime, temps max habituel, nombre de personnes, ustensiles possédés, tolérance à la vaisselle.
+  - Allergies et régime : exclusion stricte **par mot** avec familles d'allergènes (« arachide » exclut aussi huile d'arachide et cacahuète ; « fruits à coque », « gluten », « lactose »…).
+  - Appareils optionnels (four, micro-ondes, robot, robot cuiseur type Thermomix, Airfryer, friteuse…) : une recette qui demande un appareil absent est exclue ; l'appareil est aussi détecté dans le titre (« … au Thermomix »).
 - **Classement local, sans Claude** : score = correspondance au stock + bonus « à finir vite » + similarité aux likes / dislikes (ingrédients principaux, catégorie, temps, vaisselle) + réglages du profil + malus temps au-delà du max habituel. ~**30 %** d'exploration par lot.
 - **Claude (Sonnet)** rédige un profil détaillé (non affiché) + des **réglages structurés** consommés par l'algorithme. Mise à jour en tâche de fond quand **≥ 10 nouveaux signaux** (likes, dislikes, questions du chat), **max 1 fois / jour**.
 - Claude indisponible (limite, CLI déconnecté) → l'app fonctionne normalement ; chat affiche « Claude indisponible pour le moment », mise à jour du profil reportée.
@@ -80,6 +82,12 @@ Une UI propre est une priorité. Direction retenue : **variante A « Épuré »*
 - **Filtres** : puces arrondies au-dessus de la grille.
 - **Page détail** : image fixe à gauche, à droite titre, tuiles de stats (total, préparation, cuisson, vaisselle), ingrédients avec +/- portions et « Je n'aime pas » au survol de chaque ligne, ustensiles en puces, étapes numérotées.
 - **Chat** : bouton flottant « Demander à Claude », panneau repliable à droite (360 px), suggestions de questions quand vide.
+
+## Qualité du catalogue
+
+- `npm run audit` : taux d'acceptation, ingrédients non reconnus, termes ignorés, correspondances « X de Y → X » à vérifier, fiches incomplètes, échantillon.
+- Les noms « X de Y » dont seul X est connu (« eau de fleur d'oranger », « œufs de saumon ») ne sont pas ramenés à X : Claude tranche, sauf compléments sûrs (« en poudre », « à température ambiante »).
+- Les ustensiles de Marmiton contiennent de la publicité : ils sont ramenés à un vocabulaire canonique ; seules les grosses pièces comptent dans la vaisselle.
 
 ## Ordre de construction
 
