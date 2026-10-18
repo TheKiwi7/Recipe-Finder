@@ -145,9 +145,13 @@ export function acquireImportLock(): boolean {
     }
   } catch { /* pas de verrou */ }
   writeFileSync(LOCK_FILE, String(process.pid));
-  const release = () => { try { if (readFileSync(LOCK_FILE, 'utf8') === String(process.pid)) unlinkSync(LOCK_FILE); } catch { /* déjà libéré */ } };
-  process.once('exit', release);
+  process.once('exit', releaseImportLock);
   return true;
+}
+
+/** Libère le verrou s'il appartient à ce processus (fin d'un import en tâche de fond). */
+export function releaseImportLock(): void {
+  try { if (readFileSync(LOCK_FILE, 'utf8') === String(process.pid)) unlinkSync(LOCK_FILE); } catch { /* déjà libéré */ }
 }
 
 export const INITIAL_TARGET = 3000;

@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { DATA_DIR, openDb } from './db.ts';
 import { createApi } from './app.ts';
-import { acquireImportLock, currentTarget, runImport } from './catalog/importer.ts';
+import { acquireImportLock, currentTarget, releaseImportLock, runImport } from './catalog/importer.ts';
 import { migrateCatalog, syncSeed } from './catalog/store.ts';
 import { ensureStaples } from './pantry.ts';
 import { maybeUpdateProfile } from './profile.ts';
@@ -45,6 +45,7 @@ async function backgroundImport() {
     console.error('[import]', e);
   } finally {
     importing = false;
+    releaseImportLock();
   }
 }
 void backgroundImport();
