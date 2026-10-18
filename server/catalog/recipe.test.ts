@@ -60,6 +60,11 @@ test('durées, types, vaisselle, qualité', () => {
   assert.equal(recipeType('Accompagnement', 'Rösti de pomme de terre'), 'Accompagnement');
   assert.equal(recipeType('Sauce', 'Sauce au poivre'), 'Sauce');
   assert.equal(recipeType('Conseil', 'Bien choisir son melon'), 'Autre');
+  // Boisson rangée ailleurs par son auteur ; mais un cocktail de crevettes reste une entrée.
+  assert.equal(recipeType('Entrée', 'Sangria sans alcool facile'), 'Boisson');
+  assert.equal(recipeType('Dessert', 'Milk-shake à la fraise rapide'), 'Boisson');
+  assert.equal(recipeType('Entrée', 'Cocktail aux crevettes'), 'Entrée');
+  assert.equal(recipeType('Amuse-gueule', 'Tomates cocktail farcies'), 'Apéro');
   assert.equal(cleanName('ORONGES ou amanite des césars'), 'Oronges ou amanite des césars');
   assert.equal(cleanName('Pain aux olives en MAP'), 'Pain aux olives en MAP');
   assert.deepEqual(withNameDevices([], 'Pain aux olives en MAP'), ['Machine à pain']);

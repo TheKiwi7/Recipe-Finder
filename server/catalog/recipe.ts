@@ -83,8 +83,14 @@ function pickImage(img: unknown): string | null {
 
 const BREAKFAST = /cr[eê]pe|pancake|granola|porridge|muesli|brioche|pain perdu|smoothie|gaufre|overnight/i;
 
+// Boissons que leur auteur a rangées ailleurs sur Marmiton (« Sangria sans alcool » en entrée, milk-shakes en dessert) :
+// le nom commence par une boisson, sans ingrédient de plat (« Cocktail de crevettes », « Spritz parmesan et cacahouètes »).
+const DRINK = /^(?:sangria|citronnade|orangeade|limonade|milk-?shake|vin chaud|chocolat chaud|th[eé] glac[eé]|lait de poule|punch|mojito|spritz|cocktail)\b/i;
+const NOT_DRINK = /crevette|crabe|homard|saumon|avocat|cheesecake|parmesan/i;
+
 export function recipeType(categoryRaw: string | null, name: string): RecipeType {
   if (BREAKFAST.test(name)) return 'Petit-déj.';
+  if (DRINK.test(name) && !NOT_DRINK.test(name)) return 'Boisson';
   const c = (categoryRaw ?? '').toLowerCase();
   if (c.includes('plat')) return 'Plat';
   if (c.includes('entrée') || c.includes('entree')) return 'Entrée';
