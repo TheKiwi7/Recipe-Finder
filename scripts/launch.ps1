@@ -26,14 +26,30 @@ Add-Type @"
 using System; using System.Collections.Generic; using System.Runtime.InteropServices; using System.Text;
 public static class RfWindows {
   delegate bool EnumProc(IntPtr h, IntPtr p);
-  static IntPtr appIcon;
   [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr p);
   [DllImport("user32.dll")] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
   [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
-  [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern IntPtr LoadImage(IntPtr instance, string name, uint type, int width, int height, uint flags);
-  [DllImport("user32.dll", EntryPoint = "SendMessageW")] static extern IntPtr SendMessage(IntPtr h, uint message, IntPtr wParam, IntPtr lParam);
+  [StructLayout(LayoutKind.Sequential, Pack = 4)] public struct PKEY { public Guid fmtid; public uint pid; }
+  [StructLayout(LayoutKind.Explicit)] public struct PV { [FieldOffset(0)] public ushort vt; [FieldOffset(8)] public IntPtr p; }
+  [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  public interface IPropertyStore { void GetCount(out uint c); void GetAt(uint i, out PKEY k); void GetValue(ref PKEY k, out PV v); void SetValue(ref PKEY k, ref PV v); void Commit(); }
+  [DllImport("shell32.dll")] static extern int SHGetPropertyStoreForWindow(IntPtr h, ref Guid iid, [MarshalAs(UnmanagedType.Interface)] out IPropertyStore s);
+  // Identite de la fenetre pour la barre des taches (proprietes System.AppUserModel), posee une fois a l'ouverture :
+  // la barre des taches la traite comme l'app Recipe Finder et prend l'icone du .ico (nette a toutes les tailles), au lieu
+  // de la petite icone de la page que le navigateur agrandit (floue). Epingler la fenetre relance l'app par le lanceur.
+  public static int SetAppIdentity(IntPtr h, string id, string icon, string command) {
+    var iid = new Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"); IPropertyStore s;
+    int hr = SHGetPropertyStoreForWindow(h, ref iid, out s); if (hr != 0) return hr;
+    var g = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3");
+    // RelaunchCommand (2), RelaunchIconResource (3), RelaunchDisplayNameResource (4), puis ID (5) qui les active.
+    foreach (var kv in new[] { Tuple.Create(2u, command), Tuple.Create(3u, icon), Tuple.Create(4u, "Recipe Finder"), Tuple.Create(5u, id) }) {
+      var k = new PKEY { fmtid = g, pid = kv.Item1 }; var v = new PV { vt = 31, p = Marshal.StringToCoTaskMemUni(kv.Item2) };
+      s.SetValue(ref k, ref v); Marshal.FreeCoTaskMem(v.p);
+    }
+    Marshal.ReleaseComObject(s); return 0;
+  }
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
   [StructLayout(LayoutKind.Sequential)] public struct PLACEMENT { public int length, flags, showCmd; public POINT min, max; public RECT normal; }
@@ -47,17 +63,6 @@ public static class RfWindows {
       return true;
     }, IntPtr.Zero);
     return found;
-  }
-  public static int SetIcon(IntPtr h, string path) {
-    if (appIcon == IntPtr.Zero) appIcon = LoadImage(IntPtr.Zero, path, 1, 32, 32, 0x10);
-    if (appIcon == IntPtr.Zero) return Marshal.GetLastWin32Error();
-    if (SendMessage(h, 0x7F, new IntPtr(2), IntPtr.Zero) != appIcon) {
-      SendMessage(h, 0x80, new IntPtr(0), appIcon);
-      SendMessage(h, 0x80, new IntPtr(2), appIcon);
-    }
-    if (SendMessage(h, 0x7F, new IntPtr(1), IntPtr.Zero) != appIcon)
-      SendMessage(h, 0x80, new IntPtr(1), appIcon);
-    return 0;
   }
   // "agrandie,gauche,haut,droite,bas" : taille normale (hors agrandissement) et etat agrandi ; reduite = son etat d'avant.
   public static string Get(IntPtr h) {
@@ -77,6 +82,20 @@ public static class RfWindows {
 "@
 [void][RfWindows]::SetProcessDPIAware() # pixels reels de l'ecran, a l'enregistrement comme au retablissement
 $windowFile = "$root\data\window.txt"
+$icon = "$root\scripts\logo.ico"
+# Commande de l'app, la meme que celle des raccourcis : la barre des taches s'en sert pour la relancer une fois epinglee.
+$relaunch = "$env:SystemRoot\System32\conhost.exe --headless $env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$root\scripts\launch.ps1`""
+
+# Raccourcis d'une version precedente (ancien logo recipe-finder.ico, que Windows garde en cache avec l'ancien dessin ;
+# PowerShell lance sans conhost --headless, visible dans Windows Terminal) : remis a jour.
+$shell = New-Object -ComObject WScript.Shell
+$outdated = foreach ($folder in [Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs')) {
+  $path = "$folder\Recipe Finder.lnk"
+  if (-not (Test-Path -LiteralPath $path)) { continue }
+  $lnk = $shell.CreateShortcut($path)
+  if ($lnk.Arguments.Contains("$root\scripts\launch.ps1") -and ($lnk.IconLocation -ne "$icon,0" -or $lnk.TargetPath -notlike '*\conhost.exe')) { $path }
+}
+if ($outdated) { & "$root\scripts\create-shortcut.ps1" -OnlyExisting | Out-Null }
 
 # Attend la nouvelle fenetre de l'app (son titre apparait une fois la page chargee), ou $null.
 function Wait-NewWindow($before) {
@@ -101,15 +120,7 @@ function Restore-Window($h) {
 # Releve l'emplacement de la fenetre chaque seconde tant qu'elle est ouverte (le lanceur reste cache en arriere-plan).
 function Watch-Window($h) {
   $last = $null
-  $iconPath = "$root\scripts\recipe-finder.ico"
-  $iconError = [RfWindows]::SetIcon($h, $iconPath)
-  if ($iconError) { Write-Warning "Impossible d'appliquer l'icône à la fenêtre ($iconError) : $([ComponentModel.Win32Exception]::new($iconError).Message)" }
   while ([RfWindows]::IsWindow($h)) {
-    $iconError = [RfWindows]::SetIcon($h, $iconPath)
-    if ($iconError) {
-      Write-Warning "Impossible d'appliquer l'icône à la fenêtre ($iconError) : $([ComponentModel.Win32Exception]::new($iconError).Message)"
-      break
-    }
     $now = [RfWindows]::Get($h)
     if ($now -and $now -ne $last) { Set-Content $windowFile $now -Encoding ascii; $last = $now }
     Start-Sleep -Seconds 1
@@ -123,7 +134,10 @@ function Open-App {
   if ($exe -and (Test-Path $exe) -and @('chrome', 'msedge', 'brave', 'vivaldi', 'chromium') -contains $name) {
     Start-Process $exe -ArgumentList "--app=$url"
     $h = Wait-NewWindow $before
-    if ($h) { Restore-Window $h; Watch-Window $h }
+    if ($h) {
+      [void][RfWindows]::SetAppIdentity($h, 'TheKiwi7.RecipeFinder', "$icon,0", $relaunch)
+      Restore-Window $h; Watch-Window $h
+    }
   } elseif ($exe -and (Test-Path $exe) -and $name -eq 'firefox') {
     Start-Process $exe -ArgumentList '-new-window', $url
   } else {

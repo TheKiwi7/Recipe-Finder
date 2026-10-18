@@ -70,8 +70,9 @@ Step "Creation des raccourcis (bureau et menu Demarrer)"
 & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\create-shortcut.ps1"
 
 Step "Lancement de Recipe Finder"
-# En arriere-plan : le lanceur reste actif (cache) tant que la fenetre de l'app est ouverte, pour retenir sa taille.
-Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$root\scripts\launch.ps1`""
+# En arriere-plan : le lanceur reste actif (sans fenetre, via conhost --headless comme le raccourci) tant que la fenetre
+# de l'app est ouverte, pour retenir sa taille.
+Start-Process "$env:SystemRoot\System32\conhost.exe" -ArgumentList '--headless', "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe", '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$root\scripts\launch.ps1`""
 
 Write-Host ""
 Write-Host "C'est pret ! La prochaine fois, ouvre l'app avec le raccourci Recipe Finder du bureau." -ForegroundColor Cyan
