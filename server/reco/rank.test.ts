@@ -24,6 +24,10 @@ test('une recette sans ingrédient reconnu hors placard n’est jamais proposée
   assert.deepEqual(rankCandidates([entry([]), entry(['sel', 'poivre'])], ctx(), 'ready', {}), []);
 });
 
+test('une recette sans photo n’est pas proposée', () => {
+  assert.deepEqual(rankCandidates([entry(['oeuf'], { hasImage: false })], ctx(), 'ready', {}), []);
+});
+
 test('onglet Presque : 1 à 3 manquants, les courants pénalisent moins', () => {
   const rare = entry(['poulet', 'safran']);
   const courant = entry(['poulet', 'oignon']);

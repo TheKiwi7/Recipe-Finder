@@ -39,7 +39,7 @@ export function loadCatalog(db: Db): Catalog {
   }
   const entries = rows.map(r => ({
     id: r.id, name: r.name, image: r.image, type: r.type, totalMin: r.total_min, dishes: r.dishes, rating: r.rating, reviews: r.reviews,
-    bases: bases.get(r.id) ?? [], keywords: JSON.parse(r.keywords), utensils: JSON.parse(r.utensils),
+    bases: bases.get(r.id) ?? [], keywords: JSON.parse(r.keywords), utensils: JSON.parse(r.utensils), hasImage: !!r.image,
   }));
   const df = new Map<string, number>();
   for (const e of entries) for (const b of e.bases) df.set(b, (df.get(b) ?? 0) + 1);

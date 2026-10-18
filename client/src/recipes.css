@@ -13,7 +13,7 @@
 .rcard.gone:hover { opacity: 0.6; }
 .rcard-media { position: relative; }
 .img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; background: var(--surface-2); }
-.img-missing { display: grid; place-items: center; color: var(--muted); }
+.img-missing { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 500; background: linear-gradient(135deg, var(--surface-2), var(--accent-soft)); }
 .rcard-body { padding: 13px 15px 15px; }
 .rcard-name { font-size: 15.5px; font-weight: 600; line-height: 1.35; margin: 0 0 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.7em; }
 .rcard-missing { margin: -2px 0 9px; font-size: 13px; color: var(--danger); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

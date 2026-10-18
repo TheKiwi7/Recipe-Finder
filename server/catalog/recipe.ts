@@ -94,6 +94,11 @@ export function recipeType(categoryRaw: string | null, name: string): RecipeType
   return 'Autre';
 }
 
+/** Marmiton met une image générique (« default-recipe-picture ») aux recettes sans photo : ce n'est pas une image. */
+export function realImage(url: string | null): string | null {
+  return url && !/default-recipe-picture/i.test(url) ? url : null;
+}
+
 /** « rouelle de porc : la meilleure recette » → « Rouelle de porc ». */
 export function cleanName(name: string): string {
   const n = name.replace(/\s*:\s*[^:]*\brecette\b[^:]*$/i, '').trim();
@@ -125,7 +130,7 @@ export function parseRecipePage(html: string, url: string, source: string): Pars
     source,
     url,
     name,
-    image: pickImage(ld.image),
+    image: realImage(pickImage(ld.image)),
     categoryRaw,
     type: recipeType(categoryRaw, name),
     totalMin: isoMinutes(ld.totalTime) || isoMinutes(ld.prepTime) + isoMinutes(ld.cookTime),

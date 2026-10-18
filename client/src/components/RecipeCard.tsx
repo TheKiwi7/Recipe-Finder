@@ -34,7 +34,7 @@ export function ReactButtons({ card, onChange, large }: { card: { id: number; re
 
 export function RecipeImage({ src, className }: { src: string | null; className?: string }) {
   const [broken, setBroken] = useState(false);
-  if (!src || broken) return <div className={`img img-missing ${className ?? ''}`}><ImageOff size={28} /></div>;
+  if (!src || broken) return <div className={`img img-missing ${className ?? ''}`}><ImageOff size={26} /><span>Pas de photo</span></div>;
   return <img className={`img ${className ?? ''}`} src={src} alt="" loading="lazy" onError={() => setBroken(true)} />;
 }
 

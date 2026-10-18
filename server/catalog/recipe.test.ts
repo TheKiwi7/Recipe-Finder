@@ -25,6 +25,7 @@ test('page Marmiton → recette', () => {
   assert.equal(r.name, 'Gratin dauphinois');
   assert.equal(parseRecipePage(page({ ...LD, name: 'Ganache au chocolat : recette facile' }), 'u', 'marmiton')!.name, 'Ganache au chocolat');
   assert.equal(r.image, 'https://img/big.jpg');
+  assert.equal(parseRecipePage(page({ ...LD, image: 'https://www.marmiton.org/assets/images/default-recipe-picture_80x80-6PRRwF3.jpg' }), 'u', 'marmiton')!.image, null);
   assert.equal(r.type, 'Plat');
   assert.deepEqual([r.totalMin, r.prepMin, r.cookMin, r.servings], [80, 20, 60, 4]);
   assert.deepEqual([r.rating, r.reviews], [4.6, 120]);
