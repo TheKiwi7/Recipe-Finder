@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.0.2",
+    "date": "2026-10-19",
+    "fr": [
+      "Encore plus de variété : les recettes de la même famille (les caramels au beurre salé…) ne remplissent plus le haut de la liste. Trois ou quatre par page au plus, les autres arrivent avec « Charger plus »."
+    ],
+    "en": [
+      "Even more variety: recipes from the same family (salted-butter caramels…) no longer fill the top of the list. Three or four per page at most, the rest come with “Load more”."
+    ]
+  },
+  {
     "version": "1.0.1",
     "date": "2026-10-19",
     "fr": [
