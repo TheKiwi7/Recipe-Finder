@@ -58,6 +58,20 @@ CREATE TABLE IF NOT EXISTS crawl_queue (
   fetched_at TEXT
 );
 CREATE INDEX IF NOT EXISTS crawl_queue_next ON crawl_queue(status, position);
+CREATE TABLE IF NOT EXISTS pantry (
+  id INTEGER PRIMARY KEY,
+  label TEXT NOT NULL,         -- tel que saisi (« tomates cerises »)
+  base TEXT NOT NULL,          -- ingrédient de base utilisé pour la correspondance (« tomate »)
+  qty REAL,                    -- indicatif
+  unit TEXT,
+  urgent INTEGER NOT NULL DEFAULT 0, -- « à finir vite »
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+-- Placard de base : toujours considéré comme disponible.
+CREATE TABLE IF NOT EXISTS staples (
+  base TEXT PRIMARY KEY
+);
 CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

@@ -57,6 +57,11 @@ export function parseIngredientLine(raw: string): Omit<IngredientLine, 'base'> {
   return { raw, qty, unit, name: name.charAt(0).toLowerCase() + name.slice(1) };
 }
 
+// « X de Y » dont seul X est connu : souvent Y est le vrai ingrédient (« eau de fleur d'oranger », « noisette de beurre »).
+// On laisse alors Claude trancher, sauf pour ces compléments sans ambiguïté.
+const CONNECTOR = /^(de|d|a|au|aux|en)\b/;
+const SAFE_TAILS = ['en poudre', 'en morceau', 'en de', 'en tranche', 'en conserve', 'en boite', 'en branche', 'en grain', 'en feuille', 'a temperature ambiante', 'a la temperature ambiante', 'de preference', 'de votre choix', 'au choix', 'du jardin', 'de saison'];
+
 const LEADING_ADJECTIVES = new Set(['gros', 'grosse', 'petit', 'petite', 'beau', 'belle', 'bon', 'bonne', 'jeune', 'demi', 'grand', 'grande', 'fin', 'fine', 'bel']);
 
 /**
@@ -68,7 +73,10 @@ export function resolveBase(name: string, aliases: ReadonlyMap<string, string | 
   const attempt = (t: string[]) => {
     for (let n = t.length; n > 0; n--) {
       const key = t.slice(0, n).join(' ');
-      if (aliases.has(key)) return aliases.get(key)!;
+      if (!aliases.has(key)) continue;
+      const tail = t.slice(n).join(' ');
+      if (tail && CONNECTOR.test(tail) && !SAFE_TAILS.some(s => tail.startsWith(s))) return undefined;
+      return aliases.get(key)!;
     }
     return undefined;
   };

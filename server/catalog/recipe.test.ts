@@ -23,6 +23,7 @@ test('page Marmiton → recette', () => {
     .map(t => `<div class="card-recipe-utensil__title"> ${t} </div>`).join('');
   const r = parseRecipePage(page(LD, utensilsHtml), 'https://x', 'marmiton')!;
   assert.equal(r.name, 'Gratin dauphinois');
+  assert.equal(parseRecipePage(page({ ...LD, name: 'Ganache au chocolat : recette facile' }), 'u', 'marmiton')!.name, 'Ganache au chocolat');
   assert.equal(r.image, 'https://img/big.jpg');
   assert.equal(r.type, 'Plat');
   assert.deepEqual([r.totalMin, r.prepMin, r.cookMin, r.servings], [80, 20, 60, 4]);

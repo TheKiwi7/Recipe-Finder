@@ -45,5 +45,13 @@ test('ingrédient de base', () => {
   assert.equal(base('65 g de cerneaux de noix'), 'noix');
   assert.equal(base('1 moules à cake'), null);
   assert.equal(base('1 truc introuvable'), undefined);
+  // « X de Y » ambigu : laissé à Claude ; compléments sûrs acceptés.
+  assert.equal(base("1 c. à café d'eau de fleur d'oranger"), "fleur d'oranger");
+  assert.equal(base("2 cl d'eau de vie"), undefined);
+  assert.equal(base('2 œufs de saumon'), undefined);
+  assert.equal(base('100 g de sucre en poudre'), 'sucre');
+  assert.equal(base('50 g de beurre à température ambiante'), 'beurre');
+  assert.equal(base('1 noisette de beurre'), 'beurre');
+  assert.equal(base('200 g de champignons de Paris frais'), 'champignon');
   assert.equal(resolveBase('décoration', new Map([['decoration', null]])), null);
 });

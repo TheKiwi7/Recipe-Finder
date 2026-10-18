@@ -2,7 +2,7 @@
 // Reprend là où il s'était arrêté. Ctrl+C pour arrêter proprement.
 import { parseArgs } from 'node:util';
 import { openDb } from '../db.ts';
-import { importProgress, runImport } from '../catalog/importer.ts';
+import { acquireImportLock, importProgress, runImport } from '../catalog/importer.ts';
 import { resolveUnknownTerms } from '../catalog/normalize-unknown.ts';
 import { syncSeed } from '../catalog/store.ts';
 
@@ -17,6 +17,10 @@ if (values['normalize-only']) {
   process.exit(0);
 }
 
+if (!acquireImportLock()) {
+  console.log("Un import est déjà en cours (probablement dans l'app).");
+  process.exit(1);
+}
 const ctrl = new AbortController();
 process.on('SIGINT', () => { console.log('\nArrêt demandé, fin de la requête en cours…'); ctrl.abort(); });
 

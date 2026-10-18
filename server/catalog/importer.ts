@@ -1,5 +1,7 @@
+import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ClaudeUnavailable } from '../claude.ts';
-import { getMeta, loadAliases, setMeta, type Db } from '../db.ts';
+import { DATA_DIR, getMeta, loadAliases, setMeta, type Db } from '../db.ts';
 import { resolveUnknownTerms } from './normalize-unknown.ts';
 import { parseRecipePage, passesQuality } from './recipe.ts';
 import { saveRecipe } from './store.ts';
@@ -120,4 +122,35 @@ export async function runImport(db: Db, opts: { target: number; signal?: AbortSi
     opts.onProgress?.({ ...importProgress(db, opts.target), last });
   }
   if (!opts.signal?.aborted) { await flushUnknown(db, true, log); }
+}
+
+const LOCK_FILE = join(DATA_DIR, 'import.lock');
+
+/** Un seul import à la fois (app + script en ligne de commande). Renvoie false si un autre processus importe déjà. */
+export function acquireImportLock(): boolean {
+  try {
+    const pid = Number(readFileSync(LOCK_FILE, 'utf8'));
+    if (pid && pid !== process.pid) {
+      try { process.kill(pid, 0); return false; } catch { /* processus mort : verrou périmé */ }
+    }
+  } catch { /* pas de verrou */ }
+  writeFileSync(LOCK_FILE, String(process.pid));
+  const release = () => { try { if (readFileSync(LOCK_FILE, 'utf8') === String(process.pid)) unlinkSync(LOCK_FILE); } catch { /* déjà libéré */ } };
+  process.once('exit', release);
+  return true;
+}
+
+export const INITIAL_TARGET = 3000;
+const WEEKLY_GROWTH = 100;
+const WEEK_MS = 7 * 24 * 3600 * 1000;
+
+/** Objectif du moment : compléter l'import initial, puis +100 recettes par semaine (Q26). */
+export function currentTarget(db: Db): number {
+  const imported = importProgress(db, 0).imported;
+  if (imported < INITIAL_TARGET) return INITIAL_TARGET;
+  const last = getMeta(db, 'last_growth_at');
+  if (!last) { setMeta(db, 'last_growth_at', new Date().toISOString()); return imported; }
+  if (Date.now() - Date.parse(last) < WEEK_MS) return imported;
+  setMeta(db, 'last_growth_at', new Date().toISOString());
+  return imported + WEEKLY_GROWTH;
 }

@@ -23,7 +23,7 @@ gingembre:
 citronnelle:
 sel: sel fin | gros sel | fleur de sel
 poivre: poivre noir | poivre du moulin | poivre blanc
-piment: piment d espelette | piment de cayenne | piment rouge | piment vert
+piment: piment d espelette | piment de cayenne | poivre de cayenne | piment rouge | piment vert | piment en poudre
 paprika: paprika fumé
 cumin:
 curry: curry en poudre | pâte de curry
@@ -43,6 +43,7 @@ mayonnaise:
 miel:
 sirop d'érable:
 sucre: sucre en poudre | sucre blanc | sucre roux | sucre de canne | cassonade | vergeoise | sucre semoule
+fleur d'oranger: eau de fleur d oranger
 sucre glace:
 farine: farine de blé | farine t45 | farine t55 | farine t65
 maïzena: fécule de maïs | maizena
@@ -51,14 +52,15 @@ levure de boulanger: levure boulangère | levure fraîche
 bicarbonate:
 chapelure:
 eau: eau froide | eau chaude | eau tiède | eau bouillante
-bouillon: cube de bouillon | bouillon de volaille | bouillon de légumes | bouillon de boeuf | fond de veau | bouillon cube
+bouillon: cube de bouillon | bouillon de volaille | bouillon de légumes | bouillon de boeuf | fond de veau | bouillon cube | bouillon de poule | fond de volaille
 vin blanc:
 vin rouge:
 bière:
 lait: lait entier | lait demi écrémé | lait écrémé
 lait de coco:
+lait végétal: lait de soja | lait d amande | lait d avoine | lait de riz | boisson végétale
 crème fraîche: crème | crème fraîche épaisse | crème épaisse | crème liquide | crème entière | crème fleurette | crème fraîche liquide | crème légère
-beurre: beurre doux | beurre demi sel | beurre salé | beurre mou | beurre fondu | noix de beurre
+beurre: beurre doux | beurre demi sel | beurre salé | beurre mou | beurre fondu | noix de beurre | noisette de beurre
 oeuf: jaune d oeuf | blanc d oeuf
 yaourt: yaourt nature | yaourt grec
 fromage blanc:
@@ -98,7 +100,7 @@ poivron: poivron rouge | poivron vert | poivron jaune
 tomate: tomate cerise | tomate grappe | tomate pelée | tomate concassée
 concentré de tomate: double concentré de tomate | purée de tomate
 coulis de tomate: sauce tomate | passata
-champignon: champignon de paris | champignons de paris
+champignon: champignon de paris | champignons de paris | champignon de couche
 poireau:
 épinard: pousse d épinard
 salade: laitue | mâche | roquette | mesclun | batavia | feuille de salade
@@ -106,6 +108,7 @@ concombre:
 brocoli:
 chou-fleur: chou fleur
 chou: chou vert | chou rouge | chou blanc
+chou de Bruxelles:
 céleri: branche de céleri | céleri rave
 fenouil:
 navet:
@@ -146,7 +149,7 @@ pignons de pin: pignon de pin | pignon
 cacahuète: cacahouète
 chocolat: chocolat noir | chocolat pâtissier | chocolat au lait | chocolat blanc | pépite de chocolat | chocolat à cuire
 confiture:
-pâte à tartiner: nutella
+pâte à tartiner: nutella | pâtes à tartiner | chocolat à tartiner
 poulet: blanc de poulet | escalope de poulet | cuisse de poulet | filet de poulet | aile de poulet | pilon de poulet
 dinde: escalope de dinde | blanc de dinde
 canard: magret de canard | cuisse de canard

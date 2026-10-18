@@ -8,7 +8,7 @@ import { normalizeKey } from './text.ts';
 type Aliases = ReadonlyMap<string, string | null>;
 
 /** Résout les bases ; les termes inconnus sont mis de côté dans unknown_terms pour Claude. */
-function resolveLines(db: Db, lines: Omit<IngredientLine, 'base'>[], aliases: Aliases, recordUnknown: boolean) {
+function resolveLines(db: Db, lines: Omit<IngredientLine, 'base'>[], aliases: Aliases) {
   const note = db.prepare(`INSERT INTO unknown_terms (key, example) VALUES (?, ?)
     ON CONFLICT(key) DO UPDATE SET occurrences = occurrences + 1`);
   let unresolved = 0;
@@ -16,7 +16,7 @@ function resolveLines(db: Db, lines: Omit<IngredientLine, 'base'>[], aliases: Al
     const base = resolveBase(l.name, aliases);
     if (base === undefined) {
       unresolved++;
-      if (recordUnknown && l.name) note.run(normalizeKey(l.name), l.raw);
+      if (l.name) note.run(normalizeKey(l.name), l.raw);
     }
     return { ...l, base: base ?? null };
   });
@@ -33,7 +33,7 @@ export function saveRecipe(db: Db, r: ParsedRecipe, aliases: Aliases): void {
   const now = new Date().toISOString();
   db.exec('BEGIN');
   try {
-    const { resolved, unresolved } = resolveLines(db, r.ingredients, aliases, true);
+    const { resolved, unresolved } = resolveLines(db, r.ingredients, aliases);
     const res = db.prepare(`INSERT INTO recipes (source, url, name, image, category_raw, type, total_min, prep_min, cook_min, servings,
         rating, reviews, keywords, ingredients, steps, utensils, utensils_from_site, dishes, unresolved, imported_at, checked_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -59,7 +59,7 @@ export function reresolveRecipes(db: Db, all = false): number {
   let fixed = 0;
   db.exec('BEGIN');
   for (const row of rows) {
-    const { resolved, unresolved } = resolveLines(db, JSON.parse(row.ingredients), aliases, false);
+    const { resolved, unresolved } = resolveLines(db, JSON.parse(row.ingredients), aliases);
     update.run(JSON.stringify(resolved), unresolved, row.id);
     writeIngredients(db, row.id, resolved);
     if (unresolved === 0) fixed++;

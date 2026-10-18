@@ -108,7 +108,7 @@ export function parseRecipePage(html: string, url: string, source: string): Pars
   const utensils = siteUtensils.length ? siteUtensils : deduceUtensils(steps);
   const rating = ld.aggregateRating ? parseFloat(ld.aggregateRating.ratingValue) : NaN;
   const categoryRaw = Array.isArray(ld.recipeCategory) ? ld.recipeCategory[0] : ld.recipeCategory ?? null;
-  const name = clean(String(ld.name)).replace(/\s*:\s*la meilleure recette\s*$/i, '');
+  const name = clean(String(ld.name)).replace(/\s*:\s*[^:]*\brecette\b[^:]*$/i, ''); // « : la meilleure recette », « : recette facile »
   const keywords = typeof ld.keywords === 'string' ? ld.keywords.split(',').map((k: string) => k.trim()).filter(Boolean)
     : Array.isArray(ld.keywords) ? ld.keywords : [];
 
