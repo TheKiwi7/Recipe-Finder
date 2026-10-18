@@ -48,6 +48,7 @@ test('ingrédient de base', () => {
   assert.equal(base('1 truc introuvable'), undefined);
   assert.equal(base('40 couteaux'), 'couteaux');
   assert.equal(base('1 Fromage pour Tartiflette Nature RICHESMONTS®'), 'reblochon');
+  assert.equal(base('2 tranches de toastinettes'), 'fromage fondu');
   // Morceaux rouges regroupés sous « boeuf », la viande hachée reste à part.
   assert.equal(base('800 g de gîte de boeuf'), 'boeuf');
   assert.equal(base('1 rôti de boeuf'), 'boeuf');

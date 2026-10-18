@@ -73,6 +73,7 @@ chèvre: fromage de chèvre | bûche de chèvre | buche de chevre | chèvre frai
 roquefort: bleu | gorgonzola
 feta:
 reblochon: fromage pour tartiflette | fromage à tartiflette
+fromage fondu: toastinette | fromage à croque monsieur | fromage pour croque monsieur | fromage à hamburger | fromage pour hamburger | fromage en tranche
 camembert:
 raclette: fromage à raclette
 cheddar:
