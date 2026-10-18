@@ -15,13 +15,15 @@ Recipe Finder est une app perso, 100 % locale, qui propose de **vraies recettes*
 - **Recettes** : des recettes faisables **sans rien acheter**, 10 par 10, filtrables par type et par durée. La liste se met à jour dès que ton stock change.
 - **Presque** : les recettes où il te manque 1 à 3 ingrédients, de préférence faciles à trouver.
 - **Like / dislike** : un like range la recette dans tes favoris (copie locale complète, même si la page disparaît) ; un dislike l'écarte. Tu peux aussi rejeter un ingrédient précis d'un clic.
-- **Fiche recette** : quantités recalculées pour ton nombre de personnes, temps, ustensiles, nombre de pièces à laver, étapes, lien vers la source, et un **chat avec Claude** qui connaît déjà la recette, ton stock et tes goûts.
-- **Profil** : un questionnaire de départ (personnes, temps, vaisselle, régime, allergies, appareils, goûts), puis un profil que Claude affine à partir de tes likes, rejets et questions. Tes aversions fermes (« rien qui vienne de la mer ») deviennent des exclusions strictes.
+- **Fiche recette** : quantités recalculées pour ton nombre de personnes, temps, ustensiles, nombre de pièces à laver, étapes, lien vers la source, et un **chat avec l'IA** (Claude ou le modèle local) qui connaît déjà la recette, ton stock et tes goûts.
+- **Profil** : un questionnaire de départ (personnes, temps, vaisselle, régime, allergies, appareils, goûts), puis un profil que l'IA affine à partir de tes likes, rejets et questions. Tes aversions fermes (« rien qui vienne de la mer ») deviennent des exclusions strictes.
 - **Catalogue** : plusieurs milliers de recettes bien notées, importées en tâche de fond et extensibles depuis les Réglages.
+
+> **Claude, modèle local ou les deux ?** Toutes les fonctionnalités marchent avec l'un ou l'autre. La différence est la qualité : avec le **modèle local seul**, les réponses du chat sont plus simples et parfois moins sûres (substitutions, conseils de cuisson), et le profil saisit moins finement les nuances de tes notes. Avec **ton abonnement Claude**, le chat et le profil sont nettement meilleurs ; le modèle local, s'il est installé, se charge alors des tâches de fond pour ménager ton abonnement. Sans aucune IA, tout fonctionne sauf le chat, la mise à jour du profil et la reconnaissance des nouveaux ingrédients.
 
 ## Comment ça marche
 
-- **Catalogue local** : les recettes sont lues depuis les données structurées (schema.org/Recipe) des pages Marmiton, puis stockées dans une base SQLite locale. Chaque ligne d'ingrédient (« 2 gousses d'ail hachées ») est ramenée à un ingrédient de base (« ail ») par un analyseur local ; seuls les termes inconnus sont envoyés à Claude, par lots, et le résultat est mis en cache.
+- **Catalogue local** : les recettes sont lues depuis les données structurées (schema.org/Recipe) des pages Marmiton, puis stockées dans une base SQLite locale. Chaque ligne d'ingrédient (« 2 gousses d'ail hachées ») est ramenée à un ingrédient de base (« ail ») par un analyseur local ; seuls les termes inconnus sont envoyés à l'IA, par lots, et le résultat est mis en cache.
 - **Classement local, sans IA** : charger ou recalculer une liste ne coûte aucun appel. Le score combine ton stock, ce qui est « à finir vite », la note de la recette (pondérée par le nombre d'avis), la ressemblance avec ce que tu aimes ou rejettes, tes préférences, et ~30 % d'exploration pour ne pas tourner en rond.
 - **L'IA, avec parcimonie et sans clé API** : uniquement pour le chat, la mise à jour du profil (dès 10 nouveaux signaux, au plus une fois par heure, ou à la demande) et la reconnaissance des nouveaux ingrédients. Deux fournisseurs, utilisables ensemble :
   - **ton abonnement Claude** (Pro, Max…), via Claude Code : meilleure qualité, utilisé en priorité pour le chat et le profil ;
@@ -60,7 +62,7 @@ Pour développer : `npm install`, puis `npm run dev` (voir les commandes ci-dess
 | `npm run typecheck` | Vérification TypeScript, serveur et client |
 | `npm run audit` | Rapport de qualité du catalogue importé |
 | `npm run import` | Import en ligne de commande jusqu'à l'objectif des Réglages (`-- --target N` pour un autre objectif) |
-| `npm run import -- --normalize-only` | Envoie à Claude les ingrédients non reconnus en attente |
+| `npm run import -- --normalize-only` | Envoie à l'IA les ingrédients non reconnus en attente |
 | `npm run import -- --consolidate` | Fusionne les ingrédients de base en double |
 
 ## Organisation du code
@@ -68,7 +70,7 @@ Pour développer : `npm install`, puis `npm run dev` (voir les commandes ci-dess
 ```
 server/            Serveur Node (Hono + node:sqlite), TypeScript exécuté directement par Node 24
   catalog/         Import Marmiton, analyse des lignes d'ingrédients, ustensiles, normalisation
-  reco/            Classement local (rank.ts, sans base ni Claude) et accès aux données
+  reco/            Classement local (rank.ts, sans base ni IA) et accès aux données
   ai.ts            Seul point d'appel à l'IA : abonnement Claude (CLI) ou modèle local (Ollama), routage et repli
   setup.ts         Installation et connexion de l'IA en un clic (winget, Ollama)
   profile.ts       Profil et réglages structurés (Sonnet)
