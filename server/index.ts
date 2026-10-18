@@ -11,7 +11,7 @@ import { migrateCatalog, syncSeed } from './catalog/store.ts';
 import { ensureStaples } from './pantry.ts';
 import { ensureSelf } from './members.ts';
 import { maybeUpdateProfile } from './profile.ts';
-import { abortAllAI, ensureOllama, initAI, ollamaExe, releaseOllama, removeOllamaAutostart } from './ai.ts';
+import { abortAllAI, adoptOllama, ensureOllama, initAI, killOrphanRunners, ollamaExe, ownsOllama, releaseOllama, removeOllamaAutostart } from './ai.ts';
 import { L, lang, loadLang, prefillTranslations } from './i18n.ts';
 import { isFromApp } from './guard.ts';
 import { applyUpdate, checkForUpdate, initUpdateState } from './update.ts';
@@ -79,7 +79,12 @@ setInterval(() => {
   else if (now - lastSeen > IDLE_MS) void shutdown('plus de fenêtre ouverte');
 }, 10_000);
 // Ollama installé : démarré en arrière-plan (sans fenêtre) pour que le modèle local soit disponible.
-if (ollamaExe()) { removeOllamaAutostart(); void ensureOllama(); }
+if (ollamaExe()) {
+  removeOllamaAutostart();
+  killOrphanRunners();
+  if (process.env.RF_OWNS_OLLAMA) adoptOllama(); // relancé après une mise à jour : l'Ollama de l'ancien serveur reste à l'app
+  void ensureOllama();
+}
 // Identifiant de la version de l'interface construite : l'app compare et propose de recharger quand il change.
 const clientBuild = () => { try { return String(statSync(join(CLIENT_DIST, 'index.html')).mtimeMs); } catch { return 'dev'; } };
 app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild, startImport: () => { void backgroundImport(); }, languageChanged: () => { void backgroundTranslate(); }, update: () => { void applyUpdate(restartServer); } }));
@@ -111,7 +116,7 @@ function restartServer(): void {
   const out = openSync(join(DATA_DIR, 'server.log'), 'a');
   const err = openSync(join(DATA_DIR, 'server-errors.log'), 'a');
   spawn(process.execPath, [...process.execArgv, ...process.argv.slice(1)], {
-    cwd: process.cwd(), detached: true, windowsHide: true, stdio: ['ignore', out, err], env: { ...process.env, RF_AFTER_UPDATE: '1' },
+    cwd: process.cwd(), detached: true, windowsHide: true, stdio: ['ignore', out, err], env: { ...process.env, RF_AFTER_UPDATE: '1', RF_OWNS_OLLAMA: ownsOllama() ? '1' : '' },
   }).unref();
   httpServer.close();
   releaseImportLock();

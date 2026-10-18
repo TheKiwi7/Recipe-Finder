@@ -210,13 +210,29 @@ export function killOllamaTray(): void {
 
 /** Ollama installé ou mis à jour par l'app : il est à elle, elle l'arrête en se fermant. */
 export function adoptOllama(): void { ollamaStartedByUs = true; }
+/** Ollama est-il à l'app ? Transmis au serveur qui prend le relais après une mise à jour. */
+export const ownsOllama = () => ollamaStartedByUs;
 
-/** Arrête Ollama, y compris son application de bureau (fenêtre et icône). */
+/**
+ * Arrête Ollama, y compris son application de bureau (fenêtre et icône) et ses sous-programmes (/T) : sans eux, le
+ * moteur du modèle (llama-server, ~12 Go de mémoire réservée) survivrait à Ollama.
+ */
 export function killOllama(): void {
   for (const image of ['ollama app.exe', 'ollama.exe']) {
-    spawn('taskkill', ['/IM', image, '/F'], { windowsHide: true, stdio: 'ignore' });
+    spawn('taskkill', ['/IM', image, '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
   }
   ollamaStartedByUs = false;
+}
+
+/**
+ * Moteurs de modèle d'Ollama dont l'Ollama parent n'existe plus : laissés par un arrêt brutal (serveur de l'app tué,
+ * plantage, PC éteint en force). Personne ne les arrêterait et chacun réserve ~12 Go : l'app les arrête au démarrage.
+ * Ceux d'un Ollama qui tourne (lancé par l'app ou par quelqu'un d'autre) ne sont pas touchés.
+ */
+export function killOrphanRunners(): void {
+  spawn('powershell', ['-NoProfile', '-Command',
+    `$alive = @(Get-Process | ForEach-Object Id); Get-CimInstance Win32_Process -Filter "Name='llama-server.exe'" | Where-Object { $_.ExecutablePath -like '*\\Ollama\\*' -and $alive -notcontains $_.ParentProcessId } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`],
+  { windowsHide: true, stdio: 'ignore' }).on('error', () => {});
 }
 
 // ---------- appel ----------
