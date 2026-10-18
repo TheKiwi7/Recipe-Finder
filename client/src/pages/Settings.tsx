@@ -131,6 +131,8 @@ function CatalogCard() {
   // Estimation des recettes encore importables sur Marmiton, d'après le taux d'acceptation observé.
   const acceptance = browsed > 0 ? s.imported / browsed : 0.9;
   const left = Math.round(s.pending * acceptance);
+  const skippedPct = Math.round(100 * (1 - acceptance));
+  const capped = s.target >= s.reachable; // l'objectif choisi dépasse ce que Marmiton permet : affiché au maximum
   const add = async (n: number) => {
     setBusy(true);
     try {
@@ -146,11 +148,11 @@ function CatalogCard() {
       )}
       <p className="small">
         <b>{fr(s.imported)}</b> {L('recettes dans ton catalogue', 'recipes in your catalogue')}
-        {remaining > 0 ? L(` · import en cours vers ${fr(s.target)} (encore ≈ ${duration(remaining)}, quand l’app est ouverte)`, ` · importing up to ${fr(s.target)} (≈ ${duration(remaining)} left, while the app is open)`) : null}.
+        {remaining > 0 ? L(` · import en cours vers ${fr(s.target)}${capped ? ', le maximum possible' : ''} (encore ≈ ${duration(remaining)}, quand l’app est ouverte)`, ` · importing up to ${fr(s.target)}${capped ? ', the most possible' : ''} (≈ ${duration(remaining)} left, while the app is open)`) : null}.
       </p>
       <p className="muted small">
-        {L(`Marmiton publie ${fr(s.available)} recettes dans son plan du site (le site en annonce davantage, mais les autres n’y sont pas listées) : ${fr(browsed)} déjà parcourues (${fr(s.rejected)} écartées pour note insuffisante), environ ${fr(left)} encore importables. La liste est relue chaque semaine.`,
-          `Marmiton publishes ${fr(s.available)} recipes in its sitemap (the site announces more, but the others aren’t listed there): ${fr(browsed)} already browsed (${fr(s.rejected)} skipped for a low rating), about ${fr(left)} still importable. The list is re-read every week.`)}
+        {L(`Marmiton publie ${fr(s.available)} recettes dans son plan du site (le site en annonce davantage, mais les autres n’y sont pas listées). L’app écarte celles qui sont trop mal notées, environ ${skippedPct} % : ton catalogue peut donc atteindre environ ${fr(s.reachable)} recettes. Déjà lues : ${fr(browsed)}, dont ${fr(s.rejected)} écartées ; encore à lire : ${fr(s.pending)}, soit environ ${fr(left)} recettes de plus. La liste est relue chaque semaine.`,
+          `Marmiton publishes ${fr(s.available)} recipes in its sitemap (the site announces more, but the others aren’t listed there). The app skips those with a low rating, about ${skippedPct}%: your catalogue can therefore reach about ${fr(s.reachable)} recipes. Already read: ${fr(browsed)}, of which ${fr(s.rejected)} skipped; still to read: ${fr(s.pending)}, i.e. about ${fr(left)} more recipes. The list is re-read every week.`)}
       </p>
       <div className="add-recipes">
         <span className="muted">{L('Ajouter des recettes :', 'Add recipes:')}</span>
