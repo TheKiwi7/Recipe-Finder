@@ -58,13 +58,15 @@ type Kind = 'term' | 'name';
 const cache: Record<Kind, Map<string, string>> = { term: new Map(), name: new Map() };
 const asked: Record<Kind, Set<string>> = { term: new Set(), name: new Set() };
 const queue: Record<Kind, Set<string>> = { term: new Set(), name: new Set() };
+/** Traductions demandées et en cours (le serveur y travaille, ou on va redemander sous peu) : indicateur de chargement. */
+const waiting: Record<Kind, Set<string>> = { term: new Set(), name: new Set() };
 const listeners = new Set<() => void>();
 let version = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
 
 function schedule(kind: Kind, keys: string[], delay: number) {
   setTimeout(() => {
-    for (const k of keys) if (!cache[kind].has(k)) queue[kind].add(k);
+    for (const k of keys) if (!cache[kind].has(k)) { queue[kind].add(k); waiting[kind].add(k); }
     timer ??= setTimeout(flush, 0);
   }, delay);
 }
@@ -82,8 +84,10 @@ async function flush() {
         .then(r => (r.ok ? r.json() as Promise<{ done?: Record<string, string>; pending?: boolean }> : { done: {}, pending: false, retry: true }))
         .catch(() => ({ done: {}, pending: false, retry: true }))
         .then((r: { done?: Record<string, string>; pending?: boolean; retry?: boolean }) => {
-          for (const [k, v] of Object.entries(r.done ?? {})) cache[kind].set(k, v);
+          for (const [k, v] of Object.entries(r.done ?? {})) { cache[kind].set(k, v); waiting[kind].delete(k); }
           const left = batch.filter(k => !cache[kind].has(k));
+          // IA indisponible : plus d'indicateur (on redemandera dans une minute) ; en cours ou serveur injoignable : il reste.
+          if (!r.pending && !r.retry) left.forEach(k => waiting[kind].delete(k));
           if (left.length) schedule(kind, left, r.pending ? 2500 : r.retry ? 5000 : 60_000);
           version++;
           listeners.forEach(l => l());
@@ -99,6 +103,7 @@ function tr(kind: Kind, key: string, fallback: string): string {
   if (!asked[kind].has(key)) {
     asked[kind].add(key);
     queue[kind].add(key);
+    waiting[kind].add(key);
     timer ??= setTimeout(flush, 40);
   }
   return fallback;
@@ -108,6 +113,8 @@ function tr(kind: Kind, key: string, fallback: string): string {
 export const tTerm = (fr: string) => tr('term', fr, fr);
 /** Nom d'une recette dans la langue de l'app (en attendant la traduction : le nom d'origine). */
 export const tName = (id: number, fr: string) => tr('name', String(id), fr);
+/** Nom de recette en cours de traduction (à appeler après `tName`, qui lance la demande). */
+export const isTranslatingName = (id: number) => lang === 'en' && waiting.name.has(String(id)) && !cache.name.has(String(id));
 /** À appeler dans un composant qui affiche des traductions : il se redessine quand elles arrivent. */
 export const useTranslations = () => useSyncExternalStore(cb => { listeners.add(cb); return () => listeners.delete(cb); }, () => version);
 /** Une traduction du détail d'une recette remplit aussi le cache des noms. */

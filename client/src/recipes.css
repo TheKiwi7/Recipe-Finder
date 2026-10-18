@@ -37,6 +37,8 @@
 .endnote { text-align: center; color: var(--muted); margin-top: 32px; font-size: 14px; }
 .spin { animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* Anneau (contour seul) devant un nom en cours de traduction. */
+.tr-spin { display: inline-block; width: 0.7em; height: 0.7em; margin-right: 0.45em; vertical-align: 0.02em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; opacity: 0.55; animation: spin 0.8s linear infinite; }
 
 .skeleton { pointer-events: none; }
 .skeleton .img, .skeleton i { animation: pulse 1.2s ease-in-out infinite; }

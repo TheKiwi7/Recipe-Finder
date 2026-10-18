@@ -8,7 +8,8 @@ import { invalidateLists } from '../recipes-store.ts';
 import { toast } from '../toast.tsx';
 import { LoadState, useLoad } from '../use-load.tsx';
 import { LangSwitch } from '../components/LangSwitch.tsx';
-import { L, num, tName, tTerm, useTranslations } from '../i18n.ts';
+import { TranslatedName } from '../components/RecipeCard.tsx';
+import { L, num, tTerm, useTranslations } from '../i18n.ts';
 
 function ago(iso: string | null): string {
   if (!iso) return L('jamais', 'never');
@@ -39,7 +40,7 @@ function RejectionsCard() {
           {r.recipes.map(x => (
             <li key={x.id}>
               {x.image ? <img src={x.image} alt="" /> : <span className="rej-ph" />}
-              <span className="rej-name">{tName(x.id, x.name)}</span>
+              <span className="rej-name"><TranslatedName id={x.id} name={x.name} /></span>
               <button className="btn btn-ghost small-btn" onClick={() => undoRecipe(x.id)}><Undo2 size={14} />{L('Annuler', 'Undo')}</button>
             </li>
           ))}

@@ -104,7 +104,7 @@ export function RecipeDetailPage({ id, onChat }: { id: number; onChat?: (r: Reci
         </div>
 
         <div className="detail-body">
-          <h1 className="h1">{tx?.name ?? tName(r.id, r.name)}</h1>
+          <h1 className="h1">{!tx && txState === 'loading' && <span className="tr-spin" role="status" aria-label={L('Traduction en cours', 'Translating')} />}{tx?.name ?? tName(r.id, r.name)}</h1>
           <div className="meta detail-meta">
             {r.rating !== null && <span><Star size={14} />{dec(r.rating)} · {r.reviews} {L('avis', 'reviews')}</span>}
             <span>{typeLabel(r.type)}</span>

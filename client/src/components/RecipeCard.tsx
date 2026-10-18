@@ -5,7 +5,7 @@ import { dishesLabel, fmtTime } from '../format.ts';
 import { patchReaction } from '../recipes-store.ts';
 import { navigate } from '../router.ts';
 import { toast } from '../toast.tsx';
-import { dec, L, tName, tTerm, typeLabel, useTranslations } from '../i18n.ts';
+import { dec, isTranslatingName, L, tName, tTerm, typeLabel, useTranslations } from '../i18n.ts';
 
 export async function react(card: { id: number; reaction: Reaction }, kind: 'like' | 'dislike', onChange?: (r: Reaction) => void) {
   const next: Reaction = card.reaction === kind ? null : kind;
@@ -33,6 +33,12 @@ export function ReactButtons({ card, onChange, large }: { card: { id: number; re
   );
 }
 
+/** Nom de la recette dans la langue de l'app, avec un petit anneau tant que sa traduction est en cours. */
+export function TranslatedName({ id, name }: { id: number; name: string }) {
+  const text = tName(id, name);
+  return <>{isTranslatingName(id) && <span className="tr-spin" role="status" aria-label={L('Traduction en cours', 'Translating')} title={L('Traduction en cours', 'Translating')} />}{text}</>;
+}
+
 export function RecipeImage({ src, className }: { src: string | null; className?: string }) {
   const [broken, setBroken] = useState(false);
   if (!src || broken) return <div className={`img img-missing ${className ?? ''}`}><ImageOff size={26} /><span>{L('Pas de photo', 'No photo')}</span></div>;
@@ -50,7 +56,7 @@ export function RecipeCard({ card, showMissing, showType, onReaction }: { card: 
         <ReactButtons card={card} onChange={onReaction} />
       </div>
       <div className="rcard-body">
-        <h3 className="rcard-name">{tName(card.id, card.name)}</h3>
+        <h3 className="rcard-name"><TranslatedName id={card.id} name={card.name} /></h3>
         {showMissing && card.missing.length > 0 && (
           <p className="rcard-missing">{L('Manque : ', 'Missing: ')}{card.missing.map(tTerm).join(', ')}</p>
         )}
