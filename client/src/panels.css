@@ -112,7 +112,8 @@ body.chat-open .content { padding-right: 424px; }
 .ai-progress > i { display: block; height: 100%; background: var(--accent); transition: width 0.4s; }
 .ai-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .ai-model { height: 32px; font-size: 13px; max-width: 100%; }
-.update-changes { margin: 0 0 14px; padding-left: 20px; font-size: 13.5px; color: var(--muted); }
+.release-notes { font-size: 13.5px; }
+.update-changes { margin: 4px 0 14px; padding-left: 20px; font-size: 13.5px; color: var(--muted); }
 .update-changes li { margin: 3px 0; }
 .ai-routing { margin: 4px 0 0; padding-top: 14px; border-top: 1px solid var(--line); }
 .welcome-next { display: flex; align-items: center; gap: 16px; justify-content: flex-end; margin-top: 18px; }

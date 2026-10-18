@@ -1,0 +1,22 @@
+[
+  {
+    "version": "1.0.0",
+    "date": "2026-10-18",
+    "fr": [
+      "Première version publique.",
+      "Recettes faisables avec ton stock, Presque (1 à 3 ingrédients manquants) et Découvrir (selon tes goûts).",
+      "« Je la fais » : ce qui manque part dans l'onglet Courses, puis dans ton stock une fois acheté.",
+      "Profil qui apprend tes goûts, membres de la famille, allergies et régimes respectés.",
+      "IA au choix : ton abonnement Claude ou un modèle gratuit sur ton PC. Interface en français ou en anglais.",
+      "Mises à jour en un clic depuis les Réglages."
+    ],
+    "en": [
+      "First public release.",
+      "Recipes doable with your pantry, Almost (1 to 3 missing ingredients) and Discover (based on your tastes).",
+      "“I'll make it”: what's missing goes to the Shopping tab, then into your pantry once bought.",
+      "A profile that learns your tastes, family members, allergies and diets respected.",
+      "AI of your choice: your Claude subscription or a free model on your PC. Interface in French or English.",
+      "One-click updates from Settings."
+    ]
+  }
+]

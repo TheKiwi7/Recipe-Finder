@@ -51,7 +51,14 @@ data/              Base SQLite, images des favoris, journaux (hors git)
 
 ## Publier une version
 
-Tout commit poussé sur `main` est une nouvelle version : les installations la voient dans Réglages → Mises à jour (vérification au lancement puis toutes les 6 h). Avant de pousser : `npm run typecheck`, `npm test`, `npm run build`, et si le vocabulaire a beaucoup grandi, `npm run export-aliases`. Le titre du commit est affiché aux utilisateurs dans la liste des nouveautés.
+Pousser sur `main` ne publie rien : les installations ne proposent que les **versions taguées** (`vX.Y.Z`), avec leurs notes de version. Pour publier :
+
+1. `npm run typecheck`, `npm test`, `npm run build` (et `npm run export-aliases` si le vocabulaire a beaucoup grandi) ;
+2. monte `version` dans `package.json` (puis `npm install --package-lock-only`) ;
+3. ajoute en tête de `releases.json` une entrée `{ "version", "date": "AAAA-MM-JJ", "fr": [...], "en": [...] }` : quelques phrases pour les utilisateurs, dans les deux langues ;
+4. commit, puis `npm run release` : vérifie que tout concorde, crée le tag et pousse `main` et le tag.
+
+Les installations la proposent ensuite dans Réglages → Mises à jour (vérification au lancement puis toutes les 6 h), avec les notes dans leur langue.
 
 ---
 
@@ -110,4 +117,11 @@ Code comments and commit titles are in French.
 
 ## Publishing a version
 
-Every commit pushed to `main` is a new version: installs see it in Settings → Updates (checked at launch, then every 6 hours). Before pushing: `npm run typecheck`, `npm test`, `npm run build`, and if the vocabulary has grown a lot, `npm run export-aliases`. The commit title is shown to users in the list of what's new.
+Pushing to `main` publishes nothing: installs only offer **tagged versions** (`vX.Y.Z`), with their release notes. To publish:
+
+1. `npm run typecheck`, `npm test`, `npm run build` (and `npm run export-aliases` if the vocabulary has grown a lot);
+2. bump `version` in `package.json` (then `npm install --package-lock-only`);
+3. add an entry at the top of `releases.json`: `{ "version", "date": "YYYY-MM-DD", "fr": [...], "en": [...] }`, a few sentences for users, in both languages;
+4. commit, then `npm run release`: checks everything matches, creates the tag and pushes `main` and the tag.
+
+Installs then offer it in Settings → Updates (checked at launch, then every 6 hours), with the notes in their language.

@@ -18,7 +18,9 @@ export type Mode = 'ready' | 'almost' | 'discover';
 export type ShoppingItem = { id: number; base: string; qty: number | null; unit: string | null; recipes: Array<{ id: number; name: string }> };
 export type Need = { base: string; qty: number | null; unit: string | null };
 export type UpdateState = {
-  supported: boolean; reason?: string; current: { sha: string; date: string } | null; behind: number; changes: string[];
+  supported: boolean; reason?: string; current: { version: string; date: string | null } | null; latest: string | null; behind: number;
+  /** Notes des versions plus récentes que celle installée, la plus récente d'abord. */
+  releases: Array<{ version: string; date: string; fr: string[]; en: string[] }>;
   checkedAt: string | null; status: 'idle' | 'checking' | 'updating' | 'restarting' | 'error'; step?: string; error?: string;
 };
 /** baseline : part de ces types sans priorité (dans le catalogue actuel). */
