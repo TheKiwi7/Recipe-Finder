@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.4",
+    "date": "2026-10-19",
+    "fr": [
+      "Avec l'IA locale (Ollama), l'app ne laisse plus de moteur de modèle en mémoire en se fermant : ils s'accumulaient (environ 12 Go chacun) jusqu'à saturer la mémoire de Windows. Ceux qui restent d'une version précédente sont arrêtés au prochain lancement.",
+      "Le temps d'import restant affiché dans les Réglages suit le vrai rythme de l'import."
+    ],
+    "en": [
+      "With the local AI (Ollama), the app no longer leaves a model engine in memory when it closes: they piled up (about 12 GB each) until Windows ran out of memory. Any left over from a previous version are stopped at the next launch.",
+      "The remaining import time shown in Settings follows the import's actual pace."
+    ]
+  },
+  {
     "version": "1.0.3",
     "date": "2026-10-19",
     "fr": [
