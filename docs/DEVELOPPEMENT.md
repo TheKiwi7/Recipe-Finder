@@ -56,7 +56,7 @@ Pousser sur `main` ne publie rien : les installations ne proposent que les **ver
 1. `npm run typecheck`, `npm test`, `npm run build` (et `npm run export-aliases` si le vocabulaire a beaucoup grandi) ;
 2. monte `version` dans `package.json` (puis `npm install --package-lock-only`) ;
 3. ajoute en tête de `releases.json` une entrée `{ "version", "date": "AAAA-MM-JJ", "fr": [...], "en": [...] }` : quelques phrases pour les utilisateurs, dans les deux langues ;
-4. commit, puis `npm run release` : vérifie que tout concorde, crée le tag et pousse `main` et le tag.
+4. commit, puis `npm run release` : vérifie que tout concorde, crée le tag, pousse `main` et le tag, et crée la *Release* GitHub (si l'outil `gh` est installé).
 
 Les installations la proposent ensuite dans Réglages → Mises à jour (vérification au lancement puis toutes les 6 h), avec les notes dans leur langue.
 
@@ -122,6 +122,6 @@ Pushing to `main` publishes nothing: installs only offer **tagged versions** (`v
 1. `npm run typecheck`, `npm test`, `npm run build` (and `npm run export-aliases` if the vocabulary has grown a lot);
 2. bump `version` in `package.json` (then `npm install --package-lock-only`);
 3. add an entry at the top of `releases.json`: `{ "version", "date": "YYYY-MM-DD", "fr": [...], "en": [...] }`, a few sentences for users, in both languages;
-4. commit, then `npm run release`: checks everything matches, creates the tag and pushes `main` and the tag.
+4. commit, then `npm run release`: checks everything matches, creates the tag, pushes `main` and the tag, and creates the GitHub *Release* (if the `gh` tool is installed).
 
 Installs then offer it in Settings → Updates (checked at launch, then every 6 hours), with the notes in their language.

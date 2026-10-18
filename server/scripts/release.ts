@@ -23,3 +23,21 @@ git('tag', '-a', `v${version}`, '-m', `Recipe Finder ${version}\n\n${top.fr.map(
 git('push', 'origin', 'main');
 git('push', 'origin', `v${version}`);
 console.log(`Version ${version} publiée : les installations la proposeront dans Réglages → Mises à jour.`);
+
+// Page « Release » sur GitHub (notes FR / EN), si l'outil gh est installé et connecté.
+const notes = `## Français
+
+${top.fr.map(l => `- ${l}`).join('
+')}
+
+## English
+
+${top.en.map(l => `- ${l}`).join('
+')}
+`;
+try {
+  execFileSync('gh', ['release', 'create', `v${version}`, '--title', `Recipe Finder ${version}`, '--notes', notes, '--verify-tag'], { cwd: root, stdio: 'ignore' });
+  console.log('Release GitHub créée.');
+} catch {
+  console.log(`Release GitHub non créée (outil gh absent ou non connecté) : à faire depuis la page du tag v${version}.`);
+}
