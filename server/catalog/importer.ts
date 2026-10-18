@@ -86,6 +86,7 @@ export async function runImport(db: Db, opts: { target: number; signal?: AbortSi
   const mark = db.prepare(`UPDATE crawl_queue SET status = ?, reason = ?, fetched_at = ? WHERE url = ?`);
   let aliases = loadAliases(db);
   let backoff = 0;
+  let addedThisRun = 0;
 
   while (!opts.signal?.aborted) {
     const p = importProgress(db, opts.target);
@@ -111,6 +112,7 @@ export async function runImport(db: Db, opts: { target: number; signal?: AbortSi
           saveRecipe(db, recipe, aliases);
           mark.run('imported', null, now, row.url);
           last = recipe.name;
+          addedThisRun++;
         }
       }
     } catch (e) {
@@ -124,7 +126,8 @@ export async function runImport(db: Db, opts: { target: number; signal?: AbortSi
   if (!opts.signal?.aborted) {
     await flushUnknown(db, true, log);
     // Objectif atteint : on fusionne les ingrédients de base en double apparus pendant l'import.
-    if (importProgress(db, opts.target).imported >= opts.target) {
+    // Seulement si des recettes ont été ajoutées : la vérification horaire du serveur ne doit pas appeler Claude pour rien.
+    if (addedThisRun > 0 && importProgress(db, opts.target).imported >= opts.target) {
       try { log(`${(await consolidateBases(db)).length} ingrédients en double fusionnés`); }
       catch (e) { log(`Consolidation reportée (${e instanceof ClaudeUnavailable ? e.message : String(e)})`); }
     }
