@@ -74,7 +74,7 @@ function buildContext(db: Db, catalog: Catalog, mode: Mode): Context {
   return {
     ...availableBases(db),
     banned: bannedBases(db),
-    exclusionWords: exclusionWords(getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE),
+    exclusionWords: exclusionWords(getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE, getWeights(db).exclude),
     liked: pick(liked),
     disliked: pick(disliked),
     excluded: new Set([...liked, ...disliked, ...seen]),
@@ -133,7 +133,7 @@ export function recipeDetail(db: Db, id: number): RecipeDetail | null {
   const fav = db.prepare('SELECT snapshot, image_file FROM favorites WHERE recipe_id = ?').get(id) as { snapshot: string; image_file: string | null } | undefined;
   const row = db.prepare('SELECT * FROM recipes WHERE id = ?').get(id) as Record<string, any> | undefined;
   const { available, urgent } = availableBases(db);
-  const words = exclusionWords(getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE);
+  const words = exclusionWords(getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE, getWeights(db).exclude);
   const userBanned = bannedBases(db);
   const persons = (getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE).persons;
   const localImage = fav?.image_file ? `/api/images/${fav.image_file}` : null;

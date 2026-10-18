@@ -31,6 +31,8 @@ export type ProfileWeights = {
   keywords?: Record<string, number>;    // mot du nom ou des mots-clés (« curry », « gratin »)
   types?: Record<string, number>;       // Plat, Dessert…
   maxTotalMin?: number;
+  /** Aversions fermes déclarées (ingrédients ou familles : « poisson », « fruit de mer »…) : exclusion stricte. */
+  exclude?: string[];
 };
 
 export function getQuestionnaire(db: Db): Questionnaire | null {
@@ -72,9 +74,9 @@ const ALLERGEN_FAMILIES: Record<string, string[]> = {
   lactose: ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel'],
   lait: ['lait', 'creme', 'beurre', 'fromage', 'yaourt', 'mascarpone', 'ricotta', 'mozzarella', 'parmesan', 'gruyere', 'emmental', 'comte', 'chevre', 'feta', 'camembert', 'reblochon', 'raclette', 'cheddar', 'roquefort', 'bechamel'],
   oeuf: ['oeuf', 'mayonnaise', 'meringue'],
-  poisson: ['poisson', 'saumon', 'thon', 'cabillaud', 'dorade', 'sardine', 'anchois', 'truite', 'maquereau', 'merlu', 'colin', 'bar', 'sole', 'surimi', 'fumet'],
+  poisson: ['poisson', 'saumon', 'thon', 'cabillaud', 'dorade', 'daurade', 'sardine', 'anchois', 'truite', 'maquereau', 'merlu', 'colin', 'lieu', 'bar', 'loup', 'sole', 'surimi', 'fumet', 'pangasius', 'merou', 'limande', 'lotte', 'hareng', 'haddock', 'morue', 'eglefin', 'fletan', 'turbot', 'saint pierre', 'raie', 'rouget', 'anguille', 'sandre', 'brochet', 'carpe', 'perche', 'espadon', 'merlan', 'tilapia', 'mulet', 'congre', 'tarama', 'caviar'],
   crustace: ['crevette', 'gambas', 'crabe', 'homard', 'langoustine', 'ecrevisse', 'surimi'],
-  'fruit de mer': ['crevette', 'gambas', 'crabe', 'homard', 'langoustine', 'moule', 'huitre', 'saint jacques', 'calamar', 'poulpe', 'seiche', 'coque', 'palourde'],
+  'fruit de mer': ['fruit de mer', 'crevette', 'gambas', 'crabe', 'homard', 'langouste', 'langoustine', 'ecrevisse', 'moule', 'huitre', 'saint jacques', 'petoncle', 'calamar', 'calmar', 'encornet', 'poulpe', 'seiche', 'coque', 'palourde', 'bigorneau', 'bulot', 'couteaux', 'oursin', 'surimi'],
   soja: ['soja', 'tofu', 'edamame', 'miso', 'tempeh'],
   sesame: ['sesame', 'tahini', 'tahin'],
   celeri: ['celeri'],
@@ -87,9 +89,9 @@ const ALLERGEN_FAMILIES: Record<string, string[]> = {
  * allergies (avec leur famille) et régime. Par mot plutôt que par nom exact : « arachide » doit aussi
  * exclure « huile d'arachide », « porc » doit exclure « filet de porc ».
  */
-export function exclusionWords(q: Questionnaire): string[] {
+export function exclusionWords(q: Questionnaire, aversions: string[] = []): string[] {
   const words = new Set<string>();
-  for (const a of q.allergies) {
+  for (const a of [...q.allergies, ...aversions]) {
     const k = normalizeKey(a);
     if (!k) continue;
     words.add(k);

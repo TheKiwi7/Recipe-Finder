@@ -56,6 +56,15 @@ test('allergies et régime : exclusion par mot, avec les familles d’allergène
   assert.deepEqual(run({ allergies: ['oeufs'] }), [huile.id, cacahuete.id, porc.id].sort());
 });
 
+test('aversions fermes du profil : exclusion par famille', () => {
+  const avail = new Set(['poisson blanc', 'pangasius', 'fruits de mer', 'oeuf', 'poulet']);
+  const fondue = entry(['poisson blanc', 'fruits de mer', 'oeuf']);
+  const pangasius = entry(['pangasius', 'oeuf']);
+  const omelette = entry(['oeuf', 'poulet']);
+  const words = exclusionWords(DEFAULT_QUESTIONNAIRE, ['poisson', 'fruit de mer']);
+  assert.deepEqual(rankCandidates([fondue, pangasius, omelette], ctx({ available: avail, exclusionWords: words }), 'ready', {}).map(s => s.entry.id), [omelette.id]);
+});
+
 test('« à finir vite » et likes remontent une recette, dislikes la font descendre', () => {
   const a = entry(['poulet', 'riz']);
   const b = entry(['oeuf', 'tomate']);

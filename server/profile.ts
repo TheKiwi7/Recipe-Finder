@@ -12,8 +12,11 @@ const SYSTEM = `Tu tiens à jour le profil culinaire d'une personne pour une app
 À partir du profil précédent, du questionnaire et des nouveaux signaux (likes, rejets de recettes ou d'ingrédients, questions posées sur des recettes), produis :
 1. "profile" : un profil détaillé en français (goûts, cuisines préférées, ingrédients aimés ou évités, temps de préparation et vaisselle tolérés, niveau, habitudes, ce qui reste à découvrir). Garde ce qui reste vrai, corrige ce que les signaux contredisent. 250 mots maximum.
 2. "weights" : des réglages pour un algorithme de classement local, avec des poids entre -1 et 1, modérés (le système doit garder de la variété) :
-   { "ingredients": { "<ingrédient de base>": poids }, "keywords": { "<mot du titre, ex. curry, gratin, salade>": poids }, "types": { "Plat"|"Entrée"|"Dessert"|"Apéro"|"Petit-déj.": poids }, "maxTotalMin": nombre ou null }
+   { "ingredients": { "<ingrédient de base>": poids }, "keywords": { "<mot du titre, ex. curry, gratin, salade>": poids }, "types": { "Plat"|"Entrée"|"Dessert"|"Apéro"|"Petit-déj.": poids }, "maxTotalMin": nombre ou null, "exclude": [ "mot" ] }
    (La tolérance à la vaisselle vient du questionnaire : ne la règle pas.)
+   "exclude" : les aversions FERMES et explicites (dites dans les notes, ou rejets répétés d'une même famille), qui excluront strictement toute recette contenant un ingrédient où le mot apparaît.
+   Utilise des noms d'ingrédients simples au singulier ou ces familles : "poisson", "fruit de mer", "crustace", "lait", "oeuf", "gluten", "fruit a coque" (chaque famille couvre ses membres, ex. "poisson" → saumon, cabillaud, thon…).
+   N'y mets pas les simples préférences (« pas fan de… », un seul rejet) : celles-là passent par des poids négatifs. Maximum 40 entrées.
    Au plus 25 entrées dans ingredients et 15 dans keywords. Ne mets pas de poids très négatif sur un ingrédient que la personne a seulement rejeté une fois dans une recette : c'est peut-être la recette qui ne plaisait pas.
 Réponds uniquement par un objet JSON {"profile": "...", "weights": {...}}.`;
 
@@ -24,6 +27,7 @@ export function profileStatus(db: Db) {
     pendingSignals: pending,
     hasProfile: !!getMeta(db, 'profile_text'),
     lastError: getMeta(db, 'profile_last_error'),
+    exclusions: getWeights(db).exclude ?? [],
   };
 }
 
@@ -41,6 +45,7 @@ function clampWeights(w: ProfileWeights): ProfileWeights {
     keywords: clampMap(w.keywords, 15),
     types,
     maxTotalMin: typeof w.maxTotalMin === 'number' && w.maxTotalMin > 0 ? w.maxTotalMin : undefined,
+    exclude: Array.isArray(w.exclude) ? w.exclude.filter((x): x is string => typeof x === 'string' && !!x.trim()).map(x => x.toLowerCase().trim()).slice(0, 40) : undefined,
   };
 }
 

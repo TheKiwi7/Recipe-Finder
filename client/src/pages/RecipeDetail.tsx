@@ -15,6 +15,7 @@ export function RecipeDetailPage({ id, onChat }: { id: number; onChat?: (r: Reci
   const [r, setR] = useState<RecipeDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [persons, setPersons] = useState<number | null>(null);
+  const [pendingBans, setPendingBans] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setR(null); setError(null); setPersons(null);
@@ -30,13 +31,17 @@ export function RecipeDetailPage({ id, onChat }: { id: number; onChat?: (r: Reci
   const banned = new Set(r.banned);
 
   const toggleBan = async (base: string) => {
+    if (pendingBans.has(base)) return; // un double-clic ne doit pas exclure puis réautoriser aussitôt
     const isBanned = banned.has(base);
+    setPendingBans(s => new Set(s).add(base));
     try {
       if (isBanned) await api.unban(base); else await api.ban(base);
-      setR({ ...r, banned: isBanned ? r.banned.filter(b => b !== base) : [...r.banned, base] });
+      // Mise à jour fonctionnelle : plusieurs clics rapides sur des lignes différentes s'additionnent.
+      setR(cur => cur && { ...cur, banned: isBanned ? cur.banned.filter(b => b !== base) : [...cur.banned, base] });
       invalidateLists();
       toast(isBanned ? `« ${base} » à nouveau autorisé` : `Plus de recettes avec « ${base} »`);
     } catch (e) { toast((e as Error).message); }
+    finally { setTimeout(() => setPendingBans(s => { const n = new Set(s); n.delete(base); return n; }), 800); }
   };
 
   return (
@@ -85,7 +90,7 @@ export function RecipeDetailPage({ id, onChat }: { id: number; onChat?: (r: Reci
                     <span className="dot" title={isMissing ? 'Pas dans ton stock' : 'Dans ton stock'} />
                     <span className="ing-text">{scaleLine(l.raw, l.qty, l.unit, factor)}</span>
                     {l.base && (
-                      <button className="ban" onClick={() => toggleBan(l.base!)} title={isBanned ? 'Annuler' : `Ne plus me proposer de recettes avec « ${l.base} »`}>
+                      <button className="ban" disabled={pendingBans.has(l.base)} onClick={() => toggleBan(l.base!)} title={isBanned ? 'Annuler' : `Ne plus me proposer de recettes avec « ${l.base} »`}>
                         {isBanned ? <><Undo2 size={13} />Annuler</> : <><ThumbsDown size={13} />Je n'aime pas</>}
                       </button>
                     )}
