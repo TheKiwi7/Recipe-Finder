@@ -26,7 +26,7 @@ export type Questionnaire = {
 };
 export type ProfileStatus = { updatedAt: string | null; pendingSignals: number; hasProfile: boolean; lastError: string | null; exclusions: string[] };
 export type ChatMessage = { id: number; role: 'user' | 'assistant'; text: string; at: string };
-export type ImportStatus = { imported: number; target: number; rejected: number; pending: number; unresolvedRecipes: number; running: boolean };
+export type ImportStatus = { imported: number; target: number; rejected: number; pending: number; unresolvedRecipes: number; running: boolean; build: string };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {

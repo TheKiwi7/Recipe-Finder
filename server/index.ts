@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { DATA_DIR, openDb } from './db.ts';
 import { createApi } from './app.ts';
@@ -22,12 +22,16 @@ let importing = false;
 // Mise à jour du profil en tâche de fond : vérifiée après chaque signal et toutes les 30 min (≥ 10 signaux, ≤ 1 / jour).
 const checkProfile = () => { void maybeUpdateProfile(db); };
 const app = new Hono();
-app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile }));
+// Identifiant de la version de l'interface construite : l'app compare et propose de recharger quand il change.
+const clientBuild = () => { try { return String(statSync(join(CLIENT_DIST, 'index.html')).mtimeMs); } catch { return 'dev'; } };
+app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild }));
 setInterval(checkProfile, 30 * 60 * 1000);
 checkProfile();
 
 if (existsSync(CLIENT_DIST)) {
   const root = relative(process.cwd(), CLIENT_DIST);
+  // index.html jamais mis en cache (il pointe vers les fichiers de la version courante) ; /assets/ est versionné.
+  app.use('/*', async (c, next) => { await next(); if (!c.req.path.startsWith('/assets/')) c.header('Cache-Control', 'no-cache'); });
   app.use('/*', serveStatic({ root }));
   app.get('*', serveStatic({ root, path: 'index.html' })); // routes côté client
 }

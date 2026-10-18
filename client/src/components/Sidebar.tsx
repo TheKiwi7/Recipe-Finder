@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, CircleDashed, Heart, Lock, Moon, Settings, ShoppingBasket, Soup, Sun } from 'lucide-react';
+import { BookOpen, CircleDashed, Heart, Lock, Moon, RefreshCw, Settings, ShoppingBasket, Soup, Sun } from 'lucide-react';
 import { api, type ImportStatus } from '../api.ts';
 import { navigate, type Route } from '../router.ts';
 import { usePantry } from '../pantry-store.ts';
@@ -16,11 +16,17 @@ function useTheme() {
   return { theme, toggle };
 }
 
+// Version de l'interface au chargement de la page : si le serveur en annonce une autre, on propose de recharger.
+const LOADED_BUILD: { value: string | null } = { value: null };
+
 function useImportStatus() {
   const [status, setStatus] = useState<ImportStatus | null>(null);
   useEffect(() => {
     let alive = true;
-    const tick = () => api.importStatus().then(s => alive && setStatus(s)).catch(() => {});
+    const tick = () => api.importStatus().then(s => {
+      LOADED_BUILD.value ??= s.build;
+      if (alive) setStatus(s);
+    }).catch(() => {});
     tick();
     const t = setInterval(tick, 15_000);
     return () => { alive = false; clearInterval(t); };
@@ -42,8 +48,16 @@ export function Sidebar({ route }: { route: Route }) {
     </button>
   );
 
+  const outdated = !!status && !!LOADED_BUILD.value && status.build !== LOADED_BUILD.value;
+
   return (
     <nav className="side">
+      {outdated && (
+        <div className="update-banner" role="status">
+          Une nouvelle version de l'app est disponible.
+          <button className="btn btn-primary small-btn" onClick={() => location.reload()}><RefreshCw size={14} />Recharger</button>
+        </div>
+      )}
       <div className="brand"><span className="brand-mark"><Soup size={17} /></span>Recipe Finder</div>
       {item('ingredients', ShoppingBasket, 'Ingrédients')}
       {item('recettes', BookOpen, 'Recettes', { gated: true })}

@@ -91,3 +91,6 @@ body.chat-open .content { padding-right: 424px; }
 .load-bar { display: block; height: 12px; width: 70%; border-radius: 6px; background: var(--surface-2); animation: pulse 1.2s ease-in-out infinite; }
 .load-bar.short { width: 40%; }
 .load-state.failed { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* ---------- nouvelle version disponible ---------- */
+.update-banner { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 18px; border-radius: 99px; background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; box-shadow: var(--shadow); animation: rise 0.2s ease-out; }
