@@ -115,9 +115,9 @@ function ProfileDetails({ version }: { version: number }) {
 }
 
 const fr = num;
-/** ~4 s par recette acceptée (1 page toutes les 2,5 s + chargement, ~90 % acceptées). */
+/** ~3 s par recette acceptée (1 page toutes les 1,5 s + chargement, ~90 % acceptées). */
 const duration = (recipes: number) => {
-  const min = Math.round((recipes * 4) / 60);
+  const min = Math.round((recipes * 3) / 60);
   return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`;
 };
 
@@ -160,7 +160,7 @@ function CatalogCard() {
       </div>
       {s.pending === 0 && <p className="muted small" style={{ marginTop: 12 }}>{L('Toutes les recettes disponibles sur Marmiton ont été parcourues.', 'Every recipe available on Marmiton has been browsed.')}</p>}
       <ImportPriority />
-      <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>{L('Plus de recettes = plus de propositions faisables avec ton stock. L’import lit une page toutes les 2,5 s pour rester discret envers Marmiton, puis continue d’ajouter ~100 recettes par semaine.', 'More recipes = more suggestions doable with your pantry. The import reads one page every 2.5 s to stay gentle on Marmiton, then keeps adding ~100 recipes a week.')}</p>
+      <p className="muted small" style={{ marginTop: 12, marginBottom: 0 }}>{L('Plus de recettes = plus de propositions faisables avec ton stock. L’import lit une page toutes les 1,5 s pour rester discret envers Marmiton, puis continue d’ajouter ~100 recettes par semaine.', 'More recipes = more suggestions doable with your pantry. The import reads one page every 1.5 s to stay gentle on Marmiton, then keeps adding ~100 recipes a week.')}</p>
     </div>
   );
 }

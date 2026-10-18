@@ -29,8 +29,9 @@ if ((Node-Major) -lt 24) {
 Write-Host "Node.js $(& node --version) OK"
 
 Step "Installation des dependances (1 a 3 minutes)"
-& npm install --no-audit --no-fund
-if ($LASTEXITCODE -ne 0) { Fail "npm install a echoue." }
+# npm ci : exactement les versions verifiees de package-lock.json (installation identique chez tout le monde).
+& npm ci --no-audit --no-fund
+if ($LASTEXITCODE -ne 0) { Fail "L'installation des dependances a echoue (connexion internet ?)." }
 
 Step "Preparation de l'interface"
 & npm run build
@@ -40,7 +41,8 @@ Step "Creation du raccourci sur le bureau"
 & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\create-shortcut.ps1"
 
 Step "Lancement de Recipe Finder"
-& powershell -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\launch.ps1"
+# En arriere-plan : le lanceur reste actif (cache) tant que la fenetre de l'app est ouverte, pour retenir sa taille.
+Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$root\scripts\launch.ps1`""
 
 Write-Host ""
 Write-Host "C'est pret ! La prochaine fois, ouvre l'app avec le raccourci Recipe Finder du bureau." -ForegroundColor Cyan

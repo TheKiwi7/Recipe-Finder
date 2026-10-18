@@ -24,7 +24,7 @@ Recipe Finder est une app perso, 100 % locale, qui propose de **vraies recettes*
 - **Pour qui je cuisine** : ajoute les membres de ta famille, chacun avec son régime, ses allergies et ce qu'il n'aime pas. Au moment de choisir, tu coches qui mange : les exclusions de chacun s'appliquent et les portions s'adaptent.
 - **Allergies et régimes** : exclusions strictes par famille (gluten, lactose, fruits à coque, poisson…), vérifiées sur les ingrédients mais aussi sur le texte complet des recettes.
 - **Français ou anglais** : l'app est pensée pour le français, puisque les recettes viennent de Marmiton, en français. Elle fonctionne aussi en anglais (interface entière, saisie des ingrédients en anglais), mais les recettes doivent d'abord être traduites par l'IA, unités comprises (c. à soupe → tbsp) : quelques secondes pour les noms, 15 à 30 s pour une recette la première fois qu'elle s'ouvre, puis c'est instantané (la traduction est gardée sur ton PC). Sans IA, les recettes restent en français.
-- **Catalogue** : 5 000 recettes bien notées au premier lancement (environ 5 h d'import, l'app est utilisable dès les premières centaines), extensibles depuis les Réglages. Tu peux y faire passer certains types en priorité (plats et accompagnements, par exemple) : ce n'est pas un filtre, mais leur part dans l'import passe d'environ 4 recettes sur 10 à 8 sur 10, puis l'import continue avec les autres types.
+- **Catalogue** : 5 000 recettes bien notées au premier lancement (environ 4 h d'import, l'app est utilisable dès les premières centaines), extensibles depuis les Réglages. Tu peux y faire passer certains types en priorité (plats et accompagnements, par exemple) : ce n'est pas un filtre, mais leur part dans l'import passe d'environ 4 recettes sur 10 à 8 sur 10, puis l'import continue avec les autres types.
 
 > **Claude, modèle local ou les deux ?** Toutes les fonctionnalités marchent avec l'un ou l'autre. La différence est la qualité : avec le **modèle local seul**, les réponses du chat sont plus simples et parfois moins sûres (substitutions, conseils de cuisson), et le profil saisit moins finement les nuances de tes notes. Avec **ton abonnement Claude**, le chat et le profil sont nettement meilleurs ; le modèle local, s'il est installé, se charge alors des tâches de fond pour ménager ton abonnement. Sans aucune IA, tout fonctionne sauf le chat, la mise à jour du profil, la reconnaissance des nouveaux ingrédients et la traduction en anglais.
 
@@ -62,7 +62,7 @@ Tout reste sur ton PC, dans le dossier de l'app. Réglages → « Exporter mes d
 
 ## Sources
 
-Les recettes, photos et textes appartiennent à [Marmiton](https://www.marmiton.org) et à leurs auteurs ; chaque fiche renvoie vers la page d'origine. Ce projet est un outil **personnel** : il ne lit que les pages autorisées par le `robots.txt` du site, à raison d'une page toutes les 2,5 secondes, s'identifie honnêtement, et ne redistribue aucun contenu (la base reste locale). Merci de respecter ces conditions si tu le réutilises.
+Les recettes, photos et textes appartiennent à [Marmiton](https://www.marmiton.org) et à leurs auteurs ; chaque fiche renvoie vers la page d'origine. Ce projet est un outil **personnel** : il ne lit que les pages autorisées par le `robots.txt` du site, à raison d'une page toutes les 1,5 seconde, s'identifie honnêtement, et ne redistribue aucun contenu (la base reste locale). Merci de respecter ces conditions si tu le réutilises.
 
 ## Licence
 
@@ -102,7 +102,7 @@ Recipe Finder is a personal, 100% local app that suggests **real recipes** (from
 - **Who I cook for**: add your family members, each with their own diet, allergies and dislikes. When choosing, you tick who is eating: everyone's exclusions apply and portions adjust.
 - **Allergies and diets**: strict exclusions by family (gluten, lactose, nuts, fish…), checked against the ingredients and the full recipe text.
 - **French or English**: the app is designed for French, since recipes come from Marmiton, in French. It also works in English (full interface, ingredients typed in English), but recipes must first be translated by the AI, units included (c. à soupe → tbsp): a few seconds for names, 15 to 30 s for a recipe the first time it opens, then it's instant (the translation is kept on your PC). Without an AI, recipes stay in French.
-- **Catalogue**: 5,000 well-rated recipes on first launch (about 5 hours of import; the app is usable after the first few hundred), expandable from Settings. You can put some types first (mains and sides, for instance): it isn't a filter, but their share of the import goes from about 4 in 10 recipes to 8 in 10, then the import carries on with the other types.
+- **Catalogue**: 5,000 well-rated recipes on first launch (about 4 hours of import; the app is usable after the first few hundred), expandable from Settings. You can put some types first (mains and sides, for instance): it isn't a filter, but their share of the import goes from about 4 in 10 recipes to 8 in 10, then the import carries on with the other types.
 
 > **Claude, local model or both?** Every feature works with either. The difference is quality: with the **local model alone**, chat answers are simpler and sometimes less reliable (substitutions, cooking advice), and the profile captures the nuances of your notes less finely. With **your Claude subscription**, chat and profile are clearly better; the local model, if installed, then handles background tasks to spare your subscription. Without any AI, everything works except chat, profile updates, recognising new ingredients and English translation.
 
@@ -140,7 +140,7 @@ Everything stays on your PC, in the app folder. Settings → “Export my data�
 
 ## Sources
 
-Recipes, photos and texts belong to [Marmiton](https://www.marmiton.org) and their authors; every recipe page links back to the original. This project is a **personal** tool: it only reads pages allowed by the site's `robots.txt`, one page every 2.5 seconds, identifies itself honestly, and redistributes no content (the database stays local). Please respect these conditions if you reuse it.
+Recipes, photos and texts belong to [Marmiton](https://www.marmiton.org) and their authors; every recipe page links back to the original. This project is a **personal** tool: it only reads pages allowed by the site's `robots.txt`, one page every 1.5 seconds, identifies itself honestly, and redistributes no content (the database stays local). Please respect these conditions if you reuse it.
 
 ## License
 
