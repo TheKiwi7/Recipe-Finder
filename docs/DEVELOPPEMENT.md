@@ -23,7 +23,7 @@ npm run dev     # serveur + interface avec rechargement : http://localhost:5318
 | `npm run import -- --normalize-only` | Envoie à l'IA les ingrédients non reconnus en attente |
 | `npm run import -- --consolidate` | Fusionne les ingrédients de base en double |
 | `npm run export-aliases` | Exporte le vocabulaire d'ingrédients appris (termes génériques de 4 mots au plus, sans marque) vers `server/catalog/learned-aliases.json`, livré avec l'app : une nouvelle installation reconnaît presque tout dès le premier import |
-| `npm run shortcut` | Recrée le raccourci du bureau |
+| `npm run shortcut` | Recrée les raccourcis (bureau et menu Démarrer) |
 
 Variables d'environnement utiles : `PORT` (5317 par défaut), `RF_DB` (autre fichier de base, pour tester sur une copie), `RF_NO_IMPORT=1` (pas d'import en tâche de fond), `RF_KEEP_ALIVE=1` (le serveur ne s'arrête pas quand aucune fenêtre n'est ouverte).
 

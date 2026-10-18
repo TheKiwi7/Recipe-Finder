@@ -7,7 +7,7 @@ App perso, 100 % locale, qui recommande des recettes **réelles** (Marmiton) sel
 ## Architecture
 
 - App web locale : **React (Vite)** + serveur **Node 24** (Hono, `node:sqlite`) + **SQLite**, tout en **TypeScript** (exécuté directement par Node, sans compilation côté serveur).
-- **Installation** (`install.cmd`) : installe Node.js et Git via winget si besoin, transforme un dossier téléchargé en ZIP en copie du dépôt (pour les mises à jour), `npm ci`, build, raccourci bureau, lancement.
+- **Installation** (`install.cmd`) : installe Node.js et Git via winget si besoin, transforme un dossier téléchargé en ZIP en copie du dépôt (pour les mises à jour), `npm ci`, build, raccourcis bureau et menu Démarrer, lancement.
 - **Lancement** (raccourci) : démarre le serveur en arrière-plan (sans fenêtre) et ouvre l'app dans le **navigateur par défaut** : fenêtre dédiée `--app` pour Chrome / Edge / Brave / Vivaldi (le lanceur retient sa taille, sa position et son état agrandi, que ces navigateurs ne restituent pas), nouvelle fenêtre pour Firefox.
 - **Vie de l'app** : chaque page ouverte donne signe de vie ; le serveur s'arrête, avec l'import, les requêtes IA et Ollama, quand plus aucune page n'est ouverte. Fermer un onglet ne coupe pas l'app dans un autre.
 - **Données** : base SQLite hors git (`data/`). Réglages → « Exporter mes données » (stock, placard, favoris, rejets, préférences, profil, conversations → JSON).

@@ -1,5 +1,5 @@
 # Installation de Recipe Finder en un double-clic (via install.cmd).
-# Installe Node.js si besoin (winget), prepare l'app, cree le raccourci du bureau, puis lance l'app.
+# Installe Node.js si besoin (winget), prepare l'app, cree les raccourcis (bureau, menu Demarrer), puis lance l'app.
 # L'IA (abonnement Claude ou modele local) se configure ensuite depuis l'app, en un clic.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -66,7 +66,7 @@ Step "Preparation de l'interface"
 & npm run build
 if ($LASTEXITCODE -ne 0) { Fail "La construction de l'interface a echoue." }
 
-Step "Creation du raccourci sur le bureau"
+Step "Creation des raccourcis (bureau et menu Demarrer)"
 & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\create-shortcut.ps1"
 
 Step "Lancement de Recipe Finder"

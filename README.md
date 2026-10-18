@@ -45,7 +45,7 @@ Sur Windows 10 ou 11, sans rien d'autre à installer au préalable :
 1. Télécharge le projet (bouton vert **Code → Download ZIP**) et décompresse-le où tu veux.
 2. Double-clique sur **`install.cmd`**.
 
-Le script installe Node.js et Git si besoin, prépare l'app, crée le raccourci **Recipe Finder** sur le bureau et ouvre l'app. Ensuite, le raccourci suffit : il démarre l'app en arrière-plan et l'ouvre dans ton navigateur par défaut (en fenêtre dédiée avec Chrome, Edge, Brave ou Vivaldi, qui retrouve sa taille et sa position).
+Le script installe Node.js et Git si besoin, prépare l'app, crée le raccourci **Recipe Finder** (bureau et menu Démarrer) et ouvre l'app. Ensuite, le raccourci suffit : il démarre l'app en arrière-plan et l'ouvre dans ton navigateur par défaut (en fenêtre dédiée avec Chrome, Edge, Brave ou Vivaldi, qui retrouve sa taille et sa position).
 
 **Mises à jour** : l'app vérifie au lancement (puis toutes les 6 h) si une nouvelle version est publiée ici. Si oui, Réglages → « Mises à jour » montre les nouveautés et un bouton **Mettre à jour** : l'app télécharge la nouvelle version, se prépare et redémarre toute seule. Tes données ne sont jamais touchées.
 
