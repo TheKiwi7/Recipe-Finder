@@ -8,6 +8,7 @@ import { createApi } from './app.ts';
 import { acquireImportLock, currentTarget, runImport } from './catalog/importer.ts';
 import { migrateCatalog, syncSeed } from './catalog/store.ts';
 import { ensureStaples } from './pantry.ts';
+import { maybeUpdateProfile } from './profile.ts';
 
 export const PORT = Number(process.env.PORT ?? 5317);
 const CLIENT_DIST = join(DATA_DIR, '..', 'client', 'dist');
@@ -18,8 +19,12 @@ migrateCatalog(db);
 ensureStaples(db);
 
 let importing = false;
+// Mise à jour du profil en tâche de fond : vérifiée après chaque signal et toutes les 30 min (≥ 10 signaux, ≤ 1 / jour).
+const checkProfile = () => { void maybeUpdateProfile(db); };
 const app = new Hono();
-app.route('/api', createApi(db, { importing: () => importing }));
+app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile }));
+setInterval(checkProfile, 30 * 60 * 1000);
+checkProfile();
 
 if (existsSync(CLIENT_DIST)) {
   const root = relative(process.cwd(), CLIENT_DIST);

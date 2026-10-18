@@ -15,6 +15,17 @@ export type Mode = 'ready' | 'almost';
 export type Filters = { type: string; maxTime: number | null };
 export type Recommendations = { items: RecipeCard[]; exhausted: boolean; catalogSize: number };
 export type Rejections = { recipes: Array<{ id: number; name: string; image: string | null; at: string }>; ingredients: Array<{ base: string; at: string }> };
+export type Questionnaire = {
+  persons: number;
+  maxTime: number;
+  dishTolerance: 'low' | 'medium' | 'high';
+  diet: 'omnivore' | 'vegetarian' | 'vegan' | 'pescetarian';
+  allergies: string[];
+  equipment: string[];
+  notes: string;
+};
+export type ProfileStatus = { updatedAt: string | null; pendingSignals: number; hasProfile: boolean; lastError: string | null };
+export type ChatMessage = { id: number; role: 'user' | 'assistant'; text: string; at: string };
 export type ImportStatus = { imported: number; target: number; rejected: number; pending: number; unresolvedRecipes: number; running: boolean };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -45,6 +56,12 @@ export const api = {
   ban: (base: string) => call('POST', '/banned', { base }),
   unban: (base: string) => call('DELETE', `/banned/${encodeURIComponent(base)}`),
   rejections: () => call<Rejections>('GET', '/rejections'),
+  questionnaire: () => call<{ questionnaire: Questionnaire | null; defaults: Questionnaire; equipment: string[] }>('GET', '/questionnaire'),
+  saveQuestionnaire: (q: Questionnaire) => call<{ questionnaire: Questionnaire }>('PUT', '/questionnaire', q),
+  profile: () => call<ProfileStatus>('GET', '/profile'),
+  updateProfile: () => call<ProfileStatus & { updated: boolean }>('POST', '/profile/update'),
+  chat: (id: number) => call<ChatMessage[]>('GET', `/recipes/${id}/chat`),
+  ask: (id: number, message: string) => call<ChatMessage[]>('POST', `/recipes/${id}/chat`, { message }),
 };
 
 export const UNITS = ['pièce(s)', 'g', 'kg', 'ml', 'cl', 'l', 'c. à soupe', 'c. à café', 'sachet(s)', 'boîte(s)', 'pot(s)', 'tranche(s)', 'botte(s)', 'gousse(s)'];

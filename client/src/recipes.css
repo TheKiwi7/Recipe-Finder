@@ -54,8 +54,9 @@
 .archived { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; margin-top: 12px; }
 .detail-meta { margin: 10px 0 22px; }
 .missing-pill { color: var(--danger) !important; font-weight: 600; }
-.stats { display: flex; gap: 10px; flex-wrap: wrap; }
-.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; min-width: 104px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-width: 520px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; min-width: 0; }
+.stat b { white-space: nowrap; }
 .stat small { display: block; color: var(--muted); font-size: 12px; }
 .stat b { font-size: 16.5px; font-weight: 650; }
 .block { margin-top: 32px; }
@@ -87,6 +88,7 @@
   .detail-media { position: static; }
 }
 @media (max-width: 760px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
   .rcard-name { font-size: 14.5px; }
 }

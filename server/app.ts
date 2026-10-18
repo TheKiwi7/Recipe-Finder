@@ -7,10 +7,14 @@ import {
 } from './pantry.ts';
 import { banIngredient, favorites, imagePath, recipeDetail, recommend, rejections, setReaction } from './reco/service.ts';
 import type { Mode } from './reco/rank.ts';
+import { DEFAULT_QUESTIONNAIRE, getQuestionnaire, OPTIONAL_EQUIPMENT, setQuestionnaire, type Questionnaire } from './preferences.ts';
+import { maybeUpdateProfile, profileStatus } from './profile.ts';
+import { askAboutRecipe, ChatError, chatHistory } from './chat.ts';
+import { exportData } from './export.ts';
 
 const MIME: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png' };
 
-export function createApi(db: Db, status: { importing: () => boolean }) {
+export function createApi(db: Db, status: { importing: () => boolean; preferencesChanged: () => void }) {
   const api = new Hono();
 
   api.onError((err, c) => c.json({ error: err.message }, 400));
@@ -34,10 +38,11 @@ export function createApi(db: Db, status: { importing: () => boolean }) {
   });
   api.post('/recipes/:id/reaction', async c => {
     await setReaction(db, Number(c.req.param('id')), (await c.req.json()).kind ?? null);
+    status.preferencesChanged();
     return c.json({ ok: true });
   });
   api.get('/favorites', c => c.json(favorites(db)));
-  api.post('/banned', async c => { banIngredient(db, (await c.req.json()).base, true); return c.json({ ok: true }); });
+  api.post('/banned', async c => { banIngredient(db, (await c.req.json()).base, true); status.preferencesChanged(); return c.json({ ok: true }); });
   api.delete('/banned/:base', c => { banIngredient(db, decodeURIComponent(c.req.param('base')), false); return c.json({ ok: true }); });
   api.get('/rejections', c => c.json(rejections(db)));
 
@@ -49,6 +54,31 @@ export function createApi(db: Db, status: { importing: () => boolean }) {
   });
 
   api.get('/import/status', c => c.json({ ...importProgress(db, INITIAL_TARGET), running: status.importing() }));
+
+  api.get('/questionnaire', c => c.json({ questionnaire: getQuestionnaire(db), defaults: DEFAULT_QUESTIONNAIRE, equipment: OPTIONAL_EQUIPMENT }));
+  api.put('/questionnaire', async c => {
+    const q = { ...DEFAULT_QUESTIONNAIRE, ...(await c.req.json()) } as Questionnaire;
+    q.persons = Math.max(1, Math.min(20, Math.round(Number(q.persons) || 2)));
+    q.maxTime = Math.max(5, Math.min(600, Math.round(Number(q.maxTime) || 45)));
+    setQuestionnaire(db, q);
+    status.preferencesChanged();
+    return c.json({ questionnaire: getQuestionnaire(db) });
+  });
+
+  api.get('/profile', c => c.json(profileStatus(db)));
+  api.post('/profile/update', async c => c.json({ updated: await maybeUpdateProfile(db, true), ...profileStatus(db) }));
+
+  api.get('/recipes/:id/chat', c => c.json(chatHistory(db, Number(c.req.param('id')))));
+  api.post('/recipes/:id/chat', async c => {
+    try {
+      return c.json(await askAboutRecipe(db, Number(c.req.param('id')), (await c.req.json()).message ?? ''));
+    } catch (e) {
+      if (e instanceof ChatError) return c.json({ error: e.message }, e.message.startsWith('Claude') ? 503 : 400);
+      throw e;
+    }
+  });
+
+  api.get('/export', c => c.json(exportData(db), 200, { 'Content-Disposition': `attachment; filename="recipe-finder-${new Date().toISOString().slice(0, 10)}.json"` }));
 
   return api;
 }

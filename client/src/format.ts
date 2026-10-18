@@ -7,18 +7,27 @@ export function fmtTime(min: number): string {
 
 export const dishesLabel = (n: number) => `${n} pièce${n > 1 ? 's' : ''} à laver`;
 
-const FRACTIONS: Array<[number, string]> = [[0.25, '¼'], [0.5, '½'], [0.75, '¾']];
+const METRIC = /^(g|kg|mg|ml|cl|dl|l)$/i;
+const FRACTIONS: Array<[number, string]> = [[0, ''], [1 / 4, '¼'], [1 / 3, '⅓'], [1 / 2, '½'], [2 / 3, '⅔'], [3 / 4, '¾'], [1, '']];
 
-/** Quantité lisible : fractions pour les petites valeurs, arrondi au 5 pour les grammes. */
+/** Œufs, sachets, cuillères… : fraction lisible la plus proche (jamais moins de ¼). */
+function countable(v: number): string {
+  const x = Math.max(0.25, v);
+  const whole = Math.floor(x);
+  const [f, glyph] = FRACTIONS.reduce((best, cur) => (Math.abs(x - whole - cur[0]) < Math.abs(x - whole - best[0]) ? cur : best));
+  const w = whole + (f === 1 ? 1 : 0);
+  if (!glyph) return String(w);
+  return w ? `${w} ${glyph}` : glyph;
+}
+
+/** Quantité lisible : grammes arrondis, fractions pour ce qui se compte. */
 export function fmtQty(v: number, unit: string | null): string {
-  if (v >= 50 && unit && /^(g|ml|cl|kg|l)$/i.test(unit) && unit !== 'kg' && unit !== 'l') return String(Math.round(v / 5) * 5);
-  if (v >= 10) return String(Math.round(v));
-  const whole = Math.floor(v), frac = v - whole;
-  const near = FRACTIONS.find(([f]) => Math.abs(frac - f) < 0.08);
-  if (near) return whole ? `${whole} ${near[1]}` : near[1];
-  if (frac < 0.08) return String(whole || 1);
-  if (frac > 0.92) return String(whole + 1);
-  return (Math.round(v * 10) / 10).toString().replace('.', ',');
+  if (unit && METRIC.test(unit)) {
+    if (v >= 50 && /^(g|ml|cl)$/i.test(unit)) return String(Math.round(v / 5) * 5);
+    if (v >= 10) return String(Math.round(v));
+    return (Math.round(v * 10) / 10).toString().replace('.', ',');
+  }
+  return v >= 10 ? String(Math.round(v)) : countable(v);
 }
 
 const LEADING_QTY = /^(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?|[½¼¾⅓⅔])/;

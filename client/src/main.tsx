@@ -1,13 +1,18 @@
-import { StrictMode, useEffect } from 'react';
+import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import './recipes.css';
+import './panels.css';
+import { api } from './api.ts';
+import { ChatPanel } from './components/ChatPanel.tsx';
 import { Sidebar } from './components/Sidebar.tsx';
-import { IngredientsPage } from './pages/Ingredients.tsx';
-import { ComingSoon, LockedPage } from './pages/Placeholders.tsx';
 import { FavoritesPage } from './pages/Favorites.tsx';
+import { IngredientsPage } from './pages/Ingredients.tsx';
+import { LockedPage } from './pages/Placeholders.tsx';
 import { RecipeDetailPage } from './pages/RecipeDetail.tsx';
 import { RecipesPage } from './pages/Recipes.tsx';
+import { SettingsPage } from './pages/Settings.tsx';
+import { WelcomePage } from './pages/Welcome.tsx';
 import { refreshPantry, usePantry } from './pantry-store.ts';
 import { navigate, useRoute } from './router.ts';
 import { Toast } from './toast.tsx';
@@ -15,15 +20,22 @@ import { Toast } from './toast.tsx';
 function App() {
   const route = useRoute();
   const pantry = usePantry();
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+  const [offline, setOffline] = useState(false);
 
-  useEffect(() => { refreshPantry().catch(() => {}); }, []);
+  useEffect(() => {
+    refreshPantry().catch(() => setOffline(true));
+    api.questionnaire().then(r => setOnboarded(!!r.questionnaire)).catch(() => setOffline(true));
+  }, []);
 
   // Accueil : directement aux recettes si le stock a été confirmé il y a moins de 12 h.
   useEffect(() => {
-    if (pantry && route.page === 'home') navigate(pantry.gateOpen ? '/recettes' : '/ingredients', true);
-  }, [pantry, route.page]);
+    if (pantry && onboarded && route.page === 'home') navigate(pantry.gateOpen ? '/recettes' : '/ingredients', true);
+  }, [pantry, onboarded, route.page]);
 
-  if (!pantry) return null;
+  if (offline) return <div className="lock-screen"><h1 className="h1" style={{ fontSize: 22 }}>Le serveur de Recipe Finder ne répond pas</h1><p className="sub">Relance l'app depuis le raccourci du bureau.</p></div>;
+  if (!pantry || onboarded === null) return null;
+  if (!onboarded) return <WelcomePage onDone={() => { setOnboarded(true); navigate('/ingredients', true); }} />;
   const gated = (el: React.ReactNode) => (pantry.gateOpen ? el : <LockedPage />);
 
   return (
@@ -34,8 +46,8 @@ function App() {
         {route.page === 'recettes' && gated(<RecipesPage mode="ready" />)}
         {route.page === 'presque' && gated(<RecipesPage mode="almost" />)}
         {route.page === 'favoris' && <FavoritesPage />}
-        {route.page === 'recette' && <RecipeDetailPage key={route.id} id={route.id} />}
-        {route.page === 'reglages' && <ComingSoon title="Réglages" />}
+        {route.page === 'reglages' && <SettingsPage />}
+        {route.page === 'recette' && <RecipeDetailPage key={route.id} id={route.id} onChat={r => <ChatPanel recipe={r} />} />}
       </main>
       <Toast />
     </div>
