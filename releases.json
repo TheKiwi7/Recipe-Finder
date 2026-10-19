@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.8",
+    "date": "2026-10-19",
+    "fr": [
+      "L'onglet Recettes ne se vide plus : une recette déjà vue passe après les autres au lieu de disparaître deux semaines, et revient quand il en manque pour remplir la page.",
+      "Les recettes faites seulement avec ton placard (pâte à pizza, pain, sablés…) sont proposées.",
+      "Une recette qui suggère de servir avec du poisson (ou un autre ingrédient exclu) n'est plus écartée pour autant."
+    ],
+    "en": [
+      "The Recipes tab no longer runs empty: a recipe you have already seen goes behind the others instead of disappearing for two weeks, and comes back when the page cannot be filled otherwise.",
+      "Recipes made only from your cupboard (pizza dough, bread, shortbread…) are suggested.",
+      "A recipe that suggests serving it with fish (or another excluded ingredient) is no longer left out because of it."
+    ]
+  },
+  {
     "version": "1.0.7",
     "date": "2026-10-19",
     "fr": [
