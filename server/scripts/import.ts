@@ -2,7 +2,7 @@
 // Reprend là où il s'était arrêté. Ctrl+C pour arrêter proprement.
 import { parseArgs } from 'node:util';
 import { openDb } from '../db.ts';
-import { initAI } from '../ai.ts';
+import { initAI, providerLabel } from '../ai.ts';
 import { acquireImportLock, getCatalogTarget, importProgress, runImport } from '../catalog/importer.ts';
 import { consolidateBases, requeueSuspiciousAliases, resolveUnknownTerms } from '../catalog/normalize-unknown.ts';
 import { migrateCatalog, reresolveRecipes, syncSeed } from '../catalog/store.ts';
@@ -32,28 +32,28 @@ if (values['requeue-rated']) {
 
 if (values.consolidate) {
   // Fusionne les ingrédients de base en double (« blanc de poulet » / « poulet »).
-  const merged = await consolidateBases(db);
+  const { merged, by } = await consolidateBases(db);
   for (const [dup, canon] of merged) console.log(`  ${dup} → ${canon}`);
-  console.log(`${merged.length} ingrédients fusionnés`);
+  console.log(`${merged.length} ingrédients fusionnés par ${providerLabel(by)}`);
   console.log(importProgress(db, target));
   process.exit(0);
 }
 
 if (values['renormalize-ignored']) {
-  // Refait examiner par Claude les termes classés « pas un ingrédient » et les alias « X de Y → X » douteux.
+  // Refait examiner par l'IA les termes classés « pas un ingrédient » et les alias « X de Y → X » douteux.
   const n = db.prepare(`DELETE FROM ingredient_aliases WHERE origin = 'claude' AND base IS NULL`).run().changes;
   const m = requeueSuspiciousAliases(db);
   reresolveRecipes(db, true);
-  console.log(`${n} termes ignorés et ${m} alias « X de Y → X » remis en file pour Claude`);
+  console.log(`${n} termes ignorés et ${m} alias « X de Y → X » remis en file pour l'IA`);
 }
 
 if (values['normalize-only'] || values['renormalize-ignored']) {
   // S'arrête dès qu'un lot ne fait plus baisser la file (termes que Claude omet, ou import en cours qui en ajoute).
   const pending = () => (db.prepare('SELECT COUNT(*) n FROM unknown_terms').get() as { n: number }).n;
   for (let before = pending(); before > 0; ) {
-    await resolveUnknownTerms(db);
+    const { by } = await resolveUnknownTerms(db);
     const after = pending();
-    console.log(`lot normalisé… (${after} termes en attente)`);
+    console.log(`lot normalisé par ${by ? providerLabel(by) : 'personne'}… (${after} termes en attente)`);
     if (after >= before) break;
     before = after;
   }

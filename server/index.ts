@@ -6,7 +6,7 @@ import { existsSync, openSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { DATA_DIR, openDb } from './db.ts';
 import { createApi } from './app.ts';
-import { acquireImportLock, currentTarget, getCatalogTarget, releaseImportLock, runImport } from './catalog/importer.ts';
+import { acquireImportLock, currentTarget, getCatalogTarget, isImportPaused, releaseImportLock, runImport, setImportPaused } from './catalog/importer.ts';
 import { migrateCatalog, syncSeed } from './catalog/store.ts';
 import { ensureStaples } from './pantry.ts';
 import { ensureSelf } from './members.ts';
@@ -61,13 +61,14 @@ app.use('/api/*', async (c, next) => {
 app.use('/api/*', async (c, next) => { if (c.req.path !== '/api/bye') lastSeen = Date.now(); await next(); });
 app.post('/api/bye', c => { pages.delete(pageId(c.req.query('page'))); byeAt = Date.now(); return c.json({ ok: true }); });
 app.get('/api/ping', c => { pages.set(pageId(c.req.query('page')), Date.now()); return c.json({ ok: true }); });
-const importCtrl = new AbortController();
+/** Import en cours : son signal d'arrêt (fermeture de l'app, mise à jour, bouton « Arrêter » des Réglages). */
+let importCtrl: AbortController | null = null;
 let stopping = false;
 async function shutdown(reason: string) {
   if (stopping || process.env.RF_KEEP_ALIVE) return;
   stopping = true;
   console.log(`Arrêt de Recipe Finder (${reason})`);
-  importCtrl.abort();
+  importCtrl?.abort();
   abortAllAI();
   await releaseOllama();
   setTimeout(() => process.exit(0), 500);
@@ -87,7 +88,7 @@ if (ollamaExe()) {
 }
 // Identifiant de la version de l'interface construite : l'app compare et propose de recharger quand il change.
 const clientBuild = () => { try { return String(statSync(join(CLIENT_DIST, 'index.html')).mtimeMs); } catch { return 'dev'; } };
-app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild, startImport: () => { void backgroundImport(); }, languageChanged: () => { void backgroundTranslate(); }, update: () => { void applyUpdate(() => { void restartServer(); }); } }));
+app.route('/api', createApi(db, { importing: () => importing, preferencesChanged: checkProfile, build: clientBuild, pauseImport, languageChanged: () => { void backgroundTranslate(); }, update: () => { void applyUpdate(() => { void restartServer(); }); } }));
 // Route d'API inconnue : JSON 404, jamais la page HTML (sinon le client croit recevoir des données vides).
 app.all('/api/*', c => c.json({ error: L('Route inconnue — relance l’app pour mettre le serveur à jour', 'Unknown route — restart the app to update the server') }, 404));
 setInterval(checkProfile, 30 * 60 * 1000);
@@ -115,7 +116,8 @@ setInterval(() => { void checkForUpdate(); }, 6 * 3600 * 1000);
  * avec ce serveur, mais pas son moteur.
  */
 async function restartServer(): Promise<void> {
-  importCtrl.abort();
+  stopping = true;
+  importCtrl?.abort();
   abortAllAI();
   await releaseOllama();
   const out = openSync(join(DATA_DIR, 'server.log'), 'a');
@@ -130,18 +132,30 @@ async function restartServer(): Promise<void> {
 
 // Import en tâche de fond : compléter le catalogue initial, puis ~100 recettes par semaine.
 async function backgroundImport() {
-  if (importing || process.env.RF_NO_IMPORT || !acquireImportLock()) return;
+  if (importing || stopping || isImportPaused(db) || process.env.RF_NO_IMPORT || !acquireImportLock()) return;
   currentTarget(db); // relève l'objectif de 100 recettes si la croissance hebdomadaire est due
   importing = true;
+  const ctrl = importCtrl = new AbortController();
   try {
     // Objectif relu en continu : l'ajout de recettes depuis les Réglages prolonge un import en cours.
-    await runImport(db, { target: () => getCatalogTarget(db), signal: importCtrl.signal, log: m => console.log(`[import] ${m}`) });
+    await runImport(db, { target: () => getCatalogTarget(db), signal: ctrl.signal, log: m => console.log(`[import] ${m}`) });
   } catch (e) {
     console.error('[import]', e);
   } finally {
     importing = false;
+    importCtrl = null;
     releaseImportLock();
   }
+  // Relancé pendant qu'il finissait sa recette après un « Arrêter » : il repart.
+  if (ctrl.signal.aborted && !stopping && !isImportPaused(db)) void backgroundImport();
+}
+
+/** Bouton des Réglages : l'import s'arrête après la recette en cours (et le reste), ou repart. */
+function pauseImport(paused: boolean) {
+  setImportPaused(db, paused);
+  console.log(`[import] ${paused ? 'mis en pause' : 'relancé'} depuis l'app`);
+  if (paused) importCtrl?.abort();
+  else void backgroundImport();
 }
 // Après une mise à jour, l'ancien serveur libère le verrou d'import en s'arrêtant : on lui laisse un instant.
 setTimeout(() => { void backgroundImport(); }, process.env.RF_AFTER_UPDATE ? 5_000 : 0);

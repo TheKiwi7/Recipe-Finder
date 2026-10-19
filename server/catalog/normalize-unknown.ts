@@ -1,4 +1,4 @@
-import { askAI, parseJsonReply } from '../ai.ts';
+import { askAIWithProvider, parseJsonReply, type Provider } from '../ai.ts';
 import { loadAliases, type Db } from '../db.ts';
 import { reresolveRecipes } from './store.ts';
 import { normalizeKey } from './text.ts';
@@ -21,13 +21,14 @@ Repère les doublons : des noms différents pour un produit qu'on achète et ran
 Ne fusionne PAS des produits distincts (« huile d'olive » ≠ « huile », « sucre glace » ≠ « sucre », « pâte brisée » ≠ « pâte feuilletée », « crème de coco » ≠ « crème fraîche »).
 Réponds uniquement par un objet JSON {"doublon": "nom canonique"}, où chaque nom canonique est un nom de la liste reçue. N'inclus que les doublons à fusionner.`;
 
-/** Fusionne les ingrédients de base qui désignent le même produit (un appel Claude Sonnet). Renvoie les fusions faites. */
-export async function consolidateBases(db: Db): Promise<Array<[dup: string, canon: string]>> {
+/** Fusionne les ingrédients de base qui désignent le même produit (un appel à l'IA). Renvoie les fusions faites et l'IA qui a répondu. */
+export async function consolidateBases(db: Db): Promise<{ merged: Array<[dup: string, canon: string]>; by: Provider }> {
   const rows = db.prepare('SELECT base, COUNT(*) n FROM recipe_ingredients GROUP BY base ORDER BY n DESC').all() as Array<{ base: string; n: number }>;
   const seedBases = new Set((db.prepare(`SELECT DISTINCT base FROM ingredient_aliases WHERE origin = 'seed' AND base IS NOT NULL`).all() as Array<{ base: string }>).map(r => r.base));
   const all = new Set(rows.map(r => r.base));
   const prompt = `Ingrédients de base (nombre de recettes) :\n${rows.map(r => `${r.base} (${r.n})`).join('\n')}`;
-  const reply = parseJsonReply<Record<string, string>>(await askAI(prompt, { tier: 'strong', system: CONSOLIDATE_SYSTEM, timeoutMs: 300_000, lane: 'background', json: true }));
+  const { text, provider: by } = await askAIWithProvider(prompt, { tier: 'strong', system: CONSOLIDATE_SYSTEM, timeoutMs: 300_000, lane: 'background', json: true });
+  const reply = parseJsonReply<Record<string, string>>(text);
 
   const merged: Array<[string, string]> = [];
   db.exec('BEGIN');
@@ -41,7 +42,7 @@ export async function consolidateBases(db: Db): Promise<Array<[dup: string, cano
   }
   db.exec('COMMIT');
   if (merged.length) reresolveRecipes(db, true);
-  return merged;
+  return { merged, by };
 }
 
 /**
@@ -59,10 +60,10 @@ export function requeueSuspiciousAliases(db: Db): number {
   return n;
 }
 
-/** Envoie un lot de termes inconnus à Claude (Haiku) et enregistre les correspondances. Renvoie le nombre de termes traités. */
-export async function resolveUnknownTerms(db: Db): Promise<number> {
+/** Envoie un lot de termes inconnus à l'IA et enregistre les correspondances. Renvoie le nombre de termes traités et l'IA qui a répondu. */
+export async function resolveUnknownTerms(db: Db): Promise<{ count: number; by: Provider | null }> {
   const terms = db.prepare('SELECT key, example FROM unknown_terms ORDER BY occurrences DESC LIMIT ?').all(BATCH) as Array<{ key: string; example: string }>;
-  if (terms.length === 0) return 0;
+  if (terms.length === 0) return { count: 0, by: null };
   const bases = (db.prepare('SELECT DISTINCT base FROM ingredient_aliases WHERE base IS NOT NULL ORDER BY base').all() as Array<{ base: string }>).map(r => r.base);
 
   const prompt = `Bases existantes : ${bases.join(', ')}
@@ -70,7 +71,8 @@ export async function resolveUnknownTerms(db: Db): Promise<number> {
 Termes à normaliser (terme — exemple de ligne de recette) :
 ${terms.map(t => `${t.key} — ${t.example}`).join('\n')}`;
 
-  const reply = parseJsonReply<Record<string, string | null>>(await askAI(prompt, { tier: 'light', system: SYSTEM, timeoutMs: 300_000, lane: 'background', json: true }));
+  const { text, provider: by } = await askAIWithProvider(prompt, { tier: 'light', system: SYSTEM, timeoutMs: 300_000, lane: 'background', json: true });
+  const reply = parseJsonReply<Record<string, string | null>>(text);
 
   const insert = db.prepare(`INSERT INTO ingredient_aliases (key, base, origin) VALUES (?, ?, 'claude') ON CONFLICT(key) DO NOTHING`);
   const known = loadAliases(db);
@@ -89,5 +91,5 @@ ${terms.map(t => `${t.key} — ${t.example}`).join('\n')}`;
   }
   db.exec('COMMIT');
   reresolveRecipes(db);
-  return terms.length;
+  return { count: terms.length, by };
 }

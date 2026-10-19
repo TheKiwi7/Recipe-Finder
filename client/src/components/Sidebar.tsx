@@ -83,6 +83,7 @@ export function Sidebar({ route }: { route: Route }) {
         {status && status.imported < status.target && (
           <div className="side-foot" title={L(`${status.rejected} recettes écartées (note insuffisante)`, `${status.rejected} recipes skipped (rating too low)`)}>
             {L('Catalogue : ', 'Catalogue: ')}{num(status.imported)} / {num(status.target)} {L('recettes', 'recipes')}
+            {status.paused && L(' · arrêté', ' · stopped')}
             <div className="progress"><i style={{ width: `${Math.min(100, (100 * status.imported) / status.target)}%` }} /></div>
           </div>
         )}

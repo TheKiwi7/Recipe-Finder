@@ -1,6 +1,6 @@
 import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { AIUnavailable } from '../ai.ts';
+import { AIUnavailable, providerLabel } from '../ai.ts';
 import { DATA_DIR, getMeta, loadAliases, setMeta, type Db } from '../db.ts';
 import { consolidateBases, resolveUnknownTerms } from './normalize-unknown.ts';
 import { parseRecipePage, passesQuality } from './recipe.ts';
@@ -16,7 +16,7 @@ const SITEMAP_INDEX = 'https://www.marmiton.org/wsitemap_recipes_index.xml';
 // robots.txt de Marmiton autorise /recettes/recette_* ; il bloque l'impression (recette-impression_*), /recipe*, et la recherche au-delà de sa
 // première page. On parcourt donc le catalogue par le sitemap, sans passer par la recherche.
 const RECIPE_URL = /^https:\/\/www\.marmiton\.org\/recettes\/recette_[^/?#]+\.aspx$/;
-/** Nombre de termes inconnus accumulés avant d'appeler Claude. */
+/** Nombre de termes inconnus accumulés avant d'appeler l'IA. */
 const UNKNOWN_BATCH = 150;
 
 export type ImportProgress = {
@@ -168,17 +168,18 @@ async function flushUnknown(db: Db, force: boolean, log: (m: string) => void): P
   const n = (db.prepare('SELECT COUNT(*) n FROM unknown_terms').get() as { n: number }).n;
   if (n === 0 || (!force && n < UNKNOWN_BATCH)) return;
   try {
-    const done = await resolveUnknownTerms(db);
-    log(`Claude a normalisé ${done} termes inconnus`);
+    const { count, by } = await resolveUnknownTerms(db);
+    if (by) log(`${count} termes inconnus normalisés par ${providerLabel(by)}`);
   } catch (e) {
-    // Claude indisponible : on réessaiera au prochain lot, l'import continue.
+    // IA indisponible : on réessaiera au prochain lot, l'import continue.
     log(`Normalisation reportée (${e instanceof AIUnavailable ? e.message : String(e)})`);
   }
 }
 
 /**
  * Importe des recettes jusqu'à atteindre `target` recettes en base. Reprend là où il s'était arrêté.
- * S'arrête proprement quand `signal` est annulé.
+ * S'arrête proprement quand `signal` est annulé : le signal n'est regardé qu'entre deux recettes, et une recette est
+ * enregistrée d'un bloc une fois sa page lue, donc un arrêt ne coupe jamais une recette en deux.
  */
 export async function runImport(db: Db, opts: { target: number | (() => number); signal?: AbortSignal; onProgress?: (p: ImportProgress) => void; log?: (m: string) => void }): Promise<void> {
   const log = opts.log ?? (() => {});
@@ -224,15 +225,16 @@ export async function runImport(db: Db, opts: { target: number | (() => number);
     }
 
     const before = (db.prepare('SELECT COUNT(*) n FROM unknown_terms').get() as { n: number }).n;
-    if (before >= UNKNOWN_BATCH) { await flushUnknown(db, false, log); aliases = loadAliases(db); }
+    // Arrêt demandé pendant la recette : elle est enregistrée, mais on ne lance pas un lot d'IA de plus (il reprendra avec l'import).
+    if (before >= UNKNOWN_BATCH && !opts.signal?.aborted) { await flushUnknown(db, false, log); aliases = loadAliases(db); }
     opts.onProgress?.({ ...importProgress(db, targetNow()), last });
   }
   if (!opts.signal?.aborted) {
     await flushUnknown(db, true, log);
     // Objectif atteint : on fusionne les ingrédients de base en double apparus pendant l'import.
-    // Seulement si des recettes ont été ajoutées : la vérification horaire du serveur ne doit pas appeler Claude pour rien.
+    // Seulement si des recettes ont été ajoutées : la vérification horaire du serveur ne doit pas appeler l'IA pour rien.
     if (addedThisRun > 0 && importProgress(db, 0).imported >= targetNow()) {
-      try { log(`${(await consolidateBases(db)).length} ingrédients en double fusionnés`); }
+      try { const { merged, by } = await consolidateBases(db); log(`${merged.length} ingrédients en double fusionnés par ${providerLabel(by)}`); }
       catch (e) { log(`Consolidation reportée (${e instanceof AIUnavailable ? e.message : String(e)})`); }
     }
   }
@@ -257,6 +259,10 @@ export function acquireImportLock(): boolean {
 export function releaseImportLock(): void {
   try { if (readFileSync(LOCK_FILE, 'utf8') === String(process.pid)) unlinkSync(LOCK_FILE); } catch { /* déjà libéré */ }
 }
+
+/** Import mis en pause depuis l'app (Réglages) : il le reste, même après un redémarrage, jusqu'à ce qu'on le relance. */
+export const isImportPaused = (db: Db) => getMeta(db, 'import_paused') === '1';
+export function setImportPaused(db: Db, paused: boolean): void { setMeta(db, 'import_paused', paused ? '1' : '0'); }
 
 export const DEFAULT_TARGET = 5_000;
 const WEEKLY_GROWTH = 100;

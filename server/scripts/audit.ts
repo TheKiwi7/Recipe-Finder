@@ -22,10 +22,10 @@ for (const r of all<{ reason: string; n: number }>(`SELECT reason, COUNT(*) n FR
 
 title('Normalisation des ingrédients');
 console.log(`${lines.length} lignes d'ingrédients · ${lines.filter(l => l.base).length} reconnues · ${lines.filter(l => !l.base).length} sans base (ignorées ou inconnues)`);
-console.log(`Recettes encore exclues (ingrédient inconnu) : ${recipes.filter(r => r.unresolved > 0).length} · termes en attente de Claude : ${one('SELECT COUNT(*) n FROM unknown_terms')}`);
+console.log(`Recettes encore exclues (ingrédient inconnu) : ${recipes.filter(r => r.unresolved > 0).length} · termes en attente de l'IA : ${one('SELECT COUNT(*) n FROM unknown_terms')}`);
 for (const r of all<{ origin: string; n: number }>('SELECT origin, COUNT(*) n FROM ingredient_aliases GROUP BY origin')) console.log(`- alias ${r.origin} : ${r.n}`);
 const ignored = all<{ key: string }>(`SELECT key FROM ingredient_aliases WHERE base IS NULL AND origin = 'claude' ORDER BY key`).map(r => r.key);
-console.log(`\nTermes que Claude a jugés « pas un ingrédient » (${ignored.length}) — vérifier qu'il n'y a pas de vrai ingrédient :\n${ignored.join(' · ') || '—'}`);
+console.log(`\nTermes que l'IA a jugés « pas un ingrédient » (${ignored.length}) — vérifier qu'il n'y a pas de vrai ingrédient :\n${ignored.join(' · ') || '—'}`);
 
 // Correspondance par préfixe trop courte : « noix de saint-jacques » → « noix », « pomme de ... » → « pomme ».
 const pairs = new Map<string, { name: string; base: string; n: number }>();
@@ -43,7 +43,7 @@ console.log(`\nCorrespondances par préfixe à vérifier (« X de … » → X),
 for (const p of [...pairs.values()].sort((a, b) => b.n - a.n).slice(0, 40)) console.log(`- ${p.name} → ${p.base}  (×${p.n})`);
 
 const claudeAliases = all<{ key: string; base: string }>(`SELECT key, base FROM ingredient_aliases WHERE origin = 'claude' AND base IS NOT NULL ORDER BY random() LIMIT 30`);
-console.log(`\nÉchantillon d'alias créés par Claude :`);
+console.log(`\nÉchantillon d'alias créés par l'IA :`);
 for (const a of claudeAliases) console.log(`- ${a.key} → ${a.base}`);
 
 const freq = all<{ base: string; n: number }>('SELECT base, COUNT(*) n FROM recipe_ingredients GROUP BY base ORDER BY n DESC');

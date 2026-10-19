@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { readFileSync } from 'node:fs';
 import type { Db } from './db.ts';
-import { displayProgress, getCatalogTarget, getImportPriority, importProgress, prioritizeQueue, priorityBaseline, priorityRemaining, setCatalogTarget, setImportPriority } from './catalog/importer.ts';
+import { displayProgress, getCatalogTarget, getImportPriority, importProgress, isImportPaused, prioritizeQueue, priorityBaseline, priorityRemaining, setCatalogTarget, setImportPriority } from './catalog/importer.ts';
 import { checkForUpdate, initUpdateState, updateState } from './update.ts';
 import { addShoppingItem, buyAllShopping, buyShoppingItem, clearShopping, cookRecipe, CookError, listShopping, removeShoppingItem } from './shopping.ts';
 import {
@@ -35,7 +35,7 @@ const MIME: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg', jp
 /** Change à chaque démarrage du serveur : l'app recalcule alors ses listes (règles ou catalogue ont pu changer). */
 const SERVER_STARTED = new Date().toISOString();
 
-export function createApi(db: Db, status: { importing: () => boolean; preferencesChanged: () => void; build: () => string; startImport: () => void; languageChanged: () => void; update: () => void }) {
+export function createApi(db: Db, status: { importing: () => boolean; preferencesChanged: () => void; build: () => string; pauseImport: (paused: boolean) => void; languageChanged: () => void; update: () => void }) {
   const api = new Hono();
 
   api.onError((err, c) => c.json({ error: err.message }, 400));
@@ -145,7 +145,12 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     return c.body(readFileSync(p), 200, { 'Content-Type': MIME[file.split('.').pop()!.toLowerCase()] ?? 'application/octet-stream', 'Cache-Control': 'max-age=31536000', 'X-Content-Type-Options': 'nosniff' });
   });
 
-  api.get('/import/status', c => c.json({ ...displayProgress(db), running: status.importing(), build: status.build(), server: SERVER_STARTED }));
+  api.get('/import/status', c => c.json({ ...displayProgress(db), running: status.importing(), paused: isImportPaused(db), build: status.build(), server: SERVER_STARTED }));
+  // Bouton « Arrêter l'import » / « Reprendre l'import » (Réglages). Arrêter : l'import finit la recette en cours, puis s'arrête.
+  api.post('/import/pause', async c => {
+    status.pauseImport(!!(await c.req.json()).paused);
+    return c.json({ ...displayProgress(db), running: status.importing(), paused: isImportPaused(db) });
+  });
   // Types de recettes à importer en priorité (Réglages) : la file d'import est réordonnée tout de suite.
   const priority = () => ({ types: getImportPriority(db), remaining: priorityRemaining(db), baseline: priorityBaseline(db) });
   api.get('/import/priority', c => c.json(priority()));
@@ -159,8 +164,8 @@ export function createApi(db: Db, status: { importing: () => boolean; preference
     const add = Math.max(0, Math.min(10_000, Math.round(Number((await c.req.json()).add) || 0)));
     const { imported } = importProgress(db, 0);
     setCatalogTarget(db, Math.max(getCatalogTarget(db), imported) + add);
-    status.startImport();
-    return c.json({ ...displayProgress(db), running: true });
+    status.pauseImport(false); // ajouter des recettes relance aussi un import arrêté
+    return c.json({ ...displayProgress(db), running: true, paused: false });
   });
 
   api.get('/questionnaire', c => c.json({ questionnaire: getQuestionnaire(db), defaults: DEFAULT_QUESTIONNAIRE, equipment: OPTIONAL_EQUIPMENT }));

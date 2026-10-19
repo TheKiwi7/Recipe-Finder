@@ -50,7 +50,7 @@ export type AIStatus = {
   localModels: Array<{ id: string; label: string; size: string; hint: string }>;
 };
 /** target : objectif affiché, plafonné à reachable (ce qui reste réellement importable). secondsPerRecipe : rythme de l'import, pour le temps restant. */
-export type ImportStatus = { imported: number; target: number; reachable: number; secondsPerRecipe: number; rejected: number; pending: number; available: number; unresolvedRecipes: number; running: boolean; build: string; server: string };
+export type ImportStatus = { imported: number; target: number; reachable: number; secondsPerRecipe: number; rejected: number; pending: number; available: number; unresolvedRecipes: number; running: boolean; paused: boolean; build: string; server: string };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -79,6 +79,7 @@ export const api = {
   suggest: (q: string) => call<string[]>('GET', `/ingredients/suggest?q=${encodeURIComponent(q)}`),
   importStatus: () => call<ImportStatus>('GET', '/import/status'),
   importMore: (add: number) => call<ImportStatus>('POST', '/import/more', { add }),
+  pauseImport: (paused: boolean) => call<ImportStatus>('POST', '/import/pause', { paused }),
   members: () => call<Members>('GET', '/members'),
   addMember: (name: string) => call<Member>('POST', '/members', { name }),
   updateMember: (id: number, patch: Partial<Omit<Member, 'id' | 'isSelf'>>) => call('PATCH', `/members/${id}`, patch),

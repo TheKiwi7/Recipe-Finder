@@ -97,6 +97,8 @@ body.chat-open .content { padding-right: 424px; }
 
 /* ---------- ajouter des recettes ---------- */
 .add-recipes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+.import-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.import-toggle .spin { vertical-align: -2px; }
 .goal-reached { display: flex; align-items: center; gap: 8px; padding: 10px 14px; margin-bottom: 14px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 14px; }
 
 /* ---------- intelligence artificielle ---------- */

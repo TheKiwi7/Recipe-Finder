@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpCircle, Check, Download, Eye, Loader2, Plus, RefreshCw, Undo2 } from 'lucide-react';
+import { ArrowUpCircle, Check, Download, Eye, Loader2, Pause, Play, Plus, RefreshCw, Undo2 } from 'lucide-react';
 import { api } from '../api.ts';
 import { QuestionnaireForm } from '../components/QuestionnaireForm.tsx';
 import { AiCard } from '../components/AiCard.tsx';
@@ -83,6 +83,12 @@ function ProfileCard({ version }: { version: number }) {
     } catch (e) { toast((e as Error).message); }
     finally { setBusy(false); }
   };
+  const pause = async (paused: boolean) => {
+    setBusy(true);
+    try { setImportStatus(await api.pauseImport(paused)); }
+    catch (e) { toast((e as Error).message); }
+    finally { setBusy(false); }
+  };
   return (
     <div className="card settings-card">
       <p className="small">{L('L’IA tient à jour un profil détaillé de tes goûts à partir de tes likes, rejets, questions et de tes notes. Il oriente les recommandations.', 'The AI keeps a detailed profile of your tastes from your likes, rejections, questions and notes. It steers the recommendations.')}</p>
@@ -140,6 +146,13 @@ function CatalogCard() {
   const reload = () => { setFailed(false); refreshImportStatus().catch(() => setFailed(true)); };
   useEffect(reload, []);
   const [busy, setBusy] = useState(false);
+  // « Arrêter » : l'import finit la recette en cours avant de s'arrêter. On relit l'état chaque seconde jusque-là.
+  const finishing = !!s?.paused && !!s?.running;
+  useEffect(() => {
+    if (!finishing) return;
+    const t = setInterval(() => { refreshImportStatus().catch(() => {}); }, 1000);
+    return () => clearInterval(t);
+  }, [finishing]);
   if (!s) return <div className="card settings-card"><LoadState failed={failed} onRetry={reload} /></div>;
   const remaining = Math.max(0, s.target - s.imported);
   const reached = remaining === 0;
@@ -157,6 +170,12 @@ function CatalogCard() {
     } catch (e) { toast((e as Error).message); }
     finally { setBusy(false); }
   };
+  const pause = async (paused: boolean) => {
+    setBusy(true);
+    try { setImportStatus(await api.pauseImport(paused)); }
+    catch (e) { toast((e as Error).message); }
+    finally { setBusy(false); }
+  };
   return (
     <div className="card settings-card">
       {reached && s.pending > 0 && (
@@ -164,8 +183,24 @@ function CatalogCard() {
       )}
       <p className="small">
         <b>{fr(s.imported)}</b> {L('recettes dans ton catalogue', 'recipes in your catalogue')}
-        {remaining > 0 ? L(` · import en cours vers ${fr(s.target)}${capped ? ', le maximum possible' : ''} (encore ≈ ${duration(remaining, s.secondsPerRecipe)}, quand l’app est ouverte)`, ` · importing up to ${fr(s.target)}${capped ? ', the most possible' : ''} (≈ ${duration(remaining, s.secondsPerRecipe)} left, while the app is open)`) : null}.
+        {remaining > 0 && s.paused ? L(' · import arrêté', ' · import stopped') : null}
+        {remaining > 0 && !s.paused ? L(` · import en cours vers ${fr(s.target)}${capped ? ', le maximum possible' : ''} (encore ≈ ${duration(remaining, s.secondsPerRecipe)}, quand l’app est ouverte)`, ` · importing up to ${fr(s.target)}${capped ? ', the most possible' : ''} (≈ ${duration(remaining, s.secondsPerRecipe)} left, while the app is open)`) : null}.
       </p>
+      {(remaining > 0 || s.running) && (
+        <div className="import-toggle">
+          <button className="btn btn-ghost small-btn" disabled={busy || finishing} onClick={() => pause(!s.paused)}>
+            {s.paused ? <Play size={14} /> : <Pause size={14} />}
+            {s.paused ? L('Reprendre l’import', 'Resume the import') : L('Arrêter l’import', 'Stop the import')}
+          </button>
+          <span className="muted small">
+            {finishing
+              ? <><Loader2 size={13} className="spin" />{L(' Fin de la recette en cours…', ' Finishing the current recipe…')}</>
+              : s.paused
+                ? L('Il reste arrêté, même après un redémarrage de l’app, jusqu’à ce que tu le relances.', 'It stays stopped, even after the app restarts, until you resume it.')
+                : L('L’import finit toujours la recette en cours avant de s’arrêter.', 'The import always finishes the current recipe before stopping.')}
+          </span>
+        </div>
+      )}
       <p className="muted small">
         {L(`Marmiton publie ${fr(s.available)} recettes dans son plan du site (le site en annonce davantage, mais les autres n’y sont pas listées). L’app écarte celles qui sont trop mal notées, environ ${skippedPct} % : ton catalogue peut donc atteindre environ ${fr(s.reachable)} recettes. Déjà lues : ${fr(browsed)}, dont ${fr(s.rejected)} écartées ; encore à lire : ${fr(s.pending)}, soit environ ${fr(left)} recettes de plus. La liste est relue chaque semaine.`,
           `Marmiton publishes ${fr(s.available)} recipes in its sitemap (the site announces more, but the others aren’t listed there). The app skips those with a low rating, about ${skippedPct}%: your catalogue can therefore reach about ${fr(s.reachable)} recipes. Already read: ${fr(browsed)}, of which ${fr(s.rejected)} skipped; still to read: ${fr(s.pending)}, i.e. about ${fr(left)} more recipes. The list is re-read every week.`)}

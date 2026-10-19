@@ -284,6 +284,14 @@ const MAX_REST_MS = 2 * 60_000;
 let backgroundRest = 0;
 
 export function askAI(prompt: string, opts: AskOptions): Promise<string> {
+  return askAIWithProvider(prompt, opts).then(a => a.text);
+}
+
+/** Nom de l'IA pour les journaux : « Claude » ou « le modèle local (gemma3:12b) ». */
+export const providerLabel = (p: Provider) => (p === 'claude' ? 'Claude' : `le modèle local (${localModel()})`);
+
+/** Comme askAI, en disant aussi quelle IA a répondu (pour les journaux des tâches de fond). */
+export function askAIWithProvider(prompt: string, opts: AskOptions): Promise<{ text: string; provider: Provider }> {
   const job = lanes[opts.lane].catch(() => {}).then(() => askRouted(prompt, opts));
   lanes[opts.lane] = opts.lane === 'background'
     ? job.catch(() => {}).then(() => { const ms = backgroundRest; backgroundRest = 0; return ms && !closing ? new Promise(r => setTimeout(r, ms)) : undefined; })
@@ -299,7 +307,7 @@ function checkReply(text: string, opts: AskOptions): string {
   return text;
 }
 
-async function askRouted(prompt: string, opts: AskOptions): Promise<string> {
+async function askRouted(prompt: string, opts: AskOptions): Promise<{ text: string; provider: Provider }> {
   if (closing) throw new AIUnavailable(L('L’app se ferme', 'The app is closing'));
   const candidates = await route(opts.lane);
   if (candidates.length === 0) {
@@ -310,7 +318,7 @@ async function askRouted(prompt: string, opts: AskOptions): Promise<string> {
   for (const p of candidates) {
     const started = Date.now();
     try {
-      return checkReply(await providers.call(p, prompt, opts), opts);
+      return { text: checkReply(await providers.call(p, prompt, opts), opts), provider: p };
     } catch (e) {
       if (closing) throw new AIUnavailable(L('L’app se ferme', 'The app is closing'));
       lastError = e;
