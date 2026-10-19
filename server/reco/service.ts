@@ -7,9 +7,10 @@ import { mealContext } from '../members.ts';
 import { normalizeKey } from '../catalog/text.ts';
 import { realImage } from '../catalog/recipe.ts';
 import { withGenerics } from './generic.ts';
-import { pickBatch, rankCandidates, type Context, type Entry, type Filters, type Mode } from './rank.ts';
+import { pickFresh, rankCandidates, withoutServing, type Context, type Entry, type Filters, type Mode } from './rank.ts';
 
 export const IMAGES_DIR = join(DATA_DIR, 'images');
+/** Une recette vue ces 14 derniers jours passe après les autres (elle ne revient que s'il en manque pour remplir la page). */
 const COOLDOWN_MS = 14 * 24 * 3600 * 1000;
 /** Une recette vue il y a moins de 6 h (même session) peut réapparaître, par ex. en revenant sur un filtre. */
 const SAME_SESSION_MS = 6 * 3600 * 1000;
@@ -49,7 +50,7 @@ export function loadCatalog(db: Db, force = false): Catalog {
     id: r.id, name: r.name, image: r.image, type: r.type, totalMin: r.total_min, dishes: r.dishes, rating: r.rating, reviews: r.reviews,
     bases: bases.get(r.id) ?? [], keywords: JSON.parse(r.keywords), utensils: JSON.parse(r.utensils), hasImage: !!r.image,
     // Texte des lignes d'ingrédients + étapes : rattrape ce que la base d'ingrédient ou la liste oublie.
-    stepsKey: ` ${normalizeKey([...(JSON.parse(r.ingredients) as Array<{ raw: string }>).map(l => l.raw), ...(JSON.parse(r.steps) as string[])].join(' '))} `,
+    stepsKey: ` ${normalizeKey([...(JSON.parse(r.ingredients) as Array<{ raw: string }>).map(l => l.raw), ...(JSON.parse(r.steps) as string[]).map(withoutServing)].join(' '))} `,
   }));
   const df = new Map<string, number>();
   for (const e of entries) for (const b of e.bases) df.set(b, (df.get(b) ?? 0) + 1);
@@ -75,12 +76,17 @@ export function availableBases(db: Db) {
   return { available: withGenerics(new Set([...pantry.map(p => p.base), ...staples])), urgent: new Set(pantry.filter(p => p.urgent).map(p => p.base)), staples };
 }
 
-function buildContext(db: Db, catalog: Catalog, mode: Mode): Context {
+/** Recettes vues récemment dans cet onglet (id → date) : elles passent après les autres. */
+function recentlySeen(db: Db, mode: Mode): Map<number, string> {
+  const rows = db.prepare('SELECT recipe_id id, at FROM seen WHERE mode = ? AND at > ? AND at < ?').all(mode,
+    new Date(Date.now() - COOLDOWN_MS).toISOString(), new Date(Date.now() - SAME_SESSION_MS).toISOString()) as Array<{ id: number; at: string }>;
+  return new Map(rows.map(r => [r.id, r.at]));
+}
+
+function buildContext(db: Db, catalog: Catalog): Context {
   const meal = mealContext(db);
   const liked = ids(db, `SELECT recipe_id id FROM reactions WHERE kind = 'like'`);
   const disliked = ids(db, `SELECT recipe_id id FROM reactions WHERE kind = 'dislike'`);
-  const seen = ids(db, 'SELECT recipe_id id FROM seen WHERE mode = ? AND at > ? AND at < ?', mode,
-    new Date(Date.now() - COOLDOWN_MS).toISOString(), new Date(Date.now() - SAME_SESSION_MS).toISOString());
   const pick = (s: Set<number>) => [...s].map(id => catalog.byId.get(id)).filter((e): e is Entry & { image: string | null } => !!e);
   return {
     ...availableBases(db),
@@ -89,7 +95,7 @@ function buildContext(db: Db, catalog: Catalog, mode: Mode): Context {
     exclusionWords: meal.exclusionWords,
     liked: pick(liked),
     disliked: pick(disliked),
-    excluded: new Set([...liked, ...disliked, ...seen]),
+    excluded: new Set([...liked, ...disliked]),
     questionnaire: getQuestionnaire(db) ?? DEFAULT_QUESTIONNAIRE,
     weights: meal.selfEats ? getWeights(db) : {},
     idf: catalog.idf,
@@ -114,7 +120,7 @@ function toCard(db: Db, e: Entry & { image: string | null }, missing: string[], 
  */
 export function recommend(db: Db, req: { mode: Mode; filters: Filters; current: number[]; want: number }) {
   const catalog = loadCatalog(db);
-  const ctx = buildContext(db, catalog, req.mode);
+  const ctx = buildContext(db, catalog);
   const dislikedOnly = { ...ctx, excluded: new Set(ctx.disliked.map(d => d.id)) };
 
   const kept = req.current
@@ -126,7 +132,7 @@ export function recommend(db: Db, req: { mode: Mode; filters: Filters; current: 
   const exclude = new Set([...ctx.excluded, ...req.current]);
   const ranked = rankCandidates(catalog.entries, { ...ctx, excluded: exclude }, req.mode, req.filters);
   const need = Math.max(0, req.want - kept.length);
-  const added = pickBatch(ranked, need, Math.random, { idf: catalog.idf, recent: kept.map(s => s.entry) });
+  const added = pickFresh(ranked, need, recentlySeen(db, req.mode), Math.random, { idf: catalog.idf, recent: kept.map(s => s.entry) });
 
   const mark = db.prepare(`INSERT INTO seen (recipe_id, mode, at) VALUES (?, ?, ?) ON CONFLICT(recipe_id, mode) DO UPDATE SET at = excluded.at`);
   const now = new Date().toISOString();

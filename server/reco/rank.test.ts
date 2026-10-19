@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import { typeGuesser } from '../catalog/importer.ts';
 import assert from 'node:assert/strict';
 import { allergenKey, DEFAULT_QUESTIONNAIRE, exclusionWords } from '../preferences.ts';
-import { bayesianRating, pickBatch, rankCandidates, similarity, twins, type Context, type Entry } from './rank.ts';
+import { normalizeKey } from '../catalog/text.ts';
+import { bayesianRating, pickBatch, pickFresh, rankCandidates, similarity, twins, withoutServing, type Context, type Entry } from './rank.ts';
 
 let nextId = 1;
 const entry = (bases: string[], over: Partial<Entry> = {}): Entry => ({
@@ -21,8 +22,9 @@ test('onglet Recettes : uniquement les recettes faisables', () => {
   assert.deepEqual(ids, [ok.id]);
 });
 
-test('une recette sans ingrédient reconnu hors placard n’est jamais proposée', () => {
-  assert.deepEqual(rankCandidates([entry([]), entry(['sel', 'poivre'])], ctx(), 'ready', {}), []);
+test('une recette sans ingrédient reconnu n’est jamais proposée ; une recette 100 % placard, si', () => {
+  const placard = entry(['sel', 'poivre']);
+  assert.deepEqual(rankCandidates([entry([]), placard], ctx(), 'ready', {}).map(s => s.entry.id), [placard.id]);
 });
 
 test('ingrédient rejeté cité seulement dans les étapes : recette exclue', () => {
@@ -134,6 +136,25 @@ test('lot : 10 recettes dont ~3 explorations, sans doublon', () => {
   const batch = pickBatch(ranked, 10, () => ((seed = (seed * 16807) % 2147483647) / 2147483647));
   assert.equal(batch.length, 10);
   assert.equal(new Set(batch.map(s => s.entry.id)).size, 10);
+});
+
+test('lot : les recettes déjà vues passent après les autres, les plus anciennement vues d’abord', () => {
+  const ranked = rankCandidates(Array.from({ length: 10 }, (_, i) => entry([`ingrédient ${i}`], { name: `Recette ${i}` })), ctx({ available: new Set(Array.from({ length: 10 }, (_, i) => `ingrédient ${i}`)) }), 'ready', {});
+  const ids = ranked.map(s => s.entry.id);
+  // 7 vues sur 10 : la page de 5 prend les 3 jamais vues, puis les 2 vues il y a le plus longtemps.
+  const seenAt = new Map(ids.slice(0, 7).map((id, i) => [id, `2026-10-${10 + i}T12:00:00.000Z`]));
+  const batch = pickFresh(ranked, 5, seenAt).map(s => s.entry.id);
+  assert.deepEqual(new Set(batch.slice(0, 3)), new Set(ids.slice(7)));
+  assert.deepEqual(new Set(batch.slice(3)), new Set(ids.slice(0, 2)));
+  // Assez de recettes jamais vues : aucune déjà vue.
+  assert.ok(pickFresh(ranked, 3, seenAt).every(s => !seenAt.has(s.entry.id)));
+});
+
+test('suggestion de service dans les étapes : pas un ingrédient de la recette', () => {
+  const galettes = entry(['riz', 'oeuf'], { stepsKey: ` ${normalizeKey(['Cuire le riz.', 'Servir en accompagnement de légumes ou de poisson. Bon appétit'].map(withoutServing).join(' '))} ` });
+  const croquettes = entry(['riz', 'oeuf'], { stepsKey: ` ${normalizeKey(['Émietter le poisson et le mélanger au riz.'].map(withoutServing).join(' '))} ` });
+  const r = rankCandidates([galettes, croquettes], ctx({ exclusionWords: ['poisson'] }), 'ready', {});
+  assert.deepEqual(r.map(s => s.entry.id), [galettes.id]);
 });
 
 test('lot : les recettes presque pareilles ne se suivent pas', () => {

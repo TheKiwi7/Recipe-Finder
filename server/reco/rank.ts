@@ -31,7 +31,7 @@ export type Context = {
   exclusionWords: string[]; // allergies (et leur famille) + régime : exclusion dès que le mot apparaît dans un ingrédient
   liked: Entry[];
   disliked: Entry[];
-  excluded: Set<number>;    // recettes likées (déjà en favoris), rejetées, vues récemment
+  excluded: Set<number>;    // recettes likées (déjà en favoris), rejetées
   questionnaire: Questionnaire;
   weights: ProfileWeights;
   idf: Map<string, number>;
@@ -63,6 +63,12 @@ function mentionsRejected(e: Entry & { stepsKey: string }, ctx: Context): boolea
   return words.single.some(w => tokens.has(w)) || words.multi.some(w => e.stepsKey.includes(` ${w} `));
 }
 const stepWordsCache = new WeakMap<Context, { single: string[]; multi: string[] }>();
+
+// Suggestions de service (« en accompagnement de légumes ou de poisson », « servir avec du saumon ») : jusqu'à la fin
+// de la phrase, ce ne sont pas des ingrédients de la recette.
+const SERVING = /\b(?:accompagn|servir avec|servez avec|servie?s? avec)[^.!?;\n]*/gi;
+/** Étape sans ses suggestions de service, avant d'y chercher les ingrédients rejetés. */
+export const withoutServing = (step: string) => step.replace(SERVING, ' ');
 const tokenCache = new WeakMap<Entry, Set<string>>();
 const tokensOf = (e: Entry & { stepsKey: string }) => tokenCache.get(e) ?? tokenCache.set(e, new Set(e.stepsKey.split(' '))).get(e)!;
 const ownedCache = new WeakMap<Context, Set<string>>();
@@ -133,8 +139,9 @@ function isEligible(e: Entry, ctx: Context, mode: Mode, filters: Filters, missin
   if (filters.type && filters.type !== 'Tous' && e.type !== filters.type) return false;
   if (filters.maxTime && (e.totalMin === 0 || e.totalMin > filters.maxTime)) return false;
   if (mode === 'ready' ? missing.length !== 0 : mode === 'almost' ? missing.length < 1 || missing.length > MAX_MISSING : missing.length <= MAX_MISSING) return false;
-  // Au moins un vrai ingrédient hors placard : sinon une recette dont rien n'est reconnu serait toujours « faisable ».
-  if (!e.bases.some(b => !ctx.staples.has(b))) return false;
+  // Au moins un ingrédient reconnu : sinon une recette dont rien n'est reconnu (« L'Amour » : 10 roses oubliées) serait
+  // toujours « faisable ». Une recette faite seulement avec le placard (pâte à pizza, sablés) reste proposée.
+  if (!e.bases.length) return false;
   if (e.bases.some(b => ctx.banned.has(b))) return false;
   const owned = ownedOf(ctx);
   if (e.utensils.some(u => OPTIONAL_EQUIPMENT.includes(u) && !owned.has(u))) return false;
@@ -253,6 +260,20 @@ export function pickBatch(ranked: Scored[], count: number, rand: () => number = 
   }
   spreadTwins(out, idf);
   return out;
+}
+
+/**
+ * Comme pickBatch, mais les recettes vues ces derniers jours (`seenAt` : id → date) ne viennent qu'après toutes les
+ * autres, les plus anciennement vues d'abord. Peu de recettes faisables : la liste se remplit quand même, en tournant.
+ */
+export function pickFresh(ranked: Scored[], count: number, seenAt: Map<number, string>, rand: () => number = Math.random, opts: { idf?: Map<string, number>; recent?: Entry[] } = {}): Scored[] {
+  const out = pickBatch(ranked.filter(s => !seenAt.has(s.entry.id)), count, rand, opts);
+  if (out.length >= count) return out;
+  const oldest = ranked.filter(s => seenAt.has(s.entry.id))
+    .sort((a, b) => seenAt.get(a.entry.id)!.localeCompare(seenAt.get(b.entry.id)!))
+    .slice(0, count - out.length);
+  // Toutes sont prises ; pickBatch ne fait que les ordonner pour que les sosies ne se suivent pas.
+  return [...out, ...pickBatch(oldest, oldest.length, rand, { ...opts, recent: [...(opts.recent ?? []), ...out.map(s => s.entry)] })];
 }
 
 /**

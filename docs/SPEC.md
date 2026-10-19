@@ -40,7 +40,7 @@ App perso, 100 % locale, qui recommande des recettes **réelles** (Marmiton) sel
 - **Découvrir** : plus de 3 manquants, classées d'après les goûts (profil, likes : leur poids grandit avec leur nombre, un seul like ne tire pas toute la liste) ; le stock n'y compte pas.
 - **20** recettes, **+20** par « Charger plus » ; filtres stricts : type (**Tous** par défaut) et temps (≤ 20 min, ≤ 45 min, toutes durées) ; filtre **« Pour : »** (qui mange) dès qu'il y a plusieurs membres.
 - **Stock modifié** → liste recalculée entièrement (les nouvelles recettes faisables apparaissent). Rejets modifiés → les recettes encore valides gardent leur place.
-- Une recette vue sans réaction ne réapparaît qu'après ~**2 semaines** (sauf dans les 6 h, par ex. en revenant sur un filtre).
+- Une recette vue sans réaction passe après les autres pendant ~**2 semaines** (sauf dans les 6 h, par ex. en revenant sur un filtre) : elle ne revient que s'il en manque pour remplir la page, les plus anciennement vues d'abord.
 - Grille de cartes (5 par ligne sur grand écran) : photo, nom, temps, vaisselle, note, type (en « Tous »), manquants.
 
 ## Page recette
@@ -145,7 +145,7 @@ A personal, 100% local app that recommends **real** recipes (Marmiton) based on 
 - **Discover**: more than 3 missing, ranked by taste (profile, likes: their weight grows with their number, a single like doesn't pull the whole list); the pantry doesn't count there.
 - **20** recipes, **+20** per “Load more”; strict filters: type (**All** by default) and time (≤ 20 min, ≤ 45 min, any time); **“For:”** filter (who is eating) as soon as there are several members.
 - **Pantry changed** → list fully recomputed (newly doable recipes appear). Rejections changed → still-valid recipes keep their place.
-- A recipe seen without a reaction only comes back after ~**2 weeks** (except within 6 h, e.g. when coming back to a filter).
+- A recipe seen without a reaction goes behind the others for ~**2 weeks** (except within 6 h, e.g. when coming back to a filter): it only comes back when the page cannot be filled otherwise, oldest-seen first.
 - Card grid (5 per row on a large screen): photo, name, time, washing up, rating, type (under “All”), missing ingredients.
 
 ## Recipe page
