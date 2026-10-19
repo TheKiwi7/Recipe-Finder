@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.9",
+    "date": "2026-10-19",
+    "fr": [
+      "Nouveau bouton « Arrêter l'import » dans Réglages → Catalogue : l'import finit la recette en cours, puis s'arrête et le reste, même après un redémarrage, jusqu'à ce que tu le relances. Pratique pour libérer la carte graphique.",
+      "Les journaux de l'app indiquent quelle IA a vraiment fait le travail (Claude ou le modèle local)."
+    ],
+    "en": [
+      "New “Stop the import” button in Settings → Catalogue: the import finishes the current recipe, then stops and stays stopped, even after a restart, until you resume it. Handy to free up the graphics card.",
+      "The app’s logs now say which AI actually did the work (Claude or the local model)."
+    ]
+  },
+  {
     "version": "1.0.8",
     "date": "2026-10-19",
     "fr": [
